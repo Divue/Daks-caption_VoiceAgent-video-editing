@@ -26,7 +26,8 @@ export type Style = z.infer<typeof Style>
 export const Signals = z.object({
   loudnessZ: z.number(),
   pitchZ: z.number(),
-  durationRatio: z.number(), // actual / expected duration
+  durationRatio: z.number(), // actual / expected duration for this speaker
+  extraMs: z.number(),       // how much longer than expected, in ms
 })
 export type Signals = z.infer<typeof Signals>
 

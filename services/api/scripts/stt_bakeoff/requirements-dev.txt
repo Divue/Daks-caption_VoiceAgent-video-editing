@@ -1,3 +1,5 @@
 # extras for the bake-off only, not for the API image
+boto3
 requests
-# faster-whisper   # uncomment to test Whisper locally (~3GB model download)
+imageio-ffmpeg        # static ffmpeg binary, so no sudo apt install needed
+# faster-whisper      # uncomment to test Whisper locally (~3GB model download)

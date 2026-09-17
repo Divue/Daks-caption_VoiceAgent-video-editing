@@ -13,16 +13,23 @@ Put 4 clips in `clips/` (20–30s each, vertical phone video is fine):
 | clip4 | a real reel: background music, phone mic, fast speech |
 
 ## 2. Ground truth
-`python bakeoff.py prepare` makes `audio/*.wav` and an empty `truth/<clip>.txt` per clip.
+`.venv/bin/python bakeoff.py prepare` makes `audio/*.wav` and an empty `truth/<clip>.txt` per clip.
 Type into each truth file what was actually said, in Roman script, the way you want it captioned.
 Without this there is no score, only vibes.
+
+## 0. Setup (own venv, nothing touches system Python)
+```bash
+uv venv --python 3.12 .venv
+uv pip install -p .venv -r requirements-dev.txt   # includes a bundled ffmpeg, no sudo needed
+```
+Always run scripts as `.venv/bin/python bakeoff.py …`.
 
 ## 3. Run
 ```bash
 export $(grep -v '^#' ../../../../.env | xargs)   # AWS keys, S3_BUCKET, BEDROCK_MODEL_ID
-python bakeoff.py run transcribe-en transcribe-hi scribe
-python bakeoff.py romanize transcribe-hi          # Devanagari -> Roman via Bedrock
-python bakeoff.py score
+.venv/bin/python bakeoff.py run transcribe-en transcribe-hi scribe
+.venv/bin/python bakeoff.py romanize transcribe-hi   # Devanagari -> Roman via Bedrock
+.venv/bin/python bakeoff.py score
 ```
 Engines: `transcribe-en`, `transcribe-hi`, `scribe` (needs `ELEVENLABS_API_KEY`),
 `whisper` (needs `pip install faster-whisper`, downloads ~3GB).
@@ -37,3 +44,6 @@ Also check that stretched words get long durations, and that Roman spelling read
 write (bhai, nahi, kya).
 
 Write the winner into the plan doc's open decisions, and into `CLAUDE.md` under Stack.
+
+Seeded machine transcripts live in truth/_seed/ for reference only.
+The scorer reads truth/*.txt — those must be your own corrected-by-ear transcripts.

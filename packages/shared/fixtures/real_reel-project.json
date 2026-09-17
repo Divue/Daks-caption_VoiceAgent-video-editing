@@ -1,0 +1,1440 @@
+{
+  "id": "real_reel",
+  "videoUrl": "Real_reel.mp4",
+  "durationMs": 23495,
+  "width": 720,
+  "height": 1280,
+  "presetId": "kathmandu",
+  "words": [
+    {
+      "id": "w1",
+      "text": "ye",
+      "startMs": 39,
+      "endMs": 280,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.28,
+        "pitchZ": -0.93,
+        "durationRatio": 1.72,
+        "extraMs": 101
+      }
+    },
+    {
+      "id": "w2",
+      "text": "jaante",
+      "startMs": 280,
+      "endMs": 720,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.04,
+        "pitchZ": -0.18,
+        "durationRatio": 1.57,
+        "extraMs": 160
+      }
+    },
+    {
+      "id": "w3",
+      "text": "hue",
+      "startMs": 720,
+      "endMs": 959,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.41,
+        "pitchZ": -1.54,
+        "durationRatio": 1.71,
+        "extraMs": 99
+      }
+    },
+    {
+      "id": "w4",
+      "text": "ki",
+      "startMs": 959,
+      "endMs": 1080,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.58,
+        "pitchZ": 1.38,
+        "durationRatio": 0.86,
+        "extraMs": -19
+      }
+    },
+    {
+      "id": "w5",
+      "text": "har",
+      "startMs": 1080,
+      "endMs": 1360,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.26,
+        "pitchZ": 0.95,
+        "durationRatio": 2.0,
+        "extraMs": 140
+      }
+    },
+    {
+      "id": "w6",
+      "text": "saaaal",
+      "startMs": 1360,
+      "endMs": 1759,
+      "emphasis": true,
+      "emotion": "excited",
+      "stretch": 2.85,
+      "signals": {
+        "loudnessZ": 1.51,
+        "pitchZ": -0.78,
+        "durationRatio": 2.85,
+        "extraMs": 259
+      }
+    },
+    {
+      "id": "w7",
+      "text": "meri",
+      "startMs": 1759,
+      "endMs": 2000,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.24,
+        "pitchZ": -0.69,
+        "durationRatio": 0.86,
+        "extraMs": -39
+      }
+    },
+    {
+      "id": "w8",
+      "text": "birthday",
+      "startMs": 2000,
+      "endMs": 2440,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.56,
+        "pitchZ": -0.57,
+        "durationRatio": 1.57,
+        "extraMs": 160
+      }
+    },
+    {
+      "id": "w9",
+      "text": "kaise",
+      "startMs": 2440,
+      "endMs": 2759,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.39,
+        "pitchZ": -1.01,
+        "durationRatio": 1.14,
+        "extraMs": 39
+      }
+    },
+    {
+      "id": "w10",
+      "text": "manti",
+      "startMs": 2759,
+      "endMs": 3079,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -1.3,
+        "pitchZ": -1.33,
+        "durationRatio": 1.14,
+        "extraMs": 40
+      }
+    },
+    {
+      "id": "w11",
+      "text": "hai",
+      "startMs": 3079,
+      "endMs": 3190,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -2.28,
+        "pitchZ": -1.53,
+        "durationRatio": 0.79,
+        "extraMs": -29
+      }
+    },
+    {
+      "id": "w12",
+      "text": "apne",
+      "startMs": 3640,
+      "endMs": 3799,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.67,
+        "pitchZ": -1.22,
+        "durationRatio": 0.57,
+        "extraMs": -121
+      }
+    },
+    {
+      "id": "w13",
+      "text": "birthday",
+      "startMs": 3799,
+      "endMs": 4199,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.02,
+        "pitchZ": 0.34,
+        "durationRatio": 1.43,
+        "extraMs": 120
+      }
+    },
+    {
+      "id": "w14",
+      "text": "se",
+      "startMs": 4199,
+      "endMs": 4320,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -2.2,
+        "pitchZ": -1.05,
+        "durationRatio": 0.86,
+        "extraMs": -19
+      }
+    },
+    {
+      "id": "w15",
+      "text": "ek",
+      "startMs": 4320,
+      "endMs": 4599,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.61,
+        "pitchZ": 0.59,
+        "durationRatio": 1.99,
+        "extraMs": 139
+      }
+    },
+    {
+      "id": "w16",
+      "text": "mahina",
+      "startMs": 4599,
+      "endMs": 4920,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.55,
+        "pitchZ": 0.19,
+        "durationRatio": 0.76,
+        "extraMs": -99
+      }
+    },
+    {
+      "id": "w17",
+      "text": "pehle",
+      "startMs": 4920,
+      "endMs": 5239,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -1.11,
+        "pitchZ": 0.53,
+        "durationRatio": 1.14,
+        "extraMs": 39
+      }
+    },
+    {
+      "id": "w18",
+      "text": "jo",
+      "startMs": 5239,
+      "endMs": 5360,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.05,
+        "pitchZ": 1.52,
+        "durationRatio": 0.86,
+        "extraMs": -19
+      }
+    },
+    {
+      "id": "w19",
+      "text": "main",
+      "startMs": 5360,
+      "endMs": 5480,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -1.89,
+        "pitchZ": 0.99,
+        "durationRatio": 0.86,
+        "extraMs": -20
+      }
+    },
+    {
+      "id": "w20",
+      "text": "khaad",
+      "startMs": 5480,
+      "endMs": 5840,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.17,
+        "pitchZ": 0.61,
+        "durationRatio": 2.57,
+        "extraMs": 220
+      }
+    },
+    {
+      "id": "w21",
+      "text": "dekhna",
+      "startMs": 5840,
+      "endMs": 6159,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.74,
+        "pitchZ": 0.53,
+        "durationRatio": 1.14,
+        "extraMs": 39
+      }
+    },
+    {
+      "id": "w22",
+      "text": "chaalu",
+      "startMs": 6159,
+      "endMs": 6440,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.28,
+        "pitchZ": -0.55,
+        "durationRatio": 1.0,
+        "extraMs": 1
+      }
+    },
+    {
+      "id": "w23",
+      "text": "kar",
+      "startMs": 6440,
+      "endMs": 6559,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.21,
+        "pitchZ": -0.35,
+        "durationRatio": 0.85,
+        "extraMs": -21
+      }
+    },
+    {
+      "id": "w24",
+      "text": "deti",
+      "startMs": 6559,
+      "endMs": 6719,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -2.21,
+        "pitchZ": -0.73,
+        "durationRatio": 0.57,
+        "extraMs": -120
+      }
+    },
+    {
+      "id": "w25",
+      "text": "hoon",
+      "startMs": 6719,
+      "endMs": 6829,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -2.75,
+        "pitchZ": -0.36,
+        "durationRatio": 0.79,
+        "extraMs": -30
+      }
+    },
+    {
+      "id": "w26",
+      "text": "ki",
+      "startMs": 6829,
+      "endMs": 6960,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.34,
+        "pitchZ": 0.0,
+        "durationRatio": 0.94,
+        "extraMs": -9
+      }
+    },
+    {
+      "id": "w27",
+      "text": "oh",
+      "startMs": 6960,
+      "endMs": 7079,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.85,
+        "pitchZ": 0.11,
+        "durationRatio": 0.85,
+        "extraMs": -21
+      }
+    },
+    {
+      "id": "w28",
+      "text": "my",
+      "startMs": 7079,
+      "endMs": 7239,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.39,
+        "pitchZ": 0.94,
+        "durationRatio": 1.14,
+        "extraMs": 20
+      }
+    },
+    {
+      "id": "w29",
+      "text": "god",
+      "startMs": 7239,
+      "endMs": 7519,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.48,
+        "pitchZ": -0.45,
+        "durationRatio": 2.0,
+        "extraMs": 140
+      }
+    },
+    {
+      "id": "w30",
+      "text": "log",
+      "startMs": 7519,
+      "endMs": 7719,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.32,
+        "pitchZ": -0.04,
+        "durationRatio": 1.43,
+        "extraMs": 60
+      }
+    },
+    {
+      "id": "w31",
+      "text": "mere",
+      "startMs": 7719,
+      "endMs": 7920,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.4,
+        "pitchZ": 0.4,
+        "durationRatio": 0.72,
+        "extraMs": -79
+      }
+    },
+    {
+      "id": "w32",
+      "text": "liye",
+      "startMs": 7920,
+      "endMs": 8079,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.3,
+        "pitchZ": 0.71,
+        "durationRatio": 0.57,
+        "extraMs": -121
+      }
+    },
+    {
+      "id": "w33",
+      "text": "chai",
+      "startMs": 8079,
+      "endMs": 8329,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.38,
+        "pitchZ": -0.41,
+        "durationRatio": 1.79,
+        "extraMs": 110
+      }
+    },
+    {
+      "id": "w34",
+      "text": "taare",
+      "startMs": 8329,
+      "endMs": 8760,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.57,
+        "pitchZ": -0.22,
+        "durationRatio": 1.54,
+        "extraMs": 151
+      }
+    },
+    {
+      "id": "w35",
+      "text": "shakkar",
+      "startMs": 8760,
+      "endMs": 9039,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.92,
+        "pitchZ": 0.49,
+        "durationRatio": 1.0,
+        "extraMs": -1
+      }
+    },
+    {
+      "id": "w36",
+      "text": "paare",
+      "startMs": 9039,
+      "endMs": 9319,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.74,
+        "pitchZ": -0.27,
+        "durationRatio": 1.0,
+        "extraMs": 0
+      }
+    },
+    {
+      "id": "w37",
+      "text": "leke",
+      "startMs": 9319,
+      "endMs": 9479,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.54,
+        "pitchZ": -0.02,
+        "durationRatio": 0.57,
+        "extraMs": -120
+      }
+    },
+    {
+      "id": "w38",
+      "text": "aaenge",
+      "startMs": 9479,
+      "endMs": 9750,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.19,
+        "pitchZ": -0.22,
+        "durationRatio": 0.97,
+        "extraMs": -9
+      }
+    },
+    {
+      "id": "w39",
+      "text": "mera",
+      "startMs": 9760,
+      "endMs": 9960,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.11,
+        "pitchZ": -1.46,
+        "durationRatio": 0.71,
+        "extraMs": -80
+      }
+    },
+    {
+      "id": "w40",
+      "text": "saal",
+      "startMs": 9960,
+      "endMs": 10239,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.14,
+        "pitchZ": 0.64,
+        "durationRatio": 1.99,
+        "extraMs": 139
+      }
+    },
+    {
+      "id": "w41",
+      "text": "ka",
+      "startMs": 10239,
+      "endMs": 10399,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -1.1,
+        "pitchZ": -1.58,
+        "durationRatio": 1.14,
+        "extraMs": 20
+      }
+    },
+    {
+      "id": "w42",
+      "text": "sabse",
+      "startMs": 10399,
+      "endMs": 10640,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -1.43,
+        "pitchZ": -0.02,
+        "durationRatio": 0.86,
+        "extraMs": -39
+      }
+    },
+    {
+      "id": "w43",
+      "text": "ghatiya",
+      "startMs": 10640,
+      "endMs": 10920,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -1.38,
+        "pitchZ": -0.02,
+        "durationRatio": 0.67,
+        "extraMs": -140
+      }
+    },
+    {
+      "id": "w44",
+      "text": "din",
+      "startMs": 10920,
+      "endMs": 11079,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.26,
+        "pitchZ": -0.71,
+        "durationRatio": 1.14,
+        "extraMs": 19
+      }
+    },
+    {
+      "id": "w45",
+      "text": "zyada",
+      "startMs": 11079,
+      "endMs": 11319,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.39,
+        "pitchZ": -1.2,
+        "durationRatio": 0.86,
+        "extraMs": -40
+      }
+    },
+    {
+      "id": "w46",
+      "text": "hai",
+      "startMs": 11319,
+      "endMs": 11399,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.88,
+        "pitchZ": -1.11,
+        "durationRatio": 0.57,
+        "extraMs": -60
+      }
+    },
+    {
+      "id": "w47",
+      "text": "mera",
+      "startMs": 11399,
+      "endMs": 11600,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.34,
+        "pitchZ": -0.94,
+        "durationRatio": 0.72,
+        "extraMs": -79
+      }
+    },
+    {
+      "id": "w48",
+      "text": "birthday",
+      "startMs": 11600,
+      "endMs": 12069,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -1.44,
+        "pitchZ": -1.04,
+        "durationRatio": 1.68,
+        "extraMs": 189
+      }
+    },
+    {
+      "id": "w49",
+      "text": "har",
+      "startMs": 12270,
+      "endMs": 12520,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.81,
+        "pitchZ": 0.73,
+        "durationRatio": 1.79,
+        "extraMs": 110
+      }
+    },
+    {
+      "id": "w50",
+      "text": "saaaaal",
+      "startMs": 12520,
+      "endMs": 12989,
+      "emphasis": false,
+      "emotion": "excited",
+      "stretch": 3.35,
+      "signals": {
+        "loudnessZ": 0.16,
+        "pitchZ": -1.75,
+        "durationRatio": 3.35,
+        "extraMs": 329
+      }
+    },
+    {
+      "id": "w51",
+      "text": "ye",
+      "startMs": 13079,
+      "endMs": 13319,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.27,
+        "pitchZ": 1.45,
+        "durationRatio": 1.71,
+        "extraMs": 100
+      }
+    },
+    {
+      "id": "w52",
+      "text": "track",
+      "startMs": 13319,
+      "endMs": 13680,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.84,
+        "pitchZ": -0.18,
+        "durationRatio": 2.58,
+        "extraMs": 221
+      }
+    },
+    {
+      "id": "w53",
+      "text": "record",
+      "startMs": 13680,
+      "endMs": 14079,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.12,
+        "pitchZ": -0.66,
+        "durationRatio": 1.43,
+        "extraMs": 119
+      }
+    },
+    {
+      "id": "w54",
+      "text": "hai",
+      "startMs": 14079,
+      "endMs": 14310,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -2.74,
+        "pitchZ": -3.63,
+        "durationRatio": 1.65,
+        "extraMs": 91
+      }
+    },
+    {
+      "id": "w55",
+      "text": "ki",
+      "startMs": 14399,
+      "endMs": 14560,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.05,
+        "pitchZ": 0.97,
+        "durationRatio": 1.15,
+        "extraMs": 21
+      }
+    },
+    {
+      "id": "w56",
+      "text": "main",
+      "startMs": 14560,
+      "endMs": 14800,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.17,
+        "pitchZ": 0.77,
+        "durationRatio": 1.71,
+        "extraMs": 100
+      }
+    },
+    {
+      "id": "w57",
+      "text": "apne",
+      "startMs": 14800,
+      "endMs": 14880,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.01,
+        "pitchZ": 0.47,
+        "durationRatio": 0.29,
+        "extraMs": -200
+      }
+    },
+    {
+      "id": "w58",
+      "text": "birthday",
+      "startMs": 14880,
+      "endMs": 15159,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.68,
+        "pitchZ": -0.86,
+        "durationRatio": 1.0,
+        "extraMs": -1
+      }
+    },
+    {
+      "id": "w59",
+      "text": "pe",
+      "startMs": 15159,
+      "endMs": 15279,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.44,
+        "pitchZ": -0.6,
+        "durationRatio": 0.86,
+        "extraMs": -20
+      }
+    },
+    {
+      "id": "w60",
+      "text": "roi",
+      "startMs": 15279,
+      "endMs": 15439,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -1.06,
+        "pitchZ": -2.04,
+        "durationRatio": 1.14,
+        "extraMs": 20
+      }
+    },
+    {
+      "id": "w61",
+      "text": "hoon",
+      "startMs": 15439,
+      "endMs": 15520,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.4,
+        "pitchZ": -0.44,
+        "durationRatio": 0.58,
+        "extraMs": -59
+      }
+    },
+    {
+      "id": "w62",
+      "text": "ab",
+      "startMs": 15569,
+      "endMs": 15680,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.84,
+        "pitchZ": -0.12,
+        "durationRatio": 0.79,
+        "extraMs": -29
+      }
+    },
+    {
+      "id": "w63",
+      "text": "main",
+      "startMs": 15680,
+      "endMs": 15880,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.42,
+        "pitchZ": -1.62,
+        "durationRatio": 1.43,
+        "extraMs": 60
+      }
+    },
+    {
+      "id": "w64",
+      "text": "apna",
+      "startMs": 15880,
+      "endMs": 16000,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.04,
+        "pitchZ": 1.66,
+        "durationRatio": 0.43,
+        "extraMs": -160
+      }
+    },
+    {
+      "id": "w65",
+      "text": "munh",
+      "startMs": 16000,
+      "endMs": 16180,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.03,
+        "pitchZ": 0.72,
+        "durationRatio": 1.29,
+        "extraMs": 40
+      }
+    },
+    {
+      "id": "w66",
+      "text": "se",
+      "startMs": 16180,
+      "endMs": 16280,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.07,
+        "pitchZ": 1.1,
+        "durationRatio": 0.71,
+        "extraMs": -40
+      }
+    },
+    {
+      "id": "w67",
+      "text": "ja",
+      "startMs": 16280,
+      "endMs": 16440,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.67,
+        "pitchZ": 0.45,
+        "durationRatio": 1.14,
+        "extraMs": 20
+      }
+    },
+    {
+      "id": "w68",
+      "text": "ke",
+      "startMs": 16440,
+      "endMs": 16559,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.15,
+        "pitchZ": 0.62,
+        "durationRatio": 0.85,
+        "extraMs": -21
+      }
+    },
+    {
+      "id": "w69",
+      "text": "baith",
+      "startMs": 16559,
+      "endMs": 16760,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.43,
+        "pitchZ": -0.19,
+        "durationRatio": 1.44,
+        "extraMs": 61
+      }
+    },
+    {
+      "id": "w70",
+      "text": "gayi",
+      "startMs": 16760,
+      "endMs": 16879,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.86,
+        "pitchZ": 1.04,
+        "durationRatio": 0.42,
+        "extraMs": -161
+      }
+    },
+    {
+      "id": "w71",
+      "text": "hoon",
+      "startMs": 16879,
+      "endMs": 16959,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.68,
+        "pitchZ": 1.05,
+        "durationRatio": 0.57,
+        "extraMs": -60
+      }
+    },
+    {
+      "id": "w72",
+      "text": "ki",
+      "startMs": 16959,
+      "endMs": 17079,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.58,
+        "pitchZ": -1.55,
+        "durationRatio": 0.86,
+        "extraMs": -20
+      }
+    },
+    {
+      "id": "w73",
+      "text": "hi",
+      "startMs": 17079,
+      "endMs": 17430,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 2.03,
+        "pitchZ": -1.41,
+        "durationRatio": 2.51,
+        "extraMs": 211
+      }
+    },
+    {
+      "id": "w74",
+      "text": "haay",
+      "startMs": 17430,
+      "endMs": 17440,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.23,
+        "pitchZ": -0.02,
+        "durationRatio": 0.07,
+        "extraMs": -130
+      }
+    },
+    {
+      "id": "w75",
+      "text": "meri",
+      "startMs": 17440,
+      "endMs": 17639,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.38,
+        "pitchZ": -0.02,
+        "durationRatio": 0.71,
+        "extraMs": -81
+      }
+    },
+    {
+      "id": "w76",
+      "text": "birthday",
+      "startMs": 17639,
+      "endMs": 18040,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.4,
+        "pitchZ": 1.53,
+        "durationRatio": 1.43,
+        "extraMs": 121
+      }
+    },
+    {
+      "id": "w77",
+      "text": "aa",
+      "startMs": 18040,
+      "endMs": 18159,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.48,
+        "pitchZ": 1.59,
+        "durationRatio": 0.85,
+        "extraMs": -21
+      }
+    },
+    {
+      "id": "w78",
+      "text": "rahi",
+      "startMs": 18159,
+      "endMs": 18239,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.36,
+        "pitchZ": 1.33,
+        "durationRatio": 0.29,
+        "extraMs": -200
+      }
+    },
+    {
+      "id": "w79",
+      "text": "hai",
+      "startMs": 18239,
+      "endMs": 18399,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -1.13,
+        "pitchZ": 1.01,
+        "durationRatio": 1.14,
+        "extraMs": 20
+      }
+    },
+    {
+      "id": "w80",
+      "text": "bia",
+      "startMs": 18399,
+      "endMs": 18760,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.25,
+        "pitchZ": 0.53,
+        "durationRatio": 2.58,
+        "extraMs": 221
+      }
+    },
+    {
+      "id": "w81",
+      "text": "niklegi",
+      "startMs": 18760,
+      "endMs": 19239,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.38,
+        "pitchZ": 0.95,
+        "durationRatio": 1.14,
+        "extraMs": 59
+      }
+    },
+    {
+      "id": "w82",
+      "text": "koi",
+      "startMs": 19239,
+      "endMs": 19440,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.04,
+        "pitchZ": 1.53,
+        "durationRatio": 1.44,
+        "extraMs": 61
+      }
+    },
+    {
+      "id": "w83",
+      "text": "badhiya",
+      "startMs": 19440,
+      "endMs": 19760,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.44,
+        "pitchZ": 1.08,
+        "durationRatio": 0.76,
+        "extraMs": -100
+      }
+    },
+    {
+      "id": "w84",
+      "text": "nahi",
+      "startMs": 19760,
+      "endMs": 19879,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.67,
+        "pitchZ": 1.07,
+        "durationRatio": 0.42,
+        "extraMs": -161
+      }
+    },
+    {
+      "id": "w85",
+      "text": "niklegi",
+      "startMs": 19879,
+      "endMs": 20319,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.52,
+        "pitchZ": 0.6,
+        "durationRatio": 1.05,
+        "extraMs": 20
+      }
+    },
+    {
+      "id": "w86",
+      "text": "mujhe",
+      "startMs": 20319,
+      "endMs": 20510,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.53,
+        "pitchZ": -0.02,
+        "durationRatio": 0.68,
+        "extraMs": -89
+      }
+    },
+    {
+      "id": "w87",
+      "text": "bhi",
+      "startMs": 20510,
+      "endMs": 20639,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.12,
+        "pitchZ": 1.62,
+        "durationRatio": 0.92,
+        "extraMs": -11
+      }
+    },
+    {
+      "id": "w88",
+      "text": "pata",
+      "startMs": 20639,
+      "endMs": 20799,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.42,
+        "pitchZ": 0.95,
+        "durationRatio": 0.57,
+        "extraMs": -120
+      }
+    },
+    {
+      "id": "w89",
+      "text": "hai",
+      "startMs": 20799,
+      "endMs": 20920,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.46,
+        "pitchZ": 0.61,
+        "durationRatio": 0.86,
+        "extraMs": -19
+      }
+    },
+    {
+      "id": "w90",
+      "text": "rona",
+      "startMs": 20920,
+      "endMs": 21200,
+      "emphasis": true,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.97,
+        "pitchZ": 1.47,
+        "durationRatio": 1.0,
+        "extraMs": 0
+      }
+    },
+    {
+      "id": "w91",
+      "text": "machne",
+      "startMs": 21200,
+      "endMs": 21520,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.25,
+        "pitchZ": 0.68,
+        "durationRatio": 1.14,
+        "extraMs": 40
+      }
+    },
+    {
+      "id": "w92",
+      "text": "wala",
+      "startMs": 21520,
+      "endMs": 21760,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.25,
+        "pitchZ": -0.2,
+        "durationRatio": 0.86,
+        "extraMs": -40
+      }
+    },
+    {
+      "id": "w93",
+      "text": "hai",
+      "startMs": 21760,
+      "endMs": 21840,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.34,
+        "pitchZ": -0.25,
+        "durationRatio": 0.57,
+        "extraMs": -60
+      }
+    },
+    {
+      "id": "w94",
+      "text": "us",
+      "startMs": 21840,
+      "endMs": 22000,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.37,
+        "pitchZ": -0.07,
+        "durationRatio": 1.14,
+        "extraMs": 20
+      }
+    },
+    {
+      "id": "w95",
+      "text": "din",
+      "startMs": 22000,
+      "endMs": 22200,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -2.14,
+        "pitchZ": -0.37,
+        "durationRatio": 1.43,
+        "extraMs": 60
+      }
+    }
+  ],
+  "overlays": [],
+  "settings": {
+    "emojis": true,
+    "emotionLayer": true
+  }
+}

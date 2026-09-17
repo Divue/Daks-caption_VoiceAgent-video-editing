@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -21,6 +22,23 @@ HERE = Path(__file__).parent
 CLIPS, AUDIO, OUT, TRUTH = HERE / "clips", HERE / "audio", HERE / "out", HERE / "truth"
 
 DEVANAGARI = re.compile(r"[ऀ-ॿ]")
+
+
+def ffmpeg_bin() -> str:
+    """System ffmpeg if present, else the static binary from imageio-ffmpeg (no sudo needed)."""
+    import os
+
+    if os.environ.get("FFMPEG"):
+        return os.environ["FFMPEG"]
+    found = shutil.which("ffmpeg")
+    if found:
+        return found
+    try:
+        import imageio_ffmpeg
+
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except ImportError:
+        sys.exit("no ffmpeg: install it, or `uv pip install imageio-ffmpeg`, or set FFMPEG=/path/to/ffmpeg")
 
 
 def normalize(text: str) -> list[str]:
@@ -52,7 +70,7 @@ def cmd_prepare(_args) -> None:
     for clip in clips:
         wav = AUDIO / f"{clip.stem}.wav"
         subprocess.run(
-            ["ffmpeg", "-y", "-i", str(clip), "-ac", "1", "-ar", "16000", "-vn", str(wav)],
+            [ffmpeg_bin(), "-y", "-i", str(clip), "-ac", "1", "-ar", "16000", "-vn", str(wav)],
             check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         print(f"{clip.name} -> {wav.name}")
@@ -84,7 +102,7 @@ def cmd_run(args) -> None:
 
 
 def cmd_romanize(args) -> None:
-    from engines import romanize
+    from engines import romanize, romanize_words
 
     for path in sorted(OUT.glob(f"{args.engine}.*.json")):
         data = json.loads(path.read_text())
@@ -93,6 +111,7 @@ def cmd_romanize(args) -> None:
             continue
         started = time.time()
         data["textDevanagari"], data["text"] = data["text"], romanize(data["text"])
+        data["words"] = romanize_words(data["words"])  # keep word timings aligned
         data["romanizeS"] = round(time.time() - started, 1)
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
         print(f"{path.name}: romanized (+{data['romanizeS']}s)")

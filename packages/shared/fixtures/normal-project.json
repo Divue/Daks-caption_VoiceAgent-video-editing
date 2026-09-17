@@ -1,0 +1,780 @@
+{
+  "id": "normal",
+  "videoUrl": "Normal.mp4",
+  "durationMs": 28111,
+  "width": 478,
+  "height": 850,
+  "presetId": "kathmandu",
+  "words": [
+    {
+      "id": "w1",
+      "text": "hello",
+      "startMs": 9,
+      "endMs": 439,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -4.22,
+        "pitchZ": -0.33,
+        "durationRatio": 0.9,
+        "extraMs": -48
+      }
+    },
+    {
+      "id": "w2",
+      "text": "guuuuuyz",
+      "startMs": 439,
+      "endMs": 1200,
+      "emphasis": false,
+      "emotion": "excited",
+      "stretch": 3.18,
+      "signals": {
+        "loudnessZ": 0.51,
+        "pitchZ": 0.07,
+        "durationRatio": 3.18,
+        "extraMs": 522
+      }
+    },
+    {
+      "id": "w3",
+      "text": "this",
+      "startMs": 1480,
+      "endMs": 1639,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.89,
+        "pitchZ": -0.54,
+        "durationRatio": 0.67,
+        "extraMs": -80
+      }
+    },
+    {
+      "id": "w4",
+      "text": "is",
+      "startMs": 1639,
+      "endMs": 1799,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.03,
+        "pitchZ": -0.14,
+        "durationRatio": 0.67,
+        "extraMs": -79
+      }
+    },
+    {
+      "id": "w5",
+      "text": "Shubher",
+      "startMs": 1799,
+      "endMs": 2390,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.25,
+        "pitchZ": -0.33,
+        "durationRatio": 1.24,
+        "extraMs": 113
+      }
+    },
+    {
+      "id": "w6",
+      "text": "ah",
+      "startMs": 3140,
+      "endMs": 3200,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.29,
+        "pitchZ": -0.66,
+        "durationRatio": 0.25,
+        "extraMs": -179
+      }
+    },
+    {
+      "id": "w7",
+      "text": "aaaaaaaj",
+      "startMs": 4219,
+      "endMs": 5019,
+      "emphasis": true,
+      "emotion": "excited",
+      "stretch": 3.35,
+      "signals": {
+        "loudnessZ": -0.38,
+        "pitchZ": 5.38,
+        "durationRatio": 3.35,
+        "extraMs": 561
+      }
+    },
+    {
+      "id": "w8",
+      "text": "ST",
+      "startMs": 5300,
+      "endMs": 5820,
+      "emphasis": true,
+      "emotion": "excited",
+      "stretch": 2.18,
+      "signals": {
+        "loudnessZ": 1.14,
+        "pitchZ": 0.93,
+        "durationRatio": 2.18,
+        "extraMs": 281
+      }
+    },
+    {
+      "id": "w9",
+      "text": "test",
+      "startMs": 5820,
+      "endMs": 6300,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.5,
+        "pitchZ": 0.44,
+        "durationRatio": 2.01,
+        "extraMs": 241
+      }
+    },
+    {
+      "id": "w10",
+      "text": "karna",
+      "startMs": 6300,
+      "endMs": 6500,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.0,
+        "pitchZ": 0.26,
+        "durationRatio": 0.42,
+        "extraMs": -278
+      }
+    },
+    {
+      "id": "w11",
+      "text": "hai",
+      "startMs": 6500,
+      "endMs": 6849,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.01,
+        "pitchZ": 0.87,
+        "durationRatio": 1.46,
+        "extraMs": 110
+      }
+    },
+    {
+      "id": "w12",
+      "text": "aur",
+      "startMs": 7719,
+      "endMs": 7940,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.11,
+        "pitchZ": 3.42,
+        "durationRatio": 0.92,
+        "extraMs": -18
+      }
+    },
+    {
+      "id": "w13",
+      "text": "yahan",
+      "startMs": 8449,
+      "endMs": 8689,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.41,
+        "pitchZ": 0.18,
+        "durationRatio": 0.5,
+        "extraMs": -238
+      }
+    },
+    {
+      "id": "w14",
+      "text": "hum",
+      "startMs": 8699,
+      "endMs": 8859,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.52,
+        "pitchZ": 1.66,
+        "durationRatio": 0.67,
+        "extraMs": -79
+      }
+    },
+    {
+      "id": "w15",
+      "text": "log",
+      "startMs": 8859,
+      "endMs": 9180,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.13,
+        "pitchZ": 0.11,
+        "durationRatio": 1.34,
+        "extraMs": 82
+      }
+    },
+    {
+      "id": "w16",
+      "text": "pagal",
+      "startMs": 9180,
+      "endMs": 9659,
+      "emphasis": true,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.26,
+        "pitchZ": -0.08,
+        "durationRatio": 1.0,
+        "extraMs": 1
+      }
+    },
+    {
+      "id": "w17",
+      "text": "ho",
+      "startMs": 9659,
+      "endMs": 9779,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.89,
+        "pitchZ": -0.06,
+        "durationRatio": 0.5,
+        "extraMs": -119
+      }
+    },
+    {
+      "id": "w18",
+      "text": "chuke",
+      "startMs": 9779,
+      "endMs": 10020,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.26,
+        "pitchZ": 0.07,
+        "durationRatio": 0.5,
+        "extraMs": -237
+      }
+    },
+    {
+      "id": "w19",
+      "text": "hain",
+      "startMs": 10020,
+      "endMs": 10140,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.45,
+        "pitchZ": 0.03,
+        "durationRatio": 0.5,
+        "extraMs": -119
+      }
+    },
+    {
+      "id": "w20",
+      "text": "bhai",
+      "startMs": 10140,
+      "endMs": 10340,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.49,
+        "pitchZ": -0.21,
+        "durationRatio": 0.84,
+        "extraMs": -39
+      }
+    },
+    {
+      "id": "w21",
+      "text": "kaam",
+      "startMs": 10340,
+      "endMs": 10779,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.01,
+        "pitchZ": -0.32,
+        "durationRatio": 1.84,
+        "extraMs": 200
+      }
+    },
+    {
+      "id": "w22",
+      "text": "karte",
+      "startMs": 10779,
+      "endMs": 11119,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -1.23,
+        "pitchZ": -0.31,
+        "durationRatio": 0.71,
+        "extraMs": -138
+      }
+    },
+    {
+      "id": "w23",
+      "text": "karte",
+      "startMs": 11130,
+      "endMs": 11340,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.65,
+        "pitchZ": -0.3,
+        "durationRatio": 0.44,
+        "extraMs": -268
+      }
+    },
+    {
+      "id": "w24",
+      "text": "so",
+      "startMs": 12630,
+      "endMs": 12640,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -2.2,
+        "pitchZ": -0.3,
+        "durationRatio": 0.04,
+        "extraMs": -229
+      }
+    },
+    {
+      "id": "w25",
+      "text": "hum",
+      "startMs": 13920,
+      "endMs": 14159,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.73,
+        "pitchZ": -0.35,
+        "durationRatio": 1.0,
+        "extraMs": 0
+      }
+    },
+    {
+      "id": "w26",
+      "text": "loooog",
+      "startMs": 14159,
+      "endMs": 14739,
+      "emphasis": false,
+      "emotion": "excited",
+      "stretch": 2.43,
+      "signals": {
+        "loudnessZ": -0.4,
+        "pitchZ": -0.37,
+        "durationRatio": 2.43,
+        "extraMs": 341
+      }
+    },
+    {
+      "id": "w27",
+      "text": "well",
+      "startMs": 15329,
+      "endMs": 15649,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.62,
+        "pitchZ": -0.3,
+        "durationRatio": 1.34,
+        "extraMs": 81
+      }
+    },
+    {
+      "id": "w28",
+      "text": "main",
+      "startMs": 15800,
+      "endMs": 15960,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.07,
+        "pitchZ": -0.3,
+        "durationRatio": 0.67,
+        "extraMs": -79
+      }
+    },
+    {
+      "id": "w29",
+      "text": "bed",
+      "startMs": 15960,
+      "endMs": 16319,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 1.4,
+        "pitchZ": -0.28,
+        "durationRatio": 1.5,
+        "extraMs": 120
+      }
+    },
+    {
+      "id": "w30",
+      "text": "University",
+      "startMs": 16319,
+      "endMs": 16840,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.39,
+        "pitchZ": -0.36,
+        "durationRatio": 0.54,
+        "extraMs": -435
+      }
+    },
+    {
+      "id": "w31",
+      "text": "se",
+      "startMs": 16840,
+      "endMs": 16959,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.16,
+        "pitchZ": -0.33,
+        "durationRatio": 0.5,
+        "extraMs": -120
+      }
+    },
+    {
+      "id": "w32",
+      "text": "hun",
+      "startMs": 16959,
+      "endMs": 17159,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.27,
+        "pitchZ": -0.38,
+        "durationRatio": 0.84,
+        "extraMs": -39
+      }
+    },
+    {
+      "id": "w33",
+      "text": "fourth",
+      "startMs": 17159,
+      "endMs": 17520,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.28,
+        "pitchZ": -0.54,
+        "durationRatio": 1.51,
+        "extraMs": 122
+      }
+    },
+    {
+      "id": "w34",
+      "text": "year",
+      "startMs": 17520,
+      "endMs": 17770,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.88,
+        "pitchZ": -0.33,
+        "durationRatio": 1.05,
+        "extraMs": 11
+      }
+    },
+    {
+      "id": "w35",
+      "text": "ah",
+      "startMs": 18500,
+      "endMs": 18520,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -1.9,
+        "pitchZ": -0.3,
+        "durationRatio": 0.08,
+        "extraMs": -219
+      }
+    },
+    {
+      "id": "w36",
+      "text": "I",
+      "startMs": 19360,
+      "endMs": 19559,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.79,
+        "pitchZ": -0.33,
+        "durationRatio": 0.83,
+        "extraMs": -40
+      }
+    },
+    {
+      "id": "w37",
+      "text": "don't",
+      "startMs": 19559,
+      "endMs": 19799,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.61,
+        "pitchZ": -0.34,
+        "durationRatio": 1.0,
+        "extraMs": 1
+      }
+    },
+    {
+      "id": "w38",
+      "text": "noooow",
+      "startMs": 19799,
+      "endMs": 20360,
+      "emphasis": false,
+      "emotion": "excited",
+      "stretch": 2.35,
+      "signals": {
+        "loudnessZ": -0.17,
+        "pitchZ": 0.06,
+        "durationRatio": 2.35,
+        "extraMs": 322
+      }
+    },
+    {
+      "id": "w39",
+      "text": "what",
+      "startMs": 20360,
+      "endMs": 20659,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.54,
+        "pitchZ": -0.48,
+        "durationRatio": 1.25,
+        "extraMs": 60
+      }
+    },
+    {
+      "id": "w40",
+      "text": "to",
+      "startMs": 20659,
+      "endMs": 20799,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.06,
+        "pitchZ": -0.15,
+        "durationRatio": 0.59,
+        "extraMs": -99
+      }
+    },
+    {
+      "id": "w41",
+      "text": "say",
+      "startMs": 20799,
+      "endMs": 21000,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.3,
+        "pitchZ": -0.31,
+        "durationRatio": 0.84,
+        "extraMs": -38
+      }
+    },
+    {
+      "id": "w42",
+      "text": "anymore",
+      "startMs": 21000,
+      "endMs": 21479,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.36,
+        "pitchZ": -0.48,
+        "durationRatio": 0.67,
+        "extraMs": -238
+      }
+    },
+    {
+      "id": "w43",
+      "text": "right",
+      "startMs": 21479,
+      "endMs": 21799,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.53,
+        "pitchZ": -0.61,
+        "durationRatio": 1.34,
+        "extraMs": 81
+      }
+    },
+    {
+      "id": "w44",
+      "text": "now",
+      "startMs": 21799,
+      "endMs": 22069,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.23,
+        "pitchZ": -0.61,
+        "durationRatio": 1.13,
+        "extraMs": 31
+      }
+    },
+    {
+      "id": "w45",
+      "text": "but",
+      "startMs": 22360,
+      "endMs": 22639,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.95,
+        "pitchZ": -0.57,
+        "durationRatio": 1.17,
+        "extraMs": 40
+      }
+    },
+    {
+      "id": "w46",
+      "text": "Dick",
+      "startMs": 22639,
+      "endMs": 22920,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.16,
+        "pitchZ": -0.16,
+        "durationRatio": 1.18,
+        "extraMs": 42
+      }
+    },
+    {
+      "id": "w47",
+      "text": "ne",
+      "startMs": 22920,
+      "endMs": 23350,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.91,
+        "pitchZ": -0.21,
+        "durationRatio": 1.8,
+        "extraMs": 191
+      }
+    },
+    {
+      "id": "w48",
+      "text": "testing",
+      "startMs": 24040,
+      "endMs": 24680,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.22,
+        "pitchZ": -0.2,
+        "durationRatio": 1.34,
+        "extraMs": 162
+      }
+    },
+    {
+      "id": "w49",
+      "text": "video",
+      "startMs": 24680,
+      "endMs": 25159,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": 0.88,
+        "pitchZ": -0.36,
+        "durationRatio": 1.0,
+        "extraMs": 1
+      }
+    },
+    {
+      "id": "w50",
+      "text": "haaash",
+      "startMs": 25159,
+      "endMs": 25680,
+      "emphasis": false,
+      "emotion": "excited",
+      "stretch": 2.18,
+      "signals": {
+        "loudnessZ": -0.7,
+        "pitchZ": -0.66,
+        "durationRatio": 2.18,
+        "extraMs": 282
+      }
+    },
+    {
+      "id": "w51",
+      "text": "one",
+      "startMs": 25680,
+      "endMs": 25979,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1.0,
+      "signals": {
+        "loudnessZ": -0.55,
+        "pitchZ": -0.58,
+        "durationRatio": 0.63,
+        "extraMs": -179
+      }
+    }
+  ],
+  "overlays": [],
+  "settings": {
+    "emojis": true,
+    "emotionLayer": true
+  }
+}

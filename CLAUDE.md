@@ -40,13 +40,22 @@ If a task needs a change outside your folder or to the schema: STOP and tell the
 - Preview/export: Remotion (`@remotion/player`, Remotion Lambda; fallback `@remotion/renderer`)
 - Backend: Python 3.12 FastAPI container on App Runner
 - LLM/agent: Amazon Bedrock Converse API with tool use (Claude)
-- Speech-to-text: decided Day 1 (AWS Transcribe hi-IN + Roman-script conversion vs alternatives)
+- Speech-to-text: AWS Transcribe `hi-IN` + Bedrock word-level transliteration (decided Sep 18; `en-IN` failed on real reels)
 - Vision: ffmpeg frame grab → Rekognition DetectLabels (fallback: Claude vision on Bedrock)
 - Audio analysis: librosa + ffmpeg
 - Storage: S3 (media), DynamoDB (project JSON)
 
 ## Local dev
-- Node: version in `.nvmrc` (`nvm use`). Python: 3.12 inside Docker only — don't run the API on host Python.
+- Node: version in `.nvmrc` (`nvm use`). Python: 3.12 everywhere.
+- Nothing installs into system Python or system Node. Isolation per part:
+  | Part | Isolated by |
+  | --- | --- |
+  | API deps (`services/api/requirements.txt`) | the Docker image — never pip-install these on your host |
+  | dev/one-off scripts (e.g. `scripts/stt_bakeoff`) | a `uv venv --python 3.12 .venv` in that script folder, from its own `requirements-dev.txt`; run as `.venv/bin/python …` |
+  | JS deps | npm workspaces, `node_modules` per package |
+  | AWS dev data | your own `DEV_PREFIX` (p1–p4) inside the shared bucket and table |
+- `.venv/` and `node_modules/` are git-ignored. Never commit them, and never add a dev-script dependency
+  to `services/api/requirements.txt` (that image ships to production).
 - `cp .env.example .env` and fill in your own AWS keys. Never commit `.env`.
 - API: `docker compose up --build` → http://localhost:8000/health. `app/` is mounted, so edits hot-reload.
   Add a Python dependency → add it to `services/api/requirements.txt`, then `docker compose up --build`.

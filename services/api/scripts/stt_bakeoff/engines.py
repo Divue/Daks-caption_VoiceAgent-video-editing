@@ -130,3 +130,50 @@ ENGINES = {
     "scribe": elevenlabs_scribe,
     "whisper": whisper_local,
 }
+
+
+def romanize_words(words: list[dict]) -> list[dict]:
+    """Transliterate word-by-word, keeping timings.
+
+    The plain `romanize()` rewrites the whole transcript, which loses the 1:1 link to the
+    word timestamps that stretch/emphasis detection needs. This sends the token list and
+    demands exactly one Roman token back per input token.
+    """
+    import json as _json
+
+    import boto3
+
+    if not words:
+        return words
+    client = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+    out_words = [dict(w) for w in words]
+
+    for start in range(0, len(out_words), 60):  # chunk so a long clip stays reliable
+        chunk = out_words[start : start + 60]
+        tokens = [w["text"] for w in chunk]
+        prompt = (
+            "Transliterate each token into Roman script the way Indian creators write Hinglish "
+            "in captions. English words written in Devanagari become normal English spelling. "
+            "Do not translate, merge, split, reorder or drop tokens. Use lowercase unless the token "
+            "is a proper noun or an acronym; tokens are sent out of context, so do not capitalise "
+            "sentence starts.\n"
+            f"Return only a JSON array of exactly {len(tokens)} strings.\n\n"
+            "<tokens>\n" + _json.dumps(tokens, ensure_ascii=False) + "\n</tokens>"
+        )
+        resp = client.converse(
+            modelId=os.environ["BEDROCK_MODEL_ID"],
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": 4000, "temperature": 0},
+        )
+        text = resp["output"]["message"]["content"][0]["text"].strip()
+        text = text[text.find("[") : text.rfind("]") + 1]
+        try:
+            roman = _json.loads(text)
+        except _json.JSONDecodeError:
+            roman = []
+        if len(roman) != len(tokens):  # bad alignment: keep originals, flag it
+            print(f"  !! alignment failed for tokens {start}-{start+len(tokens)}, kept Devanagari")
+            continue
+        for word, new in zip(chunk, roman):
+            word["textDevanagari"], word["text"] = word["text"], str(new)
+    return out_words

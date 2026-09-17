@@ -25,6 +25,7 @@ class Signals(BaseModel):
     loudnessZ: float
     pitchZ: float
     durationRatio: float
+    extraMs: float = 0.0
 
 
 class Word(BaseModel):

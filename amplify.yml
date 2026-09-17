@@ -1,0 +1,21 @@
+# AWS Amplify Hosting build spec — builds apps/web from the monorepo root.
+# The web app is an npm workspace and depends on @captions/shared, so the
+# install has to happen at the root, not inside apps/web.
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - nvm install 22
+        - nvm use 22
+        - npm ci
+    build:
+      commands:
+        - npm run build --workspace web
+  artifacts:
+    baseDirectory: apps/web/dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*

@@ -7,6 +7,7 @@ angry shake, editable by voice.
 - Rules for Claude Code sessions: `CLAUDE.md`
 - Data contract: `packages/shared/src/project.ts` (TS) and `services/api/app/schema.py` (Python mirror)
 - Sample data: `packages/shared/fixtures/demo-project.json`
+- Deploy / live URL: `docs/deploy.md`
 
 ## Layout
 ```

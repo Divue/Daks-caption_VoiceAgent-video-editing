@@ -1,18 +1,23 @@
-"""Phase 2 (updated in Phase 3 and Phase 4): the planned-tool catalog.
+"""Phase 2 (updated in Phases 3, 4, and 5): the planned-tool catalog.
 
 Registers the still-unimplemented tools from the approved architecture
 plan's MVP tool table (§6) into `default_registry`, as `ToolStatus.PLANNED`
 with no handler — documentation made checkable, not an implementation.
 
-As of Phase 4, the only entry left here is `analyze_frame` — every other
-MVP tool now has a real handler and registers itself as `ToolStatus.AVAILABLE`
-directly in its own module (`context_tools.py` for the three read-only
-tools, `style_tools.py` for the three per-word style tools, `project_tools.py`
-for the two project-level tools). Each removal follows the same pattern the
-Phase 2 audit predicted and Phase 3 first applied: `register()` rejects
-duplicate names, so a tool's real implementation can't overwrite its old
-PLANNED placeholder in place — it has to be registered fresh, which means
-removing the old entry from here first.
+As of Phase 5, this list is EMPTY: every tool in the approved MVP set now
+has a real handler and registers itself as `ToolStatus.AVAILABLE` directly
+in its own module (`context_tools.py`, `style_tools.py`, `project_tools.py`,
+`vision_tools.py`). This file is kept, rather than deleted, as the
+canonical place a future tool would be catalogued before it has a real
+handler — the mechanism it exercises (register a PLANNED spec here, remove
+it once its own module implements and registers it AVAILABLE) is unchanged
+even though nothing currently uses it.
+
+"Has a real handler" is not the same as "is currently usable" —
+`analyze_frame` (vision_tools.py) is AVAILABLE but fails honestly with
+ToolExecutionError against every Project in this repo today, since none has
+a backend-readable videoUrl yet (a P1 storage dependency, unchanged since
+Phase 1). See the Phase 5 audit.
 
 Deliberately NOT catalogued at all (see the approved plan §6 for the
 reasoning, restated briefly here so this file stays the single source of
@@ -27,25 +32,9 @@ truth for "what we're building"):
 """
 from __future__ import annotations
 
-from .registry import ToolSpec, ToolStatus, default_registry
-from .schemas import AnalyzeFrameArgs, AnalyzeFrameResult
+from .registry import ToolSpec, default_registry  # noqa: F401  (kept for the next tool that needs this file)
 
-_PLANNED_TOOLS = [
-    ToolSpec(
-        name="analyze_frame",
-        description="Grab a video frame at a timestamp and return bounding boxes for a target (person/face).",
-        input_model=AnalyzeFrameArgs,
-        output_model=AnalyzeFrameResult,
-        reads=True,
-        writes=False,
-        status=ToolStatus.PLANNED,
-        notes=(
-            "Contract-only until P1 wires real video storage — no Project in this repo has a "
-            "backend-readable videoUrl yet. Phase 5 implements the contract; real execution stays "
-            "blocked until that infra exists (see the approved plan, §6a)."
-        ),
-    ),
-]
+_PLANNED_TOOLS: list[ToolSpec] = []
 
 for _spec in _PLANNED_TOOLS:
     default_registry.register(_spec)  # handler=None — PLANNED tools never carry a handler

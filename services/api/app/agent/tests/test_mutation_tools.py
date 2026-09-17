@@ -241,9 +241,15 @@ def test_all_five_tools_are_registered_as_available() -> None:
         check(f"{name}'s handler is retrievable without ToolNotImplementedError", handler_ok)
 
 
-def test_analyze_frame_is_still_the_only_planned_tool() -> None:
+def test_this_phases_five_tools_did_not_leave_anything_planned_that_they_own() -> None:
+    """Phase 4 only implements the 5 mutation tools — analyze_frame was
+    still PLANNED when this test was written. Phase 5 later implemented it
+    too (see test_vision_tools.py); this assertion intentionally only
+    checks this phase's own 5 tools are gone from the PLANNED list, so it
+    doesn't need updating again for Phase 5's unrelated change."""
     planned = {s.name for s in default_registry.list_specs(status=ToolStatus.PLANNED)}
-    check("analyze_frame is the only remaining PLANNED tool", planned == {"analyze_frame"})
+    this_phases_tools = {"update_caption_style", "move_caption", "scale_caption", "apply_preset", "add_overlay"}
+    check("none of this phase's 5 tools remain PLANNED", planned.isdisjoint(this_phases_tools))
 
 
 def main() -> int:
@@ -271,7 +277,7 @@ def main() -> int:
     test_apply_patch_still_catches_a_smuggled_invalid_value(project)
 
     test_all_five_tools_are_registered_as_available()
-    test_analyze_frame_is_still_the_only_planned_tool()
+    test_this_phases_five_tools_did_not_leave_anything_planned_that_they_own()
 
     print()
     if FAILURES:

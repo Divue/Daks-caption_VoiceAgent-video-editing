@@ -178,16 +178,18 @@ EXPECTED_ALL_TOOLS = {
     "analyze_frame",
 }
 
-# As of Phase 4, everything except analyze_frame has a real handler and is
-# ToolStatus.AVAILABLE (Phase 3: the three context tools; Phase 4: the three
-# style tools plus the two project tools). analyze_frame remains
-# ToolStatus.PLANNED (catalog.py) until Phase 5. This set is expected to
-# keep shrinking phase by phase — see the Phase 3/4 audits for why this
-# file's snapshot assertions are updated each time rather than left to fail.
+# As of Phase 5, every tool in the approved MVP set has a real handler and
+# is ToolStatus.AVAILABLE (Phase 3: the three context tools; Phase 4: the
+# three style tools plus the two project tools; Phase 5: analyze_frame).
+# EXPECTED_PLANNED_TOOLS is now empty — catalog.py's list is empty too (see
+# its module docstring). "AVAILABLE" here means "has a real handler," not
+# "currently usable": analyze_frame fails honestly against every real
+# fixture today, since none has a backend-readable videoUrl (see the Phase
+# 5 audit / test_vision_tools.py).
 EXPECTED_AVAILABLE_TOOLS = {
     "get_project_context", "get_timeline", "find_words",
     "update_caption_style", "move_caption", "scale_caption",
-    "apply_preset", "add_overlay",
+    "apply_preset", "add_overlay", "analyze_frame",
 }
 EXPECTED_PLANNED_TOOLS = EXPECTED_ALL_TOOLS - EXPECTED_AVAILABLE_TOOLS
 
@@ -197,10 +199,10 @@ def test_default_catalog_matches_approved_mvp_tool_set() -> None:
     check("default_registry contains exactly the approved MVP + analyze_frame tool set", names == EXPECTED_ALL_TOOLS)
 
     planned = default_registry.list_specs(status=ToolStatus.PLANNED)
-    check("still-unimplemented tools are PLANNED", {s.name for s in planned} == EXPECTED_PLANNED_TOOLS)
+    check("no tool remains PLANNED (every MVP tool now has a real handler)", {s.name for s in planned} == EXPECTED_PLANNED_TOOLS == set())
 
     available = default_registry.list_specs(status=ToolStatus.AVAILABLE)
-    check("Phase 3 + Phase 4's implemented tools are AVAILABLE, and only those", {s.name for s in available} == EXPECTED_AVAILABLE_TOOLS)
+    check("every MVP tool is AVAILABLE", {s.name for s in available} == EXPECTED_AVAILABLE_TOOLS)
 
 
 def test_default_catalog_tools_all_raise_not_implemented() -> None:

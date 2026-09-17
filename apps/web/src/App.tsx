@@ -1,6 +1,7 @@
 import { PanelPlaceholder } from '@/components/layout/PanelPlaceholder'
 import { WordInspector } from '@/components/inspector/WordInspector'
 import { PlayerPlaceholder } from '@/components/player/PlayerPlaceholder'
+import { PresetPicker } from '@/components/presets/PresetPicker'
 import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useSelection } from '@/hooks/useSelection'
@@ -38,10 +39,7 @@ function App() {
               <WordInspector selectedWordId={selectedWordId} />
             </TabsContent>
             <TabsContent value="presets" className="min-h-0 overflow-y-auto rounded-md border">
-              <PanelPlaceholder
-                title="Presets"
-                description="Switch the caption look — coming in Step 6."
-              />
+              <PresetPicker />
             </TabsContent>
             <TabsContent value="agent" className="min-h-0 overflow-y-auto rounded-md border">
               <PanelPlaceholder

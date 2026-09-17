@@ -5,6 +5,7 @@ import { PlayerPlaceholder } from '@/components/player/PlayerPlaceholder'
 import { PresetPicker } from '@/components/presets/PresetPicker'
 import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { UploadDropzone } from '@/components/upload/UploadDropzone'
 import { useSelection } from '@/hooks/useSelection'
 import { useUndoRedoShortcuts } from '@/hooks/useUndoRedoShortcuts'
 import { useProject } from '@/state/project-context'
@@ -25,8 +26,11 @@ function App() {
       </header>
 
       <main className="flex flex-1 flex-col gap-4 overflow-hidden p-4 lg:flex-row">
-        <section className="min-h-64 lg:h-full lg:w-1/2 lg:min-h-0">
-          <PlayerPlaceholder />
+        <section className="flex min-h-64 flex-col gap-3 lg:h-full lg:w-1/2 lg:min-h-0">
+          <div className="min-h-0 flex-1">
+            <PlayerPlaceholder />
+          </div>
+          <UploadDropzone />
         </section>
 
         <section className="flex min-h-0 flex-1 flex-col">

@@ -1,21 +1,27 @@
 import { PanelPlaceholder } from '@/components/layout/PanelPlaceholder'
+import { UndoRedoControls } from '@/components/layout/UndoRedoControls'
 import { WordInspector } from '@/components/inspector/WordInspector'
 import { PlayerPlaceholder } from '@/components/player/PlayerPlaceholder'
 import { PresetPicker } from '@/components/presets/PresetPicker'
 import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useSelection } from '@/hooks/useSelection'
+import { useUndoRedoShortcuts } from '@/hooks/useUndoRedoShortcuts'
 import { useProject } from '@/state/project-context'
 
 function App() {
   const { project } = useProject()
   const { selectedWordId, select } = useSelection()
+  useUndoRedoShortcuts()
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <header className="border-b px-4 py-3">
-        <h1 className="text-lg font-semibold">Expressive Captions</h1>
-        <p className="text-sm text-muted-foreground">{project.id}</p>
+      <header className="flex items-center justify-between border-b px-4 py-3">
+        <div>
+          <h1 className="text-lg font-semibold">Expressive Captions</h1>
+          <p className="text-sm text-muted-foreground">{project.id}</p>
+        </div>
+        <UndoRedoControls />
       </header>
 
       <main className="flex flex-1 flex-col gap-4 overflow-hidden p-4 lg:flex-row">

@@ -1,0 +1,3 @@
+# extras for the bake-off only, not for the API image
+requests
+# faster-whisper   # uncomment to test Whisper locally (~3GB model download)

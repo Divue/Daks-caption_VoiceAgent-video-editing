@@ -13,3 +13,9 @@ __pycache__/
 *.mov
 *.wav
 !packages/shared/fixtures/*.mp4
+
+# bake-off artifacts
+services/api/scripts/stt_bakeoff/audio/*.wav
+services/api/scripts/stt_bakeoff/out/*.json
+services/api/scripts/stt_bakeoff/clips/*
+!**/.gitkeep

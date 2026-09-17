@@ -1,4 +1,5 @@
 import { PanelPlaceholder } from '@/components/layout/PanelPlaceholder'
+import { WordInspector } from '@/components/inspector/WordInspector'
 import { PlayerPlaceholder } from '@/components/player/PlayerPlaceholder'
 import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -34,10 +35,7 @@ function App() {
               <TranscriptPanel selectedWordId={selectedWordId} onSelectWord={select} />
             </TabsContent>
             <TabsContent value="inspector" className="min-h-0 overflow-y-auto rounded-md border">
-              <PanelPlaceholder
-                title="Word inspector"
-                description="Edit the selected word's style and emotion — coming in Step 5."
-              />
+              <WordInspector selectedWordId={selectedWordId} />
             </TabsContent>
             <TabsContent value="presets" className="min-h-0 overflow-y-auto rounded-md border">
               <PanelPlaceholder

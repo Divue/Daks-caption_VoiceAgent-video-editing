@@ -1,59 +1,60 @@
-import { useProject } from './state/project-context'
-import './App.css'
+import { PanelPlaceholder } from '@/components/layout/PanelPlaceholder'
+import { PlayerPlaceholder } from '@/components/player/PlayerPlaceholder'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useProject } from '@/state/project-context'
 
-/**
- * Temporary proof that ProjectProvider works end to end (Step 2 of the plan).
- * Replaced by the real editor layout in Step 3.
- */
 function App() {
-  const { project, dispatch, canUndo, canRedo } = useProject()
-  const firstWord = project.words[0]
+  const { project } = useProject()
 
   return (
-    <section style={{ padding: 24, fontFamily: 'monospace' }}>
-      <h1>Project state (Step 2 proof)</h1>
-      <ul>
-        <li>id: {project.id}</li>
-        <li>presetId: {project.presetId}</li>
-        <li>words: {project.words.length}</li>
-        <li>overlays: {project.overlays.length}</li>
-      </ul>
+    <div className="flex h-screen flex-col bg-background text-foreground">
+      <header className="border-b px-4 py-3">
+        <h1 className="text-lg font-semibold">Expressive Captions</h1>
+        <p className="text-sm text-muted-foreground">{project.id}</p>
+      </header>
 
-      {firstWord && (
-        <p>
-          First word: "{firstWord.text}" — emphasis: {String(firstWord.emphasis)}
-        </p>
-      )}
+      <main className="flex flex-1 flex-col gap-4 overflow-hidden p-4 lg:flex-row">
+        <section className="min-h-64 lg:h-full lg:w-1/2 lg:min-h-0">
+          <PlayerPlaceholder />
+        </section>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          type="button"
-          disabled={!firstWord}
-          onClick={() =>
-            firstWord &&
-            dispatch({
-              type: 'UPDATE_WORD',
-              wordId: firstWord.id,
-              patch: { emphasis: !firstWord.emphasis },
-            })
-          }
-        >
-          Toggle first word emphasis
-        </button>
-        <button
-          type="button"
-          onClick={() => dispatch({ type: 'SET_PRESET', presetId: 'mrbeast' })}
-        >
-          Set preset: mrbeast
-        </button>
-        <button type="button" disabled={!canUndo} onClick={() => dispatch({ type: 'UNDO' })}>
-          Undo
-        </button>
-        <button type="button" disabled={!canRedo} onClick={() => dispatch({ type: 'REDO' })}>
-          Redo
-        </button>
-      </div>
-    </section>
+        <section className="flex min-h-0 flex-1 flex-col">
+          <Tabs defaultValue="transcript" className="flex h-full flex-col">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="transcript">Transcript</TabsTrigger>
+              <TabsTrigger value="inspector">Inspector</TabsTrigger>
+              <TabsTrigger value="presets">Presets</TabsTrigger>
+              <TabsTrigger value="agent">Agent Log</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="transcript" className="min-h-0 overflow-y-auto rounded-md border">
+              <PanelPlaceholder
+                title="Transcript"
+                description="Word-by-word transcript — coming in Step 4."
+              />
+            </TabsContent>
+            <TabsContent value="inspector" className="min-h-0 overflow-y-auto rounded-md border">
+              <PanelPlaceholder
+                title="Word inspector"
+                description="Edit the selected word's style and emotion — coming in Step 5."
+              />
+            </TabsContent>
+            <TabsContent value="presets" className="min-h-0 overflow-y-auto rounded-md border">
+              <PanelPlaceholder
+                title="Presets"
+                description="Switch the caption look — coming in Step 6."
+              />
+            </TabsContent>
+            <TabsContent value="agent" className="min-h-0 overflow-y-auto rounded-md border">
+              <PanelPlaceholder
+                title="Agent log"
+                description="Mic input and agent steps — coming in Step 9."
+              />
+            </TabsContent>
+          </Tabs>
+        </section>
+      </main>
+    </div>
   )
 }
 

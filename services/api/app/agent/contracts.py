@@ -113,3 +113,21 @@ class AgentCommandResponse(BaseModel):
     status: AgentStatus
     patches: list[DiscriminatedAgentPatch] = Field(default_factory=list)
     log: list[AgentLogEntry] = Field(default_factory=list)
+
+
+class AgentVoiceCommandRequest(BaseModel):
+    """Phase 8: the request body for POST /agent/voice-command.
+
+    Added alongside `AgentCommandRequest`, not in place of it — that class
+    is unchanged. Carries an already-transcribed `transcript` (e.g. from a
+    browser's own speech recognition), matching the `transcript=` path
+    `app.agent.voice.run_agent_voice_command` already supports (Phase 7).
+    Raw audio bytes are deliberately not accepted here: no STT provider is
+    configured yet (Phase 7's `TranscriberNotConfiguredError`), and no wire
+    format for audio upload has been decided — adding one now would be
+    inventing a contract nobody asked for yet.
+    """
+
+    transcript: str = Field(min_length=1)
+    project: Project
+    selection: SelectionContext | None = None

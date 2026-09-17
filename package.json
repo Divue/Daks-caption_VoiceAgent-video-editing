@@ -1,0 +1,5 @@
+{
+  "name": "expressive-captions",
+  "private": true,
+  "workspaces": ["packages/*", "apps/*", "remotion"]
+}

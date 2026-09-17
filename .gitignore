@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+out/
+.env
+.env.*
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+*.mp4
+*.mov
+*.wav
+!packages/shared/fixtures/*.mp4

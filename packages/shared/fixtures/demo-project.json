@@ -1,0 +1,256 @@
+{
+  "id": "demo-project",
+  "videoUrl": "demo.mp4",
+  "durationMs": 12000,
+  "width": 1080,
+  "height": 1920,
+  "presetId": "kathmandu",
+  "words": [
+    {
+      "id": "w1",
+      "text": "Hellooooo",
+      "startMs": 300,
+      "endMs": 1350,
+      "emphasis": true,
+      "emotion": "excited",
+      "stretch": 2.6,
+      "signals": {
+        "loudnessZ": 1.2,
+        "pitchZ": 1.8,
+        "durationRatio": 2.6
+      }
+    },
+    {
+      "id": "w2",
+      "text": "bhai",
+      "startMs": 1400,
+      "endMs": 1700,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 0.8,
+        "pitchZ": 0.4,
+        "durationRatio": 1.0
+      }
+    },
+    {
+      "id": "w3",
+      "text": "log",
+      "startMs": 1750,
+      "endMs": 1950,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 0.1,
+        "pitchZ": 0.0,
+        "durationRatio": 0.9
+      }
+    },
+    {
+      "id": "w4",
+      "text": "kaise",
+      "startMs": 1980,
+      "endMs": 2300,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 0.0,
+        "pitchZ": 0.2,
+        "durationRatio": 1.0
+      }
+    },
+    {
+      "id": "w5",
+      "text": "ho",
+      "startMs": 2320,
+      "endMs": 2600,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": -0.2,
+        "pitchZ": 0.1,
+        "durationRatio": 1.1
+      }
+    },
+    {
+      "id": "w6",
+      "text": "aaj",
+      "startMs": 3100,
+      "endMs": 3350,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 0.0,
+        "pitchZ": -0.1,
+        "durationRatio": 1.0
+      }
+    },
+    {
+      "id": "w7",
+      "text": "ek",
+      "startMs": 3380,
+      "endMs": 3520,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": -0.3,
+        "pitchZ": -0.2,
+        "durationRatio": 0.9
+      }
+    },
+    {
+      "id": "w8",
+      "text": "banda",
+      "startMs": 3550,
+      "endMs": 3950,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 0.9,
+        "pitchZ": 0.3,
+        "durationRatio": 1.0
+      }
+    },
+    {
+      "id": "w9",
+      "text": "mila",
+      "startMs": 3980,
+      "endMs": 4300,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 0.1,
+        "pitchZ": 0.0,
+        "durationRatio": 1.0
+      }
+    },
+    {
+      "id": "w10",
+      "text": "itna",
+      "startMs": 4800,
+      "endMs": 5100,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 2.1,
+        "pitchZ": 1.6,
+        "durationRatio": 1.1
+      }
+    },
+    {
+      "id": "w11",
+      "text": "bekaar",
+      "startMs": 5120,
+      "endMs": 5650,
+      "emphasis": true,
+      "emotion": "angry",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 2.6,
+        "pitchZ": 2.0,
+        "durationRatio": 1.2
+      },
+      "emoji": "😒"
+    },
+    {
+      "id": "w12",
+      "text": "tha",
+      "startMs": 5680,
+      "endMs": 5950,
+      "emphasis": false,
+      "emotion": "angry",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 2.0,
+        "pitchZ": 1.5,
+        "durationRatio": 1.0
+      }
+    },
+    {
+      "id": "w13",
+      "text": "yaar",
+      "startMs": 5980,
+      "endMs": 6400,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 0.4,
+        "pitchZ": 0.2,
+        "durationRatio": 1.3
+      }
+    },
+    {
+      "id": "w14",
+      "text": "Whaaaat",
+      "startMs": 7000,
+      "endMs": 7900,
+      "emphasis": true,
+      "emotion": "excited",
+      "stretch": 2.2,
+      "signals": {
+        "loudnessZ": 1.5,
+        "pitchZ": 2.2,
+        "durationRatio": 2.2
+      },
+      "emoji": "😳"
+    },
+    {
+      "id": "w15",
+      "text": "subscribe",
+      "startMs": 9000,
+      "endMs": 9700,
+      "emphasis": true,
+      "emotion": "neutral",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 0.7,
+        "pitchZ": 0.5,
+        "durationRatio": 1.0
+      },
+      "emoji": "🙏"
+    },
+    {
+      "id": "w16",
+      "text": "karo",
+      "startMs": 9720,
+      "endMs": 10050,
+      "emphasis": false,
+      "emotion": "neutral",
+      "stretch": 1,
+      "signals": {
+        "loudnessZ": 0.2,
+        "pitchZ": 0.1,
+        "durationRatio": 1.0
+      }
+    }
+  ],
+  "overlays": [
+    {
+      "id": "o1",
+      "text": "subscribe",
+      "startMs": 9000,
+      "endMs": 11000,
+      "x": 22,
+      "y": 18,
+      "style": {
+        "fontFamily": "Anton",
+        "fontSize": 72,
+        "color": "#FFE600"
+      }
+    }
+  ],
+  "settings": {
+    "emojis": true,
+    "emotionLayer": true
+  }
+}

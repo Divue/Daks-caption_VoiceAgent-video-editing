@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
+import { UploadCloud } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { useProject } from '@/state/project-context'
@@ -89,8 +91,8 @@ export function UploadDropzone() {
   return (
     <Card
       className={cn(
-        'flex flex-col items-center justify-center gap-1 border-dashed p-3 text-center transition-colors',
-        isDragging && 'border-ring bg-muted/50',
+        'flex flex-col items-center justify-center gap-2 border-dashed p-4 text-center transition-colors',
+        isDragging && 'border-primary bg-primary/5',
       )}
       onDragOver={(event) => {
         event.preventDefault()
@@ -100,16 +102,14 @@ export function UploadDropzone() {
       onDrop={onDrop}
     >
       <input ref={inputRef} type="file" accept="video/*" className="hidden" onChange={onInputChange} />
-      <p className="text-sm">
-        <button
-          type="button"
-          className="font-medium text-foreground underline-offset-4 hover:underline"
-          onClick={() => inputRef.current?.click()}
-        >
-          Upload a video
-        </button>
-        <span className="text-muted-foreground"> or drag and drop it here</span>
-      </p>
+      <UploadCloud className="size-5 text-muted-foreground" />
+      <div>
+        <p className="text-sm font-medium text-foreground">Upload a video</p>
+        <p className="text-xs text-muted-foreground">or drag and drop it here · MP4, WebM, MOV</p>
+      </div>
+      <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
+        Browse files
+      </Button>
       {fileName && <p className="text-xs text-muted-foreground">Loaded: {fileName}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}
     </Card>

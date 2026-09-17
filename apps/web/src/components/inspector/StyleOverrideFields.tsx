@@ -1,7 +1,12 @@
+import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
+import { cn } from '@/lib/utils'
 import type { Style } from '@captions/shared'
 
 interface StyleOverrideFieldsProps {
@@ -22,6 +27,10 @@ const DEFAULTS: Style = {
   y: 50,
 }
 
+const FONT_OPTIONS = ['Inter', 'Instrument Serif', 'Anton', 'Poppins', 'Komika Axis']
+const BOLD_WEIGHT = 700
+const REGULAR_WEIGHT = 400
+
 /** Sets or clears one field of the style override, dropping the whole object once nothing is left. */
 function withField<K extends keyof Style>(
   style: Partial<Style> | undefined,
@@ -34,134 +43,165 @@ function withField<K extends keyof Style>(
 }
 
 export function StyleOverrideFields({ style, onChange }: StyleOverrideFieldsProps) {
+  const [showMore, setShowMore] = useState(false)
+
   const toggle = <K extends keyof Style>(key: K, enabled: boolean) => {
     onChange(withField(style, key, enabled ? DEFAULTS[key] : undefined))
   }
 
+  const isBold = (style?.weight ?? REGULAR_WEIGHT) >= BOLD_WEIGHT
+
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm font-medium text-foreground">Style override</p>
+      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Style</p>
 
-      <OverrideRow
-        label="Font family"
-        enabled={style?.fontFamily !== undefined}
-        onToggle={(enabled) => toggle('fontFamily', enabled)}
-      >
-        <Input
-          value={style?.fontFamily ?? ''}
-          onChange={(event) => onChange(withField(style, 'fontFamily', event.target.value))}
+      <div className="flex flex-col gap-1.5">
+        <Label>Font</Label>
+        <Select
+          value={style?.fontFamily ?? DEFAULTS.fontFamily}
+          onValueChange={(value) => onChange(withField(style, 'fontFamily', value))}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FONT_OPTIONS.map((font) => (
+              <SelectItem key={font} value={font}>
+                {font}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <Label>Size</Label>
+          <span className="text-xs text-muted-foreground tabular-nums">{style?.fontSize ?? DEFAULTS.fontSize}px</span>
+        </div>
+        <Slider
+          value={[style?.fontSize ?? DEFAULTS.fontSize]}
+          min={16}
+          max={120}
+          step={1}
+          onValueChange={([value]) => onChange(withField(style, 'fontSize', value))}
         />
-      </OverrideRow>
+      </div>
 
-      <OverrideRow
-        label="Font size (px)"
-        enabled={style?.fontSize !== undefined}
-        onToggle={(enabled) => toggle('fontSize', enabled)}
-      >
-        <NumberField
-          value={style?.fontSize}
-          min={1}
-          onChange={(value) => onChange(withField(style, 'fontSize', value))}
-        />
-      </OverrideRow>
-
-      <OverrideRow
-        label="Color"
-        enabled={style?.color !== undefined}
-        onToggle={(enabled) => toggle('color', enabled)}
-      >
-        <Input
-          value={style?.color ?? ''}
-          onChange={(event) => onChange(withField(style, 'color', event.target.value))}
-        />
-      </OverrideRow>
-
-      <OverrideRow
-        label="Gradient"
-        enabled={style?.gradient !== undefined}
-        onToggle={(enabled) => toggle('gradient', enabled)}
-      >
-        <div className="flex gap-2">
-          <Input
-            value={style?.gradient?.[0] ?? ''}
-            onChange={(event) =>
-              onChange(withField(style, 'gradient', [event.target.value, style?.gradient?.[1] ?? '']))
-            }
+      <div className="flex flex-col gap-1.5">
+        <Label>Color</Label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            aria-label="Color"
+            value={style?.color ?? DEFAULTS.color}
+            onChange={(event) => onChange(withField(style, 'color', event.target.value))}
+            className="size-9 shrink-0 cursor-pointer rounded-md border"
           />
           <Input
-            value={style?.gradient?.[1] ?? ''}
-            onChange={(event) =>
-              onChange(withField(style, 'gradient', [style?.gradient?.[0] ?? '', event.target.value]))
-            }
+            value={style?.color ?? DEFAULTS.color}
+            onChange={(event) => onChange(withField(style, 'color', event.target.value))}
           />
         </div>
-      </OverrideRow>
+      </div>
 
-      <OverrideRow
-        label="Weight"
-        enabled={style?.weight !== undefined}
-        onToggle={(enabled) => toggle('weight', enabled)}
-      >
-        <NumberField
-          value={style?.weight}
-          min={100}
-          max={900}
-          onChange={(value) => onChange(withField(style, 'weight', value))}
-        />
-      </OverrideRow>
-
-      <OverrideRow
-        label="Uppercase"
-        enabled={style?.uppercase !== undefined}
-        onToggle={(enabled) => toggle('uppercase', enabled)}
-      >
+      <div className="flex items-center justify-between gap-2">
+        <Label>Bold</Label>
         <Switch
-          checked={style?.uppercase ?? false}
-          onCheckedChange={(checked) => onChange(withField(style, 'uppercase', checked))}
+          checked={isBold}
+          onCheckedChange={(checked) =>
+            onChange(withField(style, 'weight', checked ? BOLD_WEIGHT : REGULAR_WEIGHT))
+          }
         />
-      </OverrideRow>
+      </div>
 
-      <OverrideRow
-        label="Glow"
-        enabled={style?.glow !== undefined}
-        onToggle={(enabled) => toggle('glow', enabled)}
+      <button
+        type="button"
+        onClick={() => setShowMore((value) => !value)}
+        className="flex items-center gap-1 self-start text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
-        <NumberField value={style?.glow} min={0} onChange={(value) => onChange(withField(style, 'glow', value))} />
-      </OverrideRow>
+        <ChevronDown className={cn('size-3.5 transition-transform', showMore && 'rotate-180')} />
+        {showMore ? 'Fewer style options' : 'More style options'}
+      </button>
 
-      <OverrideRow
-        label="Shake"
-        enabled={style?.shake !== undefined}
-        onToggle={(enabled) => toggle('shake', enabled)}
-      >
-        <NumberField value={style?.shake} min={0} onChange={(value) => onChange(withField(style, 'shake', value))} />
-      </OverrideRow>
+      {showMore && (
+        <div className="flex flex-col gap-4 border-t pt-4">
+          <OverrideRow
+            label="Uppercase"
+            enabled={style?.uppercase !== undefined}
+            onToggle={(enabled) => toggle('uppercase', enabled)}
+          >
+            <Switch
+              checked={style?.uppercase ?? false}
+              onCheckedChange={(checked) => onChange(withField(style, 'uppercase', checked))}
+            />
+          </OverrideRow>
 
-      <OverrideRow
-        label="Position X (%)"
-        enabled={style?.x !== undefined}
-        onToggle={(enabled) => toggle('x', enabled)}
-      >
-        <NumberField
-          value={style?.x}
-          min={0}
-          max={100}
-          onChange={(value) => onChange(withField(style, 'x', value))}
-        />
-      </OverrideRow>
+          <OverrideRow
+            label="Gradient"
+            enabled={style?.gradient !== undefined}
+            onToggle={(enabled) => toggle('gradient', enabled)}
+          >
+            <div className="flex gap-2">
+              <input
+                type="color"
+                aria-label="Gradient start"
+                value={style?.gradient?.[0] ?? '#ffffff'}
+                onChange={(event) =>
+                  onChange(withField(style, 'gradient', [event.target.value, style?.gradient?.[1] ?? '#000000']))
+                }
+                className="size-9 flex-1 cursor-pointer rounded-md border"
+              />
+              <input
+                type="color"
+                aria-label="Gradient end"
+                value={style?.gradient?.[1] ?? '#000000'}
+                onChange={(event) =>
+                  onChange(withField(style, 'gradient', [style?.gradient?.[0] ?? '#ffffff', event.target.value]))
+                }
+                className="size-9 flex-1 cursor-pointer rounded-md border"
+              />
+            </div>
+          </OverrideRow>
 
-      <OverrideRow
-        label="Position Y (%)"
-        enabled={style?.y !== undefined}
-        onToggle={(enabled) => toggle('y', enabled)}
-      >
-        <NumberField
-          value={style?.y}
-          min={0}
-          max={100}
-          onChange={(value) => onChange(withField(style, 'y', value))}
-        />
-      </OverrideRow>
+          <SliderOverrideRow
+            label="Glow"
+            value={style?.glow}
+            min={0}
+            max={20}
+            enabled={style?.glow !== undefined}
+            onToggle={(enabled) => toggle('glow', enabled)}
+            onChange={(value) => onChange(withField(style, 'glow', value))}
+          />
+          <SliderOverrideRow
+            label="Shake"
+            value={style?.shake}
+            min={0}
+            max={20}
+            enabled={style?.shake !== undefined}
+            onToggle={(enabled) => toggle('shake', enabled)}
+            onChange={(value) => onChange(withField(style, 'shake', value))}
+          />
+          <SliderOverrideRow
+            label="Position X (%)"
+            value={style?.x}
+            min={0}
+            max={100}
+            enabled={style?.x !== undefined}
+            onToggle={(enabled) => toggle('x', enabled)}
+            onChange={(value) => onChange(withField(style, 'x', value))}
+          />
+          <SliderOverrideRow
+            label="Position Y (%)"
+            value={style?.y}
+            min={0}
+            max={100}
+            enabled={style?.y !== undefined}
+            onToggle={(enabled) => toggle('y', enabled)}
+            onChange={(value) => onChange(withField(style, 'y', value))}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -185,24 +225,30 @@ function OverrideRow({ label, enabled, onToggle, children }: OverrideRowProps) {
   )
 }
 
-interface NumberFieldProps {
+interface SliderOverrideRowProps {
+  label: string
   value: number | undefined
-  min?: number
-  max?: number
+  min: number
+  max: number
+  enabled: boolean
+  onToggle: (enabled: boolean) => void
   onChange: (value: number) => void
 }
 
-function NumberField({ value, min, max, onChange }: NumberFieldProps) {
+function SliderOverrideRow({ label, value, min, max, enabled, onToggle, onChange }: SliderOverrideRowProps) {
   return (
-    <Input
-      type="number"
-      min={min}
-      max={max}
-      value={value ?? ''}
-      onChange={(event) => {
-        const parsed = Number(event.target.value)
-        if (!Number.isNaN(parsed)) onChange(parsed)
-      }}
-    />
+    <OverrideRow label={label} enabled={enabled} onToggle={onToggle}>
+      <div className="flex items-center gap-3">
+        <Slider
+          value={[value ?? min]}
+          min={min}
+          max={max}
+          step={1}
+          onValueChange={([next]) => onChange(next)}
+          className="flex-1"
+        />
+        <span className="w-8 shrink-0 text-right text-xs text-muted-foreground tabular-nums">{value ?? min}</span>
+      </div>
+    </OverrideRow>
   )
 }

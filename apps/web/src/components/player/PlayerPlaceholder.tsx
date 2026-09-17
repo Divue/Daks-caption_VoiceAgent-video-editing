@@ -1,25 +1,35 @@
+import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { useProject } from '@/state/project-context'
+import { CaptionPreviewOverlay } from './CaptionPreviewOverlay'
+import { VideoControlBar } from './VideoControlBar'
 
 /**
- * Occupies the Player's layout slot until remotion/ has a real composition
- * to render (Step 10). Sized to the project's actual aspect ratio so the
- * surrounding layout won't shift once the real <Player> is wired in.
+ * Live caption-styling preview — the frame stands in for real video (no
+ * player engine exists yet, Step 10), but the overlaid captions are real
+ * project data rendered with the real active preset, live and reactive.
  */
 export function PlayerPlaceholder() {
   const { project } = useProject()
+  const [captionsEnabled, setCaptionsEnabled] = useState(true)
 
   return (
-    <Card className="flex h-full items-center justify-center bg-muted/30 p-6">
-      <div
-        className="flex w-full max-w-xs flex-col items-center justify-center gap-2 rounded-md border border-dashed text-center"
-        style={{ aspectRatio: `${project.width} / ${project.height}` }}
-      >
-        <span className="font-medium text-foreground">Preview coming soon</span>
-        <span className="text-sm text-muted-foreground">
-          {project.width}×{project.height} · {(project.durationMs / 1000).toFixed(1)}s
-        </span>
+    <Card className="flex h-full flex-col gap-0 overflow-hidden bg-muted/30 p-0">
+      <div className="flex flex-1 items-center justify-center overflow-hidden p-4">
+        <div
+          className="relative w-full max-w-xs overflow-hidden rounded-md border bg-neutral-900 shadow-sm"
+          style={{ aspectRatio: `${project.width} / ${project.height}` }}
+        >
+          {captionsEnabled && <CaptionPreviewOverlay />}
+        </div>
       </div>
+      <VideoControlBar
+        durationMs={project.durationMs}
+        width={project.width}
+        height={project.height}
+        captionsEnabled={captionsEnabled}
+        onToggleCaptions={() => setCaptionsEnabled((value) => !value)}
+      />
     </Card>
   )
 }

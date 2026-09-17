@@ -10,7 +10,7 @@ export function PresetPicker() {
   const { project, dispatch } = useProject()
 
   return (
-    <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
+    <div className="flex flex-col gap-3 p-3">
       {Object.values(PRESETS).map((preset) => {
         const selected = preset.id === project.presetId
         return (
@@ -20,12 +20,12 @@ export function PresetPicker() {
             aria-pressed={selected}
             onClick={() => dispatch({ type: 'SET_PRESET', presetId: preset.id })}
             className={cn(
-              'flex flex-col gap-3 rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted',
-              selected && 'border-ring ring-1 ring-ring',
+              'flex flex-col gap-3 rounded-xl border bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted',
+              selected && 'border-primary bg-primary/5',
             )}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="font-semibold text-card-foreground">{preset.name}</span>
+              <span className="text-sm font-semibold text-card-foreground">{preset.name}</span>
               <span className="shrink-0 text-xs text-muted-foreground">{preset.wordsPerLine} words/line</span>
             </div>
             <PresetPreview style={preset.base} />

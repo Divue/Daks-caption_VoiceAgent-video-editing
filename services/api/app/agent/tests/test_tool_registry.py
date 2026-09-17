@@ -178,12 +178,17 @@ EXPECTED_ALL_TOOLS = {
     "analyze_frame",
 }
 
-# As of Phase 3, these three have real handlers (context_tools.py) and are
-# ToolStatus.AVAILABLE. Everything else remains ToolStatus.PLANNED
-# (catalog.py) until Phase 4 (mutation tools) / Phase 5 (vision). This set
-# is expected to keep shrinking phase by phase — see the Phase 3 audit for
-# why this file's snapshot assertions were updated rather than left to fail.
-EXPECTED_AVAILABLE_TOOLS = {"get_project_context", "get_timeline", "find_words"}
+# As of Phase 4, everything except analyze_frame has a real handler and is
+# ToolStatus.AVAILABLE (Phase 3: the three context tools; Phase 4: the three
+# style tools plus the two project tools). analyze_frame remains
+# ToolStatus.PLANNED (catalog.py) until Phase 5. This set is expected to
+# keep shrinking phase by phase — see the Phase 3/4 audits for why this
+# file's snapshot assertions are updated each time rather than left to fail.
+EXPECTED_AVAILABLE_TOOLS = {
+    "get_project_context", "get_timeline", "find_words",
+    "update_caption_style", "move_caption", "scale_caption",
+    "apply_preset", "add_overlay",
+}
 EXPECTED_PLANNED_TOOLS = EXPECTED_ALL_TOOLS - EXPECTED_AVAILABLE_TOOLS
 
 
@@ -195,7 +200,7 @@ def test_default_catalog_matches_approved_mvp_tool_set() -> None:
     check("still-unimplemented tools are PLANNED", {s.name for s in planned} == EXPECTED_PLANNED_TOOLS)
 
     available = default_registry.list_specs(status=ToolStatus.AVAILABLE)
-    check("Phase 3's context tools are AVAILABLE, and only those", {s.name for s in available} == EXPECTED_AVAILABLE_TOOLS)
+    check("Phase 3 + Phase 4's implemented tools are AVAILABLE, and only those", {s.name for s in available} == EXPECTED_AVAILABLE_TOOLS)
 
 
 def test_default_catalog_tools_all_raise_not_implemented() -> None:

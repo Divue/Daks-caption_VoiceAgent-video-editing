@@ -166,7 +166,7 @@ def test_tool_spec_rejects_non_basemodel_schemas() -> None:
     )
 
 
-EXPECTED_PLANNED_TOOLS = {
+EXPECTED_ALL_TOOLS = {
     "get_project_context",
     "get_timeline",
     "find_words",
@@ -178,16 +178,24 @@ EXPECTED_PLANNED_TOOLS = {
     "analyze_frame",
 }
 
+# As of Phase 3, these three have real handlers (context_tools.py) and are
+# ToolStatus.AVAILABLE. Everything else remains ToolStatus.PLANNED
+# (catalog.py) until Phase 4 (mutation tools) / Phase 5 (vision). This set
+# is expected to keep shrinking phase by phase — see the Phase 3 audit for
+# why this file's snapshot assertions were updated rather than left to fail.
+EXPECTED_AVAILABLE_TOOLS = {"get_project_context", "get_timeline", "find_words"}
+EXPECTED_PLANNED_TOOLS = EXPECTED_ALL_TOOLS - EXPECTED_AVAILABLE_TOOLS
+
 
 def test_default_catalog_matches_approved_mvp_tool_set() -> None:
     names = {spec.name for spec in default_registry.list_specs()}
-    check("default_registry contains exactly the approved MVP + analyze_frame tool set", names == EXPECTED_PLANNED_TOOLS)
+    check("default_registry contains exactly the approved MVP + analyze_frame tool set", names == EXPECTED_ALL_TOOLS)
 
     planned = default_registry.list_specs(status=ToolStatus.PLANNED)
-    check("every catalogued tool is PLANNED (none fake-implemented in Phase 2)", len(planned) == len(EXPECTED_PLANNED_TOOLS))
+    check("still-unimplemented tools are PLANNED", {s.name for s in planned} == EXPECTED_PLANNED_TOOLS)
 
     available = default_registry.list_specs(status=ToolStatus.AVAILABLE)
-    check("no tool is AVAILABLE yet — Phase 2 implements no tool logic", len(available) == 0)
+    check("Phase 3's context tools are AVAILABLE, and only those", {s.name for s in available} == EXPECTED_AVAILABLE_TOOLS)
 
 
 def test_default_catalog_tools_all_raise_not_implemented() -> None:
@@ -195,7 +203,15 @@ def test_default_catalog_tools_all_raise_not_implemented() -> None:
     for name in EXPECTED_PLANNED_TOOLS:
         if not raises(ToolNotImplementedError, lambda n=name: default_registry.get_handler(n)):
             all_raise = False
-    check("every catalogued tool's get_handler() raises ToolNotImplementedError (no fabricated results)", all_raise)
+    check("every still-PLANNED tool's get_handler() raises ToolNotImplementedError (no fabricated results)", all_raise)
+
+    all_callable = True
+    for name in EXPECTED_AVAILABLE_TOOLS:
+        try:
+            default_registry.get_handler(name)
+        except ToolNotImplementedError:
+            all_callable = False
+    check("every AVAILABLE tool's get_handler() returns a real callable, not an error", all_callable)
 
 
 def test_excluded_tools_are_not_in_the_catalog() -> None:

@@ -1,13 +1,16 @@
-"""Phase 2: public surface of the tool registry package.
+"""Phase 2 (updated in Phase 3): public surface of the tool registry package.
 
-Importing this package populates `default_registry` with the current
-planned-tool catalog (see catalog.py) as a side effect — this is metadata
-registration, not tool execution; nothing here calls Bedrock, boto3, or any
-tool handler.
+Importing this package populates `default_registry` with:
+- the still-planned tools (catalog.py) — metadata only, no handler
+- the real, available context tools (context_tools.py) — Phase 3
+
+Nothing here calls Bedrock, boto3, or any tool handler; import-time
+registration only attaches callables, it doesn't invoke them.
 """
 from __future__ import annotations
 
 from . import catalog  # noqa: F401  (import triggers planned-tool registration)
+from . import context_tools  # noqa: F401  (import triggers Phase 3 tool registration)
 from .registry import (
     ToolAlreadyRegisteredError,
     ToolHandler,

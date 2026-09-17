@@ -1,15 +1,19 @@
-"""Phase 2: the planned-tool catalog.
+"""Phase 2 (updated in Phase 3): the planned-tool catalog.
 
-Registers every tool named in the approved architecture plan's MVP tool
-table (§6) into `default_registry`, as `ToolStatus.PLANNED` with no
-handler — this is documentation made checkable, not an implementation.
-Phase 3 (context tools), Phase 4 (mutation tools), and Phase 5 (vision)
-attach real handlers and flip each entry to `ToolStatus.AVAILABLE`; this
-file does not change when they do (they call `default_registry.register`
-again — which will need this file's PLANNED entry removed/replaced at that
-point, since a name can only be registered once — see the Phase 2 audit's
-"Architecture Decisions" for why registration doesn't allow silent
-overwrites).
+Registers the still-unimplemented tools from the approved architecture
+plan's MVP tool table (§6) into `default_registry`, as `ToolStatus.PLANNED`
+with no handler — documentation made checkable, not an implementation.
+
+`get_project_context`, `get_timeline`, and `find_words` are no longer listed
+here as of Phase 3: they were REMOVED from this file and now register
+themselves as `ToolStatus.AVAILABLE` directly in `context_tools.py`. This
+resolves the exact tension the Phase 2 audit flagged in advance
+("Dependencies / Blockers": registration doesn't allow a PLANNED entry to be
+silently promoted in place, since `register()` rejects duplicate names) —
+rather than "flip a status in place," each phase's real tools live in their
+own module and this file only ever lists what's still unimplemented. Phase 4
+(mutation tools) and Phase 5 (vision) will remove their entries from here the
+same way when they add real handlers.
 
 Deliberately NOT catalogued (see the approved plan §6 for the reasoning,
 restated briefly here so this file stays the single source of truth for
@@ -32,12 +36,6 @@ from .schemas import (
     AnalyzeFrameResult,
     ApplyPresetArgs,
     ApplyPresetResult,
-    FindWordsArgs,
-    FindWordsResult,
-    GetProjectContextArgs,
-    GetProjectContextResult,
-    GetTimelineArgs,
-    GetTimelineResult,
     MoveCaptionArgs,
     MoveCaptionResult,
     ScaleCaptionArgs,
@@ -47,36 +45,6 @@ from .schemas import (
 )
 
 _PLANNED_TOOLS = [
-    ToolSpec(
-        name="get_project_context",
-        description="Summarize the current project: duration, dimensions, preset, settings, word count.",
-        input_model=GetProjectContextArgs,
-        output_model=GetProjectContextResult,
-        reads=True,
-        writes=False,
-        status=ToolStatus.PLANNED,
-        notes="Buildable now — operates only on the Project already sent with the request (Phase 3).",
-    ),
-    ToolSpec(
-        name="get_timeline",
-        description="List words (optionally windowed by time range) in timeline order.",
-        input_model=GetTimelineArgs,
-        output_model=GetTimelineResult,
-        reads=True,
-        writes=False,
-        status=ToolStatus.PLANNED,
-        notes="Buildable now (Phase 3).",
-    ),
-    ToolSpec(
-        name="find_words",
-        description="Locate word(s) by text (exact or substring match).",
-        input_model=FindWordsArgs,
-        output_model=FindWordsResult,
-        reads=True,
-        writes=False,
-        status=ToolStatus.PLANNED,
-        notes="Buildable now (Phase 3).",
-    ),
     ToolSpec(
         name="update_caption_style",
         description="Apply a style patch (color, font, weight, glow, shake, gradient, etc.) to one word.",

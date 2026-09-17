@@ -45,5 +45,16 @@ If a task needs a change outside your folder or to the schema: STOP and tell the
 - Audio analysis: librosa + ffmpeg
 - Storage: S3 (media), DynamoDB (project JSON)
 
+## Local dev
+- Node: version in `.nvmrc` (`nvm use`). Python: 3.12 inside Docker only — don't run the API on host Python.
+- `cp .env.example .env` and fill in your own AWS keys. Never commit `.env`.
+- API: `docker compose up --build` → http://localhost:8000/health. `app/` is mounted, so edits hot-reload.
+  Add a Python dependency → add it to `services/api/requirements.txt`, then `docker compose up --build`.
+- Web: `cd apps/web && npm run dev` (http://localhost:5173). Remotion: `cd remotion && npm run dev`.
+- AWS: everyone uses the real shared dev account (no LocalStack). Put your S3 keys and DynamoDB items under
+  your `DEV_PREFIX` (`p1/`…`p4/`) so nobody overwrites anyone else.
+- The fixture is mounted into the API container at `/srv/fixtures`. The web app loads the fixture directly
+  when `VITE_USE_FIXTURE=true`.
+
 ## Branches
 `p1-pipeline`, `p2-renderer`, `p3-editor`, `p4-agent`. Lead merges to `main` at 1pm and 9pm.

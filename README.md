@@ -16,3 +16,11 @@ services/api/app/agent/  voice agent           (P4)
 remotion/          captions, presets, export   (P2)
 apps/web/          React editor                (P3)
 ```
+
+## Run locally
+```bash
+nvm use                      # Node from .nvmrc
+cp .env.example .env         # fill in your own AWS keys
+docker compose up --build    # API on http://localhost:8000/health (hot reload)
+cd apps/web && npm run dev   # editor on http://localhost:5173 (once P3 scaffolds it)
+```

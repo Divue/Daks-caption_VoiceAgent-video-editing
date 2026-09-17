@@ -1,10 +1,13 @@
 import { PanelPlaceholder } from '@/components/layout/PanelPlaceholder'
 import { PlayerPlaceholder } from '@/components/player/PlayerPlaceholder'
+import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useSelection } from '@/hooks/useSelection'
 import { useProject } from '@/state/project-context'
 
 function App() {
   const { project } = useProject()
+  const { selectedWordId, select } = useSelection()
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
@@ -28,10 +31,7 @@ function App() {
             </TabsList>
 
             <TabsContent value="transcript" className="min-h-0 overflow-y-auto rounded-md border">
-              <PanelPlaceholder
-                title="Transcript"
-                description="Word-by-word transcript — coming in Step 4."
-              />
+              <TranscriptPanel selectedWordId={selectedWordId} onSelectWord={select} />
             </TabsContent>
             <TabsContent value="inspector" className="min-h-0 overflow-y-auto rounded-md border">
               <PanelPlaceholder

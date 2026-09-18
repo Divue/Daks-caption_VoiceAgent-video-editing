@@ -37,6 +37,7 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | 11 | `audits/11-stt-prosody-pipeline.md` | `services/api/app/pipeline` + `scripts/stt_bakeoff/caption_eval` (P1) | Transcription, word timings, emphasis/stretch/tone, pipeline API design, proposed schema change. **Read the box at the top: ship `app/pipeline/`, the harness is for tuning.** |
 | 12 | `audits/12-api-persistence-layer.md` | `services/api` API + DynamoDB/S3 persistence, job runner, cost logging (P1) | Any API endpoint, project storage, pipeline jobs/status, cost rows, the P4 agent / P2 render seams. Measured e2e on 4 clips; **not deployed, not called by `apps/web`**. |
 | 13 | `audits/13-caption-emotion-and-single.md` | `Word.single` + editable line/word emotion (P3, schema change) | Caption grouping, `deriveBlocks`, emotion editing, or anything that writes words to the API |
+| 14 | `audits/14-kalakar-reference-audit.md` | Kalakar competitor teardown: measured template/font/effect values | Caption *visual* work — presets, fonts, glow/gradient/stroke, reveal behaviour, or picking what to build next |
 
 Documents 09 and 10 both originate from a single commit (`628a3e6`) that
 combined an editor redesign with a new landing page. They are split by file

@@ -6,10 +6,14 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /srv
-COPY requirements.txt .
+COPY requirements.txt requirements-dev.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+# Test deps only for local dev (docker-compose sets INSTALL_DEV=true). Production builds skip them.
+ARG INSTALL_DEV=false
+RUN if [ "$INSTALL_DEV" = "true" ]; then pip install --no-cache-dir -r requirements-dev.txt; fi
 
 COPY app ./app
+COPY pytest.ini ./
 
 ENV PORT=8000
 EXPOSE 8000

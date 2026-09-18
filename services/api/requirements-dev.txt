@@ -1,0 +1,4 @@
+# Dev/test only. Installed into the local image via INSTALL_DEV=true; never in production.
+pytest
+moto[dynamodb,s3]>=5
+httpx

@@ -9,6 +9,7 @@ export interface ProjectHistoryState {
 
 export type ProjectAction =
   | { type: 'SET_PROJECT'; project: Project }
+  | { type: 'REPLACE_PRESENT'; project: Project }
   | { type: 'UPDATE_WORD'; wordId: string; patch: Partial<Word> }
   | { type: 'SET_PRESET'; presetId: PresetId }
   | { type: 'ADD_OVERLAY'; overlay: Overlay }
@@ -41,6 +42,13 @@ export function projectReducer(state: ProjectHistoryState, action: ProjectAction
       const validated = validate(action.project)
       if (!validated) return state
       return { past: [], present: validated, future: [] }
+    }
+
+    // Server state wins, but the undo history survives. SET_PROJECT clears past and future,
+    // which is right when a project is first loaded and wrong after a 409 conflict refetch —
+    // that would silently destroy the user's undo stack. Same commit() path, same validation.
+    case 'REPLACE_PRESENT': {
+      return commit(state, action.project)
     }
 
     case 'UPDATE_WORD': {

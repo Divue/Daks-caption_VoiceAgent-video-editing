@@ -14,11 +14,16 @@ interface ProjectContextValue {
 
 const ProjectContext = createContext<ProjectContextValue | null>(null)
 
-export function ProjectProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(
-    projectReducer,
-    undefined,
-    () => createInitialState(Project.parse(demoProjectFixture)),
+/**
+ * `project` stays NON-nullable (plan §4.6, audit finding A1): eight call sites read
+ * `project.*` directly and one reads it inside an effect dependency array, so making it
+ * nullable would mean a null guard in every one of them for a state that only exists
+ * before the first project loads. The caller gates the mount instead — no project id,
+ * no ProjectProvider.
+ */
+export function ProjectProvider({ children, initial }: { children: ReactNode; initial?: Project }) {
+  const [state, dispatch] = useReducer(projectReducer, undefined, () =>
+    createInitialState(initial ?? Project.parse(demoProjectFixture)),
   )
 
   const value = useMemo<ProjectContextValue>(

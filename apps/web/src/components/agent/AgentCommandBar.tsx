@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { ChevronDown, Send, X } from 'lucide-react'
+import { ChevronDown, MessageCircleQuestion, Send, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,9 @@ const REFUSAL_LABEL = "won't work — on purpose"
 interface AgentCommandBarProps {
   micStatus: MicStatus
   busy: boolean
+  /** The question the agent is waiting on, if it asked one. The next thing sent is the answer. */
+  awaitingQuestion: string | null
+  onDismissQuestion: () => void
   /** The command currently running, echoed back so the user sees what was heard. */
   pendingCommand: string | null
   /** Live, not-yet-final speech. Shown, never submitted — an interim guess is not a command. */
@@ -33,6 +36,8 @@ interface AgentCommandBarProps {
 export function AgentCommandBar({
   micStatus,
   busy,
+  awaitingQuestion,
+  onDismissQuestion,
   pendingCommand,
   interimTranscript,
   onToggleMic,
@@ -74,6 +79,27 @@ export function AgentCommandBar({
     <div className="shrink-0 border-t border-border/60 bg-card px-4 py-3">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
         {/*
+          A pending question sits ABOVE the field, not in the status line: the user is reading
+          it WHILE they type the answer, so it has to stay on screen rather than being swapped
+          out the moment they start. Agent text is untrusted — rendered as a text node only.
+        */}
+        {awaitingQuestion && !busy && (
+          <div className="flex items-start gap-2 rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+            <MessageCircleQuestion className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            <p className="flex-1 text-sm text-foreground">{awaitingQuestion}</p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Dismiss question"
+              onClick={onDismissQuestion}
+              className="shrink-0 text-muted-foreground"
+            >
+              <X />
+            </Button>
+          </div>
+        )}
+        {/*
           Voice is the product's headline interaction, so the bar reads as one object — mic,
           field and send inside a single bordered shell that lights up on focus — rather than as
           three separate controls sharing a row.
@@ -89,7 +115,13 @@ export function AgentCommandBar({
           <Input
             value={value}
             onChange={(event) => setValue(event.target.value)}
-            placeholder={busy ? 'Working on it…' : 'Ask the editor to do something…'}
+            placeholder={
+              busy
+                ? 'Working on it…'
+                : awaitingQuestion
+                  ? 'Answer the question…'
+                  : 'Ask the editor to do something…'
+            }
             className="h-8 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
           />
           {busy ? (

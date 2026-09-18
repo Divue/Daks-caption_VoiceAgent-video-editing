@@ -109,6 +109,7 @@ def run_agent_voice_command(
     audio_bytes: bytes | None = None,
     transcript: str | None = None,
     selection: SelectionContext | None = None,
+    history: list[ClarificationTurn] | None = None,
     transcriber: VoiceTranscriber | None = None,
     client: BedrockConverseClient | None = None,
 ) -> AgentCommandResponse:
@@ -159,7 +160,9 @@ def run_agent_voice_command(
     # From here on, `text` is treated exactly like a typed command: the same
     # untrusted-data wrapping, the same tool-use loop, the same validation
     # boundary — all inside run_agent_command, none of it duplicated here.
-    request = AgentCommandRequest(command=text, project=project, selection=selection)
+    request = AgentCommandRequest(
+        command=text, project=project, selection=selection, history=list(history or [])
+    )
     response = run_agent_command(request, client=client)
 
     # Prepend this module's own voice-specific log entries (e.g.

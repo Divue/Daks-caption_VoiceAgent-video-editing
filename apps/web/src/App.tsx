@@ -13,6 +13,7 @@ import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { resolveEmphasis } from '@captions/shared'
 import type { CaptionBlock, Emotion, Word } from '@captions/shared'
+import type { MicStatus } from '@/hooks/useAgentActivity'
 import { useAgentActivity } from '@/hooks/useAgentActivity'
 import { useAgentCommand } from '@/hooks/useAgentCommand'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
@@ -85,12 +86,13 @@ function App() {
 
   const voice = useVoiceInput(handleVoiceTranscript)
 
-  // A transcript in flight to the agent keeps the mic control showing "working", so the two
-  // halves of one voice turn read as one thing rather than as a mic that went quiet.
-  const micStatus = agent.busy && voice.status === 'listening' ? 'processing' : voice.status
+  // The mic reports transport state; the agent reports whether it is working. Showing them as
+  // one control is a VIEW concern and is derived here, so neither side can leave the other
+  // stuck in a state it has no way to clear.
+  const micStatus: MicStatus = agent.busy && voice.status !== 'idle' ? 'processing' : voice.status
 
   function handleToggleMic() {
-    if (voice.status === 'listening' || voice.status === 'processing') {
+    if (voice.status === 'listening') {
       voice.stop()
       addEntry('Voice input stopped')
       return
@@ -271,6 +273,8 @@ function App() {
         <AgentCommandBar
           micStatus={micStatus}
           busy={agent.busy}
+          awaitingQuestion={agent.awaitingAnswer?.question ?? null}
+          onDismissQuestion={agent.dismissQuestion}
           pendingCommand={agent.pendingCommand}
           interimTranscript={voice.interim}
           onToggleMic={handleToggleMic}

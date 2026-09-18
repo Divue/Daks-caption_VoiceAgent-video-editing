@@ -7,14 +7,26 @@ import { PRESETS } from '@captions/shared'
  * iterations, so a turn is visible for seconds and must not look finished while it is not.
  * `warn` is an honest "I cannot do that" (the agent's `unsupported`/`not_implemented`), which
  * is NOT a success and must never render with a green check.
+ *
+ * `question` is the agent asking something back rather than guessing. Like `warn` it is
+ * neither success nor failure — but unlike `warn` it is WAITING on the user, so it must read
+ * as an open loop, not as a finished turn.
  */
-export type AgentEntryStatus = 'info' | 'pending' | 'ok' | 'warn' | 'error'
+export type AgentEntryStatus = 'info' | 'pending' | 'question' | 'ok' | 'warn' | 'error'
 
 export interface AgentLogEntry {
   id: string
   message: string
   timestamp: number
   status: AgentEntryStatus
+  /**
+   * What the user actually said, kept for the life of the turn.
+   *
+   * `message` becomes the RESULT once the turn finishes ("4 words changed"), so without this
+   * the history could show the utterance only while the turn was still running — the moment
+   * it succeeded, the thing the user said disappeared and the log stopped being a conversation.
+   */
+  command?: string
   /** One line per change, already phrased for a human by lib/agent-summary.ts. */
   lines?: string[]
   /** The agent's own tool trace (its `log[]`), shown only when the user asks for it. */

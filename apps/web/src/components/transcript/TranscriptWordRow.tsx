@@ -1,4 +1,4 @@
-import { formatTimestamp } from '@/lib/format'
+import { formatTimecode } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Word } from '@captions/shared'
 
@@ -19,7 +19,13 @@ export function TranscriptWordRow({ word, selected, onSelect }: TranscriptWordRo
         selected ? 'border-l-primary bg-primary/5 text-foreground' : 'text-muted-foreground',
       )}
     >
-      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{formatTimestamp(word.startMs)}</span>
+      {/* Search drops to single words, so each one shows its OWN start and end, in the
+          same tenth-of-a-second form the caption rows use, so one panel speaks one language. */}
+      <span className="shrink-0 text-[10px] leading-none tabular-nums text-muted-foreground/70">
+        {formatTimecode(word.startMs, 100)}
+        <span className="px-0.5 text-muted-foreground/40">&ndash;</span>
+        {formatTimecode(word.endMs, 100)}
+      </span>
       <span
         className={cn(
           'flex-1',

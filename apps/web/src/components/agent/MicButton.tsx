@@ -18,7 +18,9 @@ const LABELS: Record<MicStatus, string> = {
 }
 
 export function MicButton({ status, onToggle }: MicButtonProps) {
-  const isListening = status === 'listening'
+  // `processing` means the AGENT is working; the mic itself is still open underneath, so the
+  // button keeps its stop affordance and only its icon changes.
+  const isListening = status === 'listening' || status === 'processing'
   const isProcessing = status === 'processing'
   // A blocked mic is a state the user has to fix in the browser, so it stays visible rather than
   // collapsing back to "idle" and inviting an identical click that will fail the same way.
@@ -35,10 +37,11 @@ export function MicButton({ status, onToggle }: MicButtonProps) {
         aria-label={LABELS[status]}
         title={LABELS[status]}
         aria-pressed={isListening}
-        disabled={isProcessing}
         onClick={onToggle}
         className={cn('relative rounded-full', isListening && 'animate-pulse')}
       >
+        {/* Never disabled: stopping the mic is the one control that must always work, and
+            while the agent is thinking is exactly when someone reaches for it. */}
         {isProcessing ? <Loader2 className="animate-spin" /> : isDenied ? <MicOff /> : <Mic />}
       </Button>
     </div>

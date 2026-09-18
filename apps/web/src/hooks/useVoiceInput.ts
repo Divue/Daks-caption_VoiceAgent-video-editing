@@ -26,6 +26,15 @@ import type { MicStatus } from '@/hooks/useAgentActivity'
  *  which a caller's closure would see one render stale. */
 export type VoiceStartResult = 'livekit' | 'browser' | 'denied' | 'unavailable'
 
+/**
+ * TRANSPORT state only: `idle` | `listening` | `denied` | `error`.
+ *
+ * It deliberately never reports `processing`. Handing a transcript to the agent does not
+ * stop the microphone — we are still listening, which is what makes barge-in possible — so
+ * "the agent is working" is the AGENT's state and belongs to the caller. Conflating them is
+ * what left the mic stuck in `processing` after a single command, with nothing anywhere able
+ * to clear it.
+ */
 interface UseVoiceInputResult {
   status: MicStatus
   /** Speech recognised so far but not yet final. Shown to the user, never submitted. */
@@ -121,7 +130,6 @@ export function useVoiceInput(onTranscript: (text: string) => void): UseVoiceInp
           const trimmed = text.trim()
           if (trimmed) {
             setInterim(null)
-            setStatus('processing')
             onTranscriptRef.current(trimmed)
           }
         } else {
@@ -166,7 +174,6 @@ export function useVoiceInput(onTranscript: (text: string) => void): UseVoiceInp
         return
       }
       setInterim(null)
-      setStatus('processing')
       onTranscriptRef.current(text)
     })
 

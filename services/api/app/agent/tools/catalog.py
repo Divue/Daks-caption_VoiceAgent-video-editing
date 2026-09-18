@@ -21,7 +21,7 @@ file does not manage — a DISABLED tool registers from its own module like
 any other, it is simply filtered out in tool_config.py.
 
 "Has a real handler" is not the same as "is currently usable" —
-`analyze_frame` (vision_tools.py) is AVAILABLE but fails honestly with
+`analyze_frame` (vision_tools.py) is AVAILABLE and works against a presigned https URL, an s3:// URI or a local path
 ToolExecutionError against every Project in this repo today, since none has
 a backend-readable videoUrl yet (a P1 storage dependency, unchanged since
 Phase 1). See the Phase 5 audit.

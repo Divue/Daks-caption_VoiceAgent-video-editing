@@ -281,9 +281,39 @@ class AgentCommandRequest(BaseModel):
     command: str = Field(min_length=1)
     project: Project
     selection: SelectionContext | None = None
+    # Earlier "command -> question" rounds of THIS conversation, oldest first.
+    # Present only when the user is answering a question the agent asked.
+    history: list[ClarificationTurn] = Field(default_factory=list)
 
 
-AgentStatus = Literal["ok", "unsupported", "error", "not_implemented"]
+AgentStatus = Literal["ok", "unsupported", "needs_input", "error", "not_implemented"]
+"""
+`needs_input` is the agent asking a question instead of guessing.
+
+It is NOT a failure. A command like "put the captions where my hand is" is
+perfectly sensible and perfectly unanswerable — the agent has no way to know
+*when* — and the two ways to handle that badly are to pick a timestamp at
+random or to refuse a request the product can actually fulfil. So the agent
+returns the question, the editor shows it, and the user's reply comes back as
+the next command with the exchange attached as `history`.
+
+No patches ever accompany `needs_input`: a half-done turn the user has not
+finished describing is worse than no turn.
+"""
+
+
+class ClarificationTurn(BaseModel):
+    """One earlier round of "you asked / I asked back", replayed as DATA.
+
+    The agent is stateless per request, so a follow-up answer would otherwise
+    arrive with no idea what it is answering. Sending the exchange back is how
+    the second turn knows what the first one meant — and it stays inside the
+    same untrusted-data envelope as everything else, because a transcript
+    quoted in a question must not become an instruction on the next turn.
+    """
+
+    command: str = Field(min_length=1)
+    question: str = Field(min_length=1)
 
 
 class AgentCommandResponse(BaseModel):
@@ -294,6 +324,10 @@ class AgentCommandResponse(BaseModel):
     status: AgentStatus
     patches: list[DiscriminatedAgentPatch] = Field(default_factory=list)
     log: list[AgentLogEntry] = Field(default_factory=list)
+    # Set only when status == "needs_input": the single question to put to the
+    # user. One question, not a list — a turn that needs three answers should
+    # ask for the one that blocks it most, then ask again.
+    question: str | None = None
 
 
 class AgentVoiceCommandRequest(BaseModel):
@@ -312,3 +346,4 @@ class AgentVoiceCommandRequest(BaseModel):
     transcript: str = Field(min_length=1)
     project: Project
     selection: SelectionContext | None = None
+    history: list[ClarificationTurn] = Field(default_factory=list)

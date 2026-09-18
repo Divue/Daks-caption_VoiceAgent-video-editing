@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { describeError, isApiError } from '@/lib/api'
 import { submitTextCommand, submitVoiceTranscript } from '@/lib/agent-api'
-import type { SelectionContext } from '@/lib/agent-api'
+import type { ClarificationTurn, SelectionContext } from '@/lib/agent-api'
 import { summarisePatches, summariseTurn } from '@/lib/agent-summary'
 import { useProject } from '@/state/project-context'
 import { useWordPatch } from '@/state/word-patch-context'
@@ -21,10 +21,16 @@ const UNDO_PHRASES = /^(undo( that| it| the last( one)?)?|take that back|revert 
 const REDO_PHRASES = /^(redo( that| it)?|put it back)[.!]?$/i
 
 export interface AgentTurnState {
-  /** A turn is in flight. The agent loops up to 6 tool iterations, so this can last seconds. */
+  /** A turn is in flight. The agent may take many tool rounds, so this can last seconds. */
   busy: boolean
   /** What the user said, while it is still running — shown so the bar can echo it back. */
   pendingCommand: string | null
+  /**
+   * The question the agent is waiting on, if it asked one. The next thing the user says is
+   * read as the ANSWER: it goes back with the original request attached, so the agent can
+   * finally do the whole thing instead of half of it.
+   */
+  awaitingAnswer: ClarificationTurn | null
 }
 
 export function useAgentCommand(activity: Activity) {
@@ -32,7 +38,15 @@ export function useAgentCommand(activity: Activity) {
   const { applyAgentPatches } = useWordPatch()
   const { addEntry, updateEntry } = activity
 
-  const [state, setState] = useState<AgentTurnState>({ busy: false, pendingCommand: null })
+  const [state, setState] = useState<AgentTurnState>({
+    busy: false,
+    pendingCommand: null,
+    awaitingAnswer: null,
+  })
+  // Read inside `run` without making it a dependency, so a pending question cannot go stale
+  // between the render that set it and the keystroke that answers it.
+  const awaitingRef = useRef<ClarificationTurn | null>(null)
+  const historyRef = useRef<ClarificationTurn[]>([])
   const controllerRef = useRef<AbortController | null>(null)
 
   // The project is read at send time, not at render time, so a turn always posts the newest
@@ -76,13 +90,38 @@ export function useAgentCommand(activity: Activity) {
       const controller = new AbortController()
       controllerRef.current = controller
 
+      // If the agent asked something, this utterance is the answer to it. History accumulates:
+      // an agent may need two rounds to pin down a moment ("when?" then "where in the frame?"),
+      // and round three has to see both or it is answering in the dark.
+      const history: ClarificationTurn[] = [...historyRef.current]
+
       const entryId = addEntry(command, 'pending')
-      setState({ busy: true, pendingCommand: command })
+      updateEntry(entryId, { command })
+      setState({ busy: true, pendingCommand: command, awaitingAnswer: null })
+      awaitingRef.current = null
 
       try {
         const request = source === 'voice' ? submitVoiceTranscript : submitTextCommand
-        const response = await request(command, projectRef.current, selection, controller.signal)
+        const response = await request(
+          command,
+          projectRef.current,
+          selection,
+          history,
+          controller.signal,
+        )
         const trace = response.log.map((entry) => entry.message)
+
+        if (response.status === 'needs_input' && response.question) {
+          // The agent is asking rather than guessing. Remember what it was asked about, so
+          // the reply carries the original request with it — otherwise the answer arrives as
+          // a standalone command ("at 22 seconds") that means nothing on its own.
+          const asked: ClarificationTurn = { command, question: response.question }
+          historyRef.current = [...history, asked]
+          awaitingRef.current = asked
+          setState({ busy: false, pendingCommand: null, awaitingAnswer: asked })
+          updateEntry(entryId, { status: 'question', message: response.question, trace })
+          return
+        }
 
         if (response.status !== 'ok') {
           // `unsupported` and `not_implemented` are the agent being honest about a capability it
@@ -108,6 +147,9 @@ export function useAgentCommand(activity: Activity) {
           })
           return
         }
+
+        // The exchange is over: the next utterance starts a fresh conversation.
+        historyRef.current = []
 
         const lines = summarisePatches(response.patches, projectRef.current)
         const result = await applyAgentPatches(response.patches)
@@ -144,13 +186,24 @@ export function useAgentCommand(activity: Activity) {
         })
       } finally {
         if (controllerRef.current === controller) controllerRef.current = null
-        setState({ busy: false, pendingCommand: null })
+        setState((current) =>
+          current.awaitingAnswer
+            ? { ...current, busy: false, pendingCommand: null }
+            : { busy: false, pendingCommand: null, awaitingAnswer: null },
+        )
       }
     },
     [addEntry, updateEntry, applyAgentPatches, dispatch],
   )
 
-  return { ...state, run, cancel }
+  /** Drop a pending question — the user moved on rather than answering. */
+  const dismissQuestion = useCallback(() => {
+    awaitingRef.current = null
+    historyRef.current = []
+    setState((current) => ({ ...current, awaitingAnswer: null }))
+  }, [])
+
+  return { ...state, run, cancel, dismissQuestion }
 }
 
 function last(log: { message: string }[]): string | undefined {

@@ -1,8 +1,19 @@
 import { useEffect, useRef } from 'react'
-import type { CaptionBlock, Word } from '@captions/shared'
+import { ChevronDown, SquareSplitVertical } from 'lucide-react'
+import type { CaptionBlock, Emotion, Word } from '@captions/shared'
 import { cn } from '@/lib/utils'
 import { formatTimestamp } from '@/lib/format'
 import { renderedText } from '@/lib/caption-style'
+import { EMOTION_BADGE, EMOTION_DOT, EMOTION_OPTIONS } from '@/lib/emotion'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface CaptionListProps {
   blocks: CaptionBlock[]
@@ -13,13 +24,23 @@ interface CaptionListProps {
   onSeekToBlock: (block: CaptionBlock) => void
   /** True while the user is playing; only then does the list follow the playhead. */
   followPlayhead: boolean
+  /** Sets `emotion` on every word of a line. */
+  onSetBlockEmotion: (block: CaptionBlock, emotion: Emotion) => void
+  /** Sets `emotion` on one word — which SPLITS its line, see the note below. */
+  onSetWordEmotion: (word: Word, emotion: Emotion) => void
+  /** Pulls one word out of its line into a block of its own, or puts it back. */
+  onSetWordSingle: (word: Word, single: boolean) => void
 }
 
 /**
  * Caption BLOCKS, numbered, with their words inline — the reference product's shape, and a
  * far better map of the video than a flat word list. Emphasised words are drawn as pills.
  *
- * Single-word blocks are normal here and are left alone: the reference ships them too.
+ * Both edits here re-group the list as you make them, which is the feature, not a glitch:
+ * blocks are DERIVED from words (deriveBlocks), never stored. Setting one word's emotion
+ * breaks its line in two or three (rule 3, tone runs are uniform by construction); marking a
+ * word `single` fences it into its own block (rule 4). The row numbers shift underneath
+ * because there are genuinely now more lines in the video.
  */
 export function CaptionList({
   blocks,
@@ -29,6 +50,9 @@ export function CaptionList({
   onSelectWord,
   onSeekToBlock,
   followPlayhead,
+  onSetBlockEmotion,
+  onSetWordEmotion,
+  onSetWordSingle,
 }: CaptionListProps) {
   const activeRef = useRef<HTMLLIElement | null>(null)
 
@@ -51,8 +75,11 @@ export function CaptionList({
             key={block.id}
             ref={isActive ? activeRef : null}
             className={cn(
-              'flex gap-2 border-b px-2 py-2 text-sm transition-colors',
+              'group/row flex gap-2 border-b px-2 py-2 text-sm transition-colors',
               isActive && 'bg-primary/5',
+              // A deliberate one-word line is marked on the row, so it reads as a choice
+              // rather than as the list having fragmented on its own.
+              block.isSingle && 'border-l-2 border-l-primary/60',
             )}
           >
             <button
@@ -66,37 +93,147 @@ export function CaptionList({
 
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1">
               {words.map((word) => (
-                <button
+                <WordChip
                   key={word.id}
-                  type="button"
-                  onClick={() => onSelectWord(word.id)}
-                  className={cn(
-                    'rounded px-1 py-0.5 text-left transition-colors hover:bg-muted',
-                    // Emphasis reads as a pill, which is a clearer affordance than bold text.
-                    word.emphasis && 'bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-400',
-                    word.id === selectedWordId && 'ring-2 ring-primary ring-offset-1',
-                  )}
-                >
-                  {renderedText(word)}
-                  {word.emoji ? ` ${word.emoji}` : ''}
-                </button>
+                  word={word}
+                  selected={word.id === selectedWordId}
+                  onSelect={onSelectWord}
+                  onSetEmotion={onSetWordEmotion}
+                  onSetSingle={onSetWordSingle}
+                />
               ))}
             </div>
 
-            {block.tone !== 'neutral' && (
-              <span
-                className={cn(
-                  'h-fit shrink-0 rounded px-1 py-0.5 text-[10px] font-medium uppercase',
-                  block.tone === 'angry' && 'bg-red-500/15 text-red-600 dark:text-red-400',
-                  block.tone === 'excited' && 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-                )}
-              >
-                {block.tone}
-              </span>
-            )}
+            <BlockToneMenu block={block} onSetEmotion={onSetBlockEmotion} />
           </li>
         )
       })}
     </ol>
+  )
+}
+
+/**
+ * The tone badge, now a control. A non-neutral badge is always visible because it is
+ * information; the neutral one only appears on hover/focus, because 35 rows each shouting
+ * NEUTRAL is noise. It stays in the layout either way, so rows never jump on hover.
+ */
+function BlockToneMenu({
+  block,
+  onSetEmotion,
+}: {
+  block: CaptionBlock
+  onSetEmotion: (block: CaptionBlock, emotion: Emotion) => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          title="Set this line's emotion"
+          className={cn(
+            'flex h-fit shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium uppercase transition-opacity hover:ring-1 hover:ring-border',
+            EMOTION_BADGE[block.tone],
+            block.tone === 'neutral' &&
+              'opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100',
+          )}
+        >
+          {block.tone}
+          <ChevronDown className="size-2.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Line emotion</DropdownMenuLabel>
+        {EMOTION_OPTIONS.map((option) => (
+          <DropdownMenuItem key={option} onSelect={() => onSetEmotion(block, option)}>
+            <span className={cn('size-2 rounded-full', EMOTION_DOT[option])} />
+            <span className="flex-1 capitalize">{option}</span>
+            {block.tone === option && <span className="text-xs text-muted-foreground">current</span>}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/**
+ * One word: click to select it (which drives the inspector), chevron for its own emotion and
+ * the Single toggle. The chevron is hidden until the word is hovered, selected or its menu is
+ * open — otherwise every word in the transcript carries a permanent piece of UI.
+ */
+function WordChip({
+  word,
+  selected,
+  onSelect,
+  onSetEmotion,
+  onSetSingle,
+}: {
+  word: Word
+  selected: boolean
+  onSelect: (wordId: string) => void
+  onSetEmotion: (word: Word, emotion: Emotion) => void
+  onSetSingle: (word: Word, single: boolean) => void
+}) {
+  const isSingle = word.single === true
+
+  return (
+    <span
+      className={cn(
+        'group/word inline-flex items-center rounded transition-colors',
+        // Emphasis reads as a pill, which is a clearer affordance than bold text.
+        word.emphasis && 'bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-400',
+        selected && 'ring-2 ring-primary ring-offset-1',
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => onSelect(word.id)}
+        className="rounded px-1 py-0.5 text-left transition-colors hover:bg-muted"
+      >
+        {renderedText(word)}
+        {word.emoji ? ` ${word.emoji}` : ''}
+      </button>
+
+      {isSingle && (
+        <SquareSplitVertical
+          className="mr-0.5 size-3 shrink-0 text-primary"
+          aria-label="Shown on its own"
+        />
+      )}
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            title={`Options for "${word.text}"`}
+            className={cn(
+              'mr-0.5 rounded p-0.5 text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground',
+              'opacity-0 group-hover/word:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100',
+              selected && 'opacity-100',
+            )}
+          >
+            <ChevronDown className="size-3" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuLabel>Word emotion</DropdownMenuLabel>
+          {EMOTION_OPTIONS.map((option) => (
+            <DropdownMenuItem key={option} onSelect={() => onSetEmotion(word, option)}>
+              <span className={cn('size-2 rounded-full', EMOTION_DOT[option])} />
+              <span className="flex-1 capitalize">{option}</span>
+              {word.emotion === option && (
+                <span className="text-xs text-muted-foreground">current</span>
+              )}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuCheckboxItem
+            checked={isSingle}
+            onCheckedChange={(checked) => onSetSingle(word, checked === true)}
+          >
+            Single
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </span>
   )
 }

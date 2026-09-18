@@ -11,6 +11,7 @@ import { CollapsiblePanel } from '@/components/shell/CollapsiblePanel'
 import { Timeline } from '@/components/timeline/Timeline'
 import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { CaptionBlock, Emotion, Word } from '@captions/shared'
 import type { MicStatus } from '@/hooks/useAgentActivity'
 import { useAgentActivity } from '@/hooks/useAgentActivity'
 import { findBlockIndexAt, useCaptionBlocks } from '@/hooks/useCaptionBlocks'
@@ -19,6 +20,7 @@ import { useUndoRedoShortcuts } from '@/hooks/useUndoRedoShortcuts'
 import { usePlayback } from '@/state/playback-context'
 import { useProject } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
+import { useWordPatch } from '@/state/word-patch-context'
 
 function App() {
   const { project } = useProject()
@@ -26,6 +28,7 @@ function App() {
   const { timeMs, isPlaying, seek } = usePlayback()
   const { selectedWordId, select } = useSelection()
   const { entries, addEntry } = useAgentActivity()
+  const { patch: patchWord, patchWords } = useWordPatch()
   const [micStatus, setMicStatus] = useState<MicStatus>('idle')
 
   // A view preference, not project data: local state, never Project.settings (a schema
@@ -50,6 +53,31 @@ function App() {
   function handleSubmitCommand(command: string) {
     addEntry(`Command submitted: "${command}" (agent not connected yet)`)
   }
+
+  // Emotion is stored per WORD; a "line emotion" is just the same value written onto every
+  // word of that line. There is no lines[] in the schema (blocks are derived), so this is the
+  // whole of it — and because deriveBlocks breaks on a tone change, the line stays one block.
+  const handleSetBlockEmotion = useCallback(
+    (block: CaptionBlock, emotion: Emotion) => {
+      patchWords(block.wordIds, { emotion })
+    },
+    [patchWords],
+  )
+
+  // One word, which by design splits its line into up to three blocks (deriveBlocks rule 3).
+  const handleSetWordEmotion = useCallback(
+    (word: Word, emotion: Emotion) => {
+      patchWord(word.id, { emotion })
+    },
+    [patchWord],
+  )
+
+  const handleSetWordSingle = useCallback(
+    (word: Word, single: boolean) => {
+      patchWord(word.id, { single })
+    },
+    [patchWord],
+  )
 
   // Clicking a caption row both seeks and asks the timeline to scroll that block into view.
   const handleSeekToBlock = useCallback(
@@ -80,6 +108,9 @@ function App() {
                 followPlayhead={isPlaying}
                 mergeShort={mergeShort}
                 onMergeShortChange={setMergeShort}
+                onSetBlockEmotion={handleSetBlockEmotion}
+                onSetWordEmotion={handleSetWordEmotion}
+                onSetWordSingle={handleSetWordSingle}
               />
             </CollapsiblePanel>
 

@@ -8,6 +8,7 @@ import { ProjectLoader } from '@/components/editor/ProjectLoader'
 import { PlaybackProvider } from '@/state/playback-context'
 import { ProjectProvider } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
+import { WordPatchProvider } from '@/state/word-patch-context'
 
 type BootstrapState =
   | { k: 'loading' }
@@ -81,8 +82,10 @@ export function EditorBootstrap() {
   return (
     <ProjectProvider initial={state.project}>
       <PlaybackProvider>
-        <ProjectLoader onReloaded={reload} />
-        <App />
+        <WordPatchProvider>
+          <ProjectLoader onReloaded={reload} />
+          <App />
+        </WordPatchProvider>
       </PlaybackProvider>
     </ProjectProvider>
   )

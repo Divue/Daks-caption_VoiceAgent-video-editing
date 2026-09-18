@@ -121,6 +121,7 @@ class WordPatch(BaseModel):
     emphasis: Optional[bool] = None
     emotion: Optional[Emotion] = None
     stretch: Optional[float] = None
+    single: Optional[bool] = None
     emoji: Optional[str] = None
     style: Optional[dict] = None
     signals: Optional[Signals] = None

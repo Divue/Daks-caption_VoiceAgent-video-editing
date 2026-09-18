@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { CaptionBlock, Word } from '@captions/shared'
+import type { CaptionBlock, Emotion, Word } from '@captions/shared'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -16,6 +16,9 @@ interface TranscriptPanelProps {
   followPlayhead: boolean
   mergeShort: boolean
   onMergeShortChange: (value: boolean) => void
+  onSetBlockEmotion: (block: CaptionBlock, emotion: Emotion) => void
+  onSetWordEmotion: (word: Word, emotion: Emotion) => void
+  onSetWordSingle: (word: Word, single: boolean) => void
 }
 
 export function TranscriptPanel({
@@ -28,6 +31,9 @@ export function TranscriptPanel({
   followPlayhead,
   mergeShort,
   onMergeShortChange,
+  onSetBlockEmotion,
+  onSetWordEmotion,
+  onSetWordSingle,
 }: TranscriptPanelProps) {
   const [query, setQuery] = useState('')
   const trimmed = query.trim().toLowerCase()
@@ -89,6 +95,9 @@ export function TranscriptPanel({
             onSelectWord={onSelectWord}
             onSeekToBlock={onSeekToBlock}
             followPlayhead={followPlayhead}
+            onSetBlockEmotion={onSetBlockEmotion}
+            onSetWordEmotion={onSetWordEmotion}
+            onSetWordSingle={onSetWordSingle}
           />
         )}
       </div>

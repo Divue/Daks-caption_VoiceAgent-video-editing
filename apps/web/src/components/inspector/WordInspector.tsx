@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { useWordPatch } from '@/hooks/useWordPatch'
+import { useWordPatch } from '@/state/word-patch-context'
 import { useProject } from '@/state/project-context'
 import { Emotion } from '@captions/shared'
 import type { Signals, Style, Word } from '@captions/shared'
@@ -105,6 +105,20 @@ export function WordInspector({ selectedWordId }: WordInspectorProps) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col">
+            <Label htmlFor="word-single">Single</Label>
+            <p className="text-xs text-muted-foreground">
+              Show this word on its own, split out of its caption line.
+            </p>
+          </div>
+          <Switch
+            id="word-single"
+            checked={word.single === true}
+            onCheckedChange={(checked) => update({ single: checked })}
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">

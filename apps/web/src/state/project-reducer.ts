@@ -11,6 +11,7 @@ export type ProjectAction =
   | { type: 'SET_PROJECT'; project: Project }
   | { type: 'REPLACE_PRESENT'; project: Project }
   | { type: 'UPDATE_WORD'; wordId: string; patch: Partial<Word> }
+  | { type: 'UPDATE_WORDS'; wordIds: string[]; patch: Partial<Word> }
   | { type: 'SET_PRESET'; presetId: PresetId }
   | { type: 'ADD_OVERLAY'; overlay: Overlay }
   | { type: 'UNDO' }
@@ -56,6 +57,19 @@ export function projectReducer(state: ProjectHistoryState, action: ProjectAction
         ...state.present,
         words: state.present.words.map((word) =>
           word.id === action.wordId ? { ...word, ...action.patch } : word,
+        ),
+      })
+    }
+
+    // Setting a whole line's emotion touches N words but is ONE user action, so it is one
+    // commit and therefore one undo step. N separate UPDATE_WORDs would make the user press
+    // Ctrl+Z once per word to take back a single click.
+    case 'UPDATE_WORDS': {
+      const targets = new Set(action.wordIds)
+      return commit(state, {
+        ...state.present,
+        words: state.present.words.map((word) =>
+          targets.has(word.id) ? { ...word, ...action.patch } : word,
         ),
       })
     }

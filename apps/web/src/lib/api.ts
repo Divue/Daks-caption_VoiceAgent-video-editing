@@ -253,6 +253,8 @@ export interface WordPatch {
   emphasis?: boolean
   emotion?: Emotion
   stretch?: number
+  /** `true` pulls the word into its own caption block; `null` clears the flag. */
+  single?: boolean | null
   emoji?: string | null
   style?: Partial<Record<keyof Style, unknown>> | null
 }

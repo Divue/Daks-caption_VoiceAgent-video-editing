@@ -36,6 +36,10 @@ class Word(BaseModel):
     emphasis: bool
     emotion: Emotion
     stretch: float = Field(ge=1)
+    # Show this word on its own instead of inside its caption block. Grouping, not style:
+    # packages/shared/src/blocks.ts reads it (rule 4). The pipeline never sets it; only an
+    # editor or agent edit does. Optional, like `emoji` — absent == false.
+    single: Optional[bool] = None
     emoji: Optional[str] = None
     style: Optional[StylePatch] = None
     signals: Optional[Signals] = None

@@ -40,6 +40,11 @@ export const Word = z.object({
   emphasis: z.boolean(),
   emotion: Emotion,
   stretch: z.number().min(1), // 1 = none, 2.5 = "hellloooo"
+  // Pull this word out of its caption block and show it on its own, for its own
+  // startMs–endMs. A layout choice, not a style: it changes the GROUPING, so it is
+  // read by deriveBlocks (rule 4), not by the style resolver. Optional, like `emoji` —
+  // absent and `false` mean the same thing, and the pipeline never sets it.
+  single: z.boolean().optional(),
   emoji: z.string().optional(),
   style: Style.partial().optional(), // per-word override from user or agent
   signals: Signals.optional(),

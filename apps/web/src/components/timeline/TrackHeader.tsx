@@ -1,36 +1,45 @@
-import { Eye, GripVertical, Lock, Volume2 } from 'lucide-react'
+import { Eye, Lock, Volume2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { InertControl } from '@/components/layout/InertControl'
-import { cn } from '@/lib/utils'
 
-export const TRACK_HEADER_WIDTH = 132
+/** Matches the gutter the lanes are offset by. One constant so they cannot drift apart. */
+export const TRACK_HEADER_WIDTH = 168
 
 interface TrackHeaderProps {
   name: string
   icon: LucideIcon
-  /** Tailwind text colour for the type icon — captions amber, video blue, audio green. */
-  iconClassName: string
+  height: number
 }
 
 /**
- * Track name + type icon, and three controls that are deliberately inert.
+ * A lane's name and its per-lane controls.
  *
- * Mute / lock / visibility are OUR addition — the reference product has no such buttons
- * in its track headers. Since nothing behind them exists, they are rendered inert rather
- * than wired to a no-op.
+ * Mute / lock / hide are INERT and look it — `InertControl` gives them a disabled attribute, a
+ * muted foreground, a not-allowed cursor and a tooltip saying so, because `.claude/INDEX.md`
+ * forbids faking behaviour. They are here so the affordances exist and have an obvious place to be
+ * wired later, not to imply they work now.
+ *
+ * What changed from the version audit 16 §2.3 graded an F: the gutter is wide enough for the lane
+ * NAME to fit. Previously six glyphs were crammed into 110px and the name was truncated to "C.",
+ * "V.", "A." to make room — the controls were squeezing out the one piece of text that was real.
+ * They also rest at low opacity and come up on hover, so a resting timeline reads as three named
+ * lanes rather than as fifteen buttons.
  */
-export function TrackHeader({ name, icon: Icon, iconClassName }: TrackHeaderProps) {
+export function TrackHeader({ name, icon: Icon, height }: TrackHeaderProps) {
   return (
     <div
-      className="flex shrink-0 items-center gap-1 border-r border-b bg-background px-1.5"
-      style={{ width: TRACK_HEADER_WIDTH }}
+      className="group/track flex shrink-0 items-center gap-2 border-b border-border/40 px-3"
+      style={{ height }}
     >
-      <GripVertical className="size-3 shrink-0 cursor-not-allowed text-muted-foreground/40" aria-hidden />
-      <Icon className={cn('size-3.5 shrink-0', iconClassName)} aria-hidden />
-      <span className="min-w-0 flex-1 truncate text-xs font-medium">{name}</span>
-      <InertControl label={`Mute ${name}`} icon={Volume2} reason="not implemented" className="px-0.5" />
-      <InertControl label={`Lock ${name}`} icon={Lock} reason="not implemented" className="px-0.5" />
-      <InertControl label={`Hide ${name}`} icon={Eye} reason="not implemented" className="px-0.5" />
+      <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-foreground/80">
+        {name}
+      </span>
+      <div className="flex shrink-0 items-center opacity-30 transition-opacity group-hover/track:opacity-100">
+        <InertControl label={`Mute ${name}`} icon={Volume2} reason="not built yet" className="p-0.5 [&_svg]:size-3" />
+        <InertControl label={`Lock ${name}`} icon={Lock} reason="not built yet" className="p-0.5 [&_svg]:size-3" />
+        <InertControl label={`Hide ${name}`} icon={Eye} reason="not built yet" className="p-0.5 [&_svg]:size-3" />
+      </div>
     </div>
   )
 }

@@ -3,7 +3,8 @@ import { formatTimecode } from '@/lib/format'
 
 /** Tick spacings in ms, coarsest last. The first that gives >= MIN_TICK_PX is used. */
 const STEPS_MS = [100, 250, 500, 1000, 2000, 5000, 10_000, 30_000, 60_000]
-const MIN_TICK_PX = 64
+/** Wide, deliberately: labels every 64px was a wall of timecode (audit 16 §2.4). */
+const MIN_TICK_PX = 96
 
 interface TimeRulerProps {
   durationMs: number
@@ -27,7 +28,7 @@ export function TimeRuler({ durationMs, pxPerMs, onSeek }: TimeRulerProps) {
 
   return (
     <div
-      className="relative h-7 shrink-0 cursor-pointer border-b bg-muted/40 select-none"
+      className="relative h-6 shrink-0 cursor-pointer border-y border-border/50 select-none"
       style={{ width: durationMs * pxPerMs }}
       onPointerDown={(event) => {
         const rect = event.currentTarget.getBoundingClientRect()
@@ -37,9 +38,9 @@ export function TimeRuler({ durationMs, pxPerMs, onSeek }: TimeRulerProps) {
     >
       {ticks.map((ms) => (
         <div key={ms} className="absolute top-0 h-full" style={{ left: ms * pxPerMs }}>
-          <div className="h-2 w-px bg-border" />
-          <span className="absolute top-2 left-1 text-[10px] tabular-nums whitespace-nowrap text-muted-foreground">
-            {formatTimecode(ms)}
+          <div className="h-1.5 w-px bg-border" />
+          <span className="absolute top-1 left-1.5 font-mono text-[10px] whitespace-nowrap text-muted-foreground/70 tabular-nums">
+            {formatTimecode(ms, stepMs)}
           </span>
         </div>
       ))}

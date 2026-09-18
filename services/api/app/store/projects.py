@@ -17,9 +17,40 @@ from ..schema import Project
 from . import dynamo
 from .dynamo import B, N, S
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+
+def _v1_to_v2(doc: dict) -> dict:
+    """Caption style panel (2026-09-18): preset rename + `uppercase` -> `textCase`.
+
+    Two independent renames land in the same schema bump because they shipped together:
+
+    1. `presetId: "kathmandu"` -> `"rangmanch"`. The old id held the reference's *Kalakar Motion*
+       look while the reference's own "Kathmandu" is the yellow Montserrat one we now ship as
+       `dhamaka`; leaving both names in place would have had each pointing at the other's look.
+    2. `Style.uppercase: bool` -> `Style.textCase: "none" | "upper" | "lower"`. A preset needs
+       forced lowercase, and two booleans would have needed a precedence rule forever.
+
+    Style dicts live in three places (`words[].style`, `overlays[].style`) — a word with no
+    override has no `style` key at all, so every lookup here is defensive.
+    """
+    if doc.get("presetId") == "kathmandu":
+        doc["presetId"] = "rangmanch"
+    for holder in (*doc.get("words", []), *doc.get("overlays", [])):
+        style = holder.get("style")
+        if not isinstance(style, dict) or "uppercase" not in style:
+            continue
+        was_upper = style.pop("uppercase")
+        # `uppercase: false` carried no information the absent key does not; only true maps over.
+        if was_upper:
+            style["textCase"] = "upper"
+        if not style:
+            holder.pop("style", None)
+    return doc
+
+
 # (from_version, to_version, fn(doc) -> doc). Applied lazily on read; written back on next write.
-MIGRATIONS: list[tuple[int, int, Callable[[dict], dict]]] = []
+MIGRATIONS: list[tuple[int, int, Callable[[dict], dict]]] = [(1, 2, _v1_to_v2)]
 
 MAX_DOC_BYTES = 350 * 1024   # Dynamo's hard item limit is 400 KB
 
@@ -87,7 +118,7 @@ def _record(project_id: str, raw: dict) -> ProjectRecord:
         status=item.get("status", "ready"),
         version=int(item.get("version", 0)),
         schema_version=int(item.get("schemaVersion", SCHEMA_VERSION)),
-        preset_id=item.get("presetId", "kathmandu"),
+        preset_id=item.get("presetId", "rangmanch"),
         s3_key=item.get("s3Key"),
         has_manual_edits=bool(item.get("hasManualEdits", False)),
         created_at=item.get("createdAt", ""),

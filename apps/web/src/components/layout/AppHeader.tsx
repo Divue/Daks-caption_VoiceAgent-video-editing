@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, Download, Pencil, Share2 } from 'lucide-react'
+import { ArrowLeft, Download, FilePlus2, Pencil, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRoute } from '@/router'
 import { startRender, isApiError } from '@/lib/api'
@@ -34,21 +34,27 @@ export function AppHeader({ projectId }: AppHeaderProps) {
   }
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
+    <header className="shrink-0">
+      <div className="flex h-12 items-center justify-between gap-4 bg-card px-3">
       <div className="flex min-w-0 items-center gap-3">
+        {/*
+          `/editor` with no `?id=` IS the projects screen — dropzone plus recent projects
+          (EmptyEditor). This used to go to `/`, the marketing landing page, which made the label
+          a lie and left the editor with no route to uploading a different video at all.
+        */}
         <Button
           type="button"
           variant="ghost"
           size="sm"
           className="gap-1.5 text-muted-foreground"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/editor')}
         >
           <ArrowLeft className="size-4" />
-          <span className="hidden sm:inline">Back to Projects</span>
+          <span className="hidden sm:inline">Projects</span>
         </Button>
         <div className="h-5 w-px bg-border" />
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-sm font-medium text-foreground">
+          <span className="font-display truncate text-lg text-foreground">
             {projectId}
           </span>
           <InertControl
@@ -60,6 +66,18 @@ export function AppHeader({ projectId }: AppHeaderProps) {
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground"
+          onClick={() => navigate('/editor')}
+          title="Upload a different video"
+        >
+          <FilePlus2 className="size-4" />
+          <span className="hidden md:inline">New video</span>
+        </Button>
+        <div className="mx-1 h-5 w-px bg-border" />
         <UndoRedoControls />
         <div className="mx-1 h-5 w-px bg-border" />
         <InertControl
@@ -86,6 +104,8 @@ export function AppHeader({ projectId }: AppHeaderProps) {
           )}
         </div>
       </div>
+      </div>
+      <div className="h-px w-full bg-border/60" />
     </header>
   )
 }

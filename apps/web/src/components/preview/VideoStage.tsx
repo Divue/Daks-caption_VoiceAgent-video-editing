@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Card } from '@/components/ui/card'
 import { usePlayback } from '@/state/playback-context'
 import { TransportBar } from './TransportBar'
 
@@ -48,16 +47,19 @@ export function VideoStage({ src, width, height, captionLayer }: VideoStageProps
   }, [])
 
   return (
-    <Card className="flex h-full min-h-0 flex-col gap-0 overflow-hidden bg-muted/30 p-0">
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3">
+    // One container, not three. It was a card, holding a well, holding a rounded frame — three
+    // nested boxes around the one thing the user is looking at (audit 16 §2.12). The well IS the
+    // container now, and the frame sits directly in it.
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[oklch(0.125_0.004_62)]">
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-5">
         <div
           ref={frameRef}
-          className="relative max-h-full overflow-hidden rounded-md border bg-neutral-950 shadow-sm"
+          className="shadow-stage relative max-h-full overflow-hidden rounded-xl bg-black ring-1 ring-white/8"
           // Letterboxing: the frame keeps the source aspect ratio and shrinks to fit its box,
           // so a 9:16 reel and a 16:9 clip both sit correctly inside the same stage.
           style={{ aspectRatio: `${width} / ${height}`, height: '100%', maxWidth: '100%' }}
         >
-          {src ? (
+          {src && !error ? (
             <video
               ref={attachVideo}
               src={src}
@@ -71,15 +73,19 @@ export function VideoStage({ src, width, height, captionLayer }: VideoStageProps
               }
             />
           ) : (
+            // Unmounting the <video> on error is deliberate, not just a tidier empty state: a
+            // failed element stays attached as the playback clock and reports duration NaN, which
+            // freezes the transport and the caption preview at 0. Detaching hands the clock to
+            // PlaybackProvider's fallback, so the captions can still be reviewed and demoed.
             <div className="flex size-full items-center justify-center p-4 text-center text-xs text-muted-foreground">
-              No video yet
+              {error ? '' : 'No video yet'}
             </div>
           )}
 
           {captionsEnabled && frameWidth > 0 && captionLayer?.(frameWidth)}
 
           {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-neutral-950/80 p-4 text-center text-xs text-destructive-foreground">
+            <div className="absolute inset-x-0 bottom-0 bg-black/70 p-2 text-center text-[11px] text-muted-foreground">
               {error}
             </div>
           )}
@@ -93,6 +99,6 @@ export function VideoStage({ src, width, height, captionLayer }: VideoStageProps
         onToggleCaptions={() => setCaptionsEnabled((value) => !value)}
         onFullscreen={requestFullscreen}
       />
-    </Card>
+    </div>
   )
 }

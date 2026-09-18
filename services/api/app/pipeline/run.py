@@ -110,7 +110,7 @@ def _stage(name: str, fn, *args):
 
 def run(*, wav_path: str, s3_uri: str, video_url: str, duration_ms: int,
         width: int = 1080, height: int = 1920, project_id: str | None = None,
-        preset_id: str = "kathmandu") -> dict:
+        preset_id: str = "rangmanch") -> dict:
     words = words_from_sources(wav_path, s3_uri)
     words = _stage("prosody", prosody.analyze, wav_path, words)
     words = _stage("tag", tag.tag, words)

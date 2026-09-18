@@ -1,70 +1,56 @@
-import { Gauge, Link, Magnet, Music, Scissors, Shuffle, Sticker, Wand2, ZoomIn, ZoomOut } from 'lucide-react'
+import { Gauge, Link, Magnet, Music, Scissors, Shuffle, Sticker, Wand2 } from 'lucide-react'
 import { SplitSquareHorizontal } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { InertControl } from '@/components/layout/InertControl'
-import { Button } from '@/components/ui/button'
 
-const OUT_OF_SCOPE = 'not in the MVP scope'
+const OUT_OF_SCOPE = 'not built yet'
 
-/** Order mirrors the reference product's toolbar. Everything here is inert except zoom. */
-const TOOLS = [
-  { label: 'Split', icon: Scissors },
-  { label: 'Trim', icon: SplitSquareHorizontal },
-  { label: 'Snapping', icon: Magnet },
-  { label: 'Link tracks', icon: Link },
-  { label: 'Transitions', icon: Shuffle },
-  { label: 'Effects', icon: Wand2 },
-  { label: 'Stickers', icon: Sticker },
-  { label: 'Music', icon: Music },
-  { label: 'Speed', icon: Gauge },
-] as const
+/**
+ * The timeline tools.
+ *
+ * Every one of these is INERT and looks it — `InertControl` gives them a disabled attribute, a
+ * muted foreground, a not-allowed cursor and a tooltip saying so, because `.claude/INDEX.md`
+ * forbids faking behaviour. They are here so the affordances exist and have somewhere obvious to
+ * be wired, not to imply they work.
+ *
+ * Grouped rather than run together: nine identical icons in a row was the version that read as a
+ * picture of a toolbar (audit 16 §2.1). The separators are what turn it into three short lists.
+ */
+const GROUPS: { label: string; icon: LucideIcon }[][] = [
+  [
+    { label: 'Split', icon: Scissors },
+    { label: 'Trim', icon: SplitSquareHorizontal },
+  ],
+  [
+    { label: 'Snapping', icon: Magnet },
+    { label: 'Link tracks', icon: Link },
+  ],
+  [
+    { label: 'Transitions', icon: Shuffle },
+    { label: 'Effects', icon: Wand2 },
+    { label: 'Stickers', icon: Sticker },
+    { label: 'Music', icon: Music },
+    { label: 'Speed', icon: Gauge },
+  ],
+]
 
-interface EditorToolbarProps {
-  zoom: number
-  minZoom: number
-  maxZoom: number
-  onZoomChange: (zoom: number) => void
-}
-
-export function EditorToolbar({ zoom, minZoom, maxZoom, onZoomChange }: EditorToolbarProps) {
+export function EditorToolbar() {
   return (
-    <div className="flex shrink-0 items-center gap-0.5 overflow-x-auto border-b px-2 py-1">
-      {TOOLS.map(({ label, icon }) => (
-        <InertControl key={label} label={label} icon={icon} reason={OUT_OF_SCOPE} />
+    <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto">
+      {GROUPS.map((group, index) => (
+        <div key={group[0].label} className="flex shrink-0 items-center gap-0.5">
+          {index > 0 && <span className="mx-1 h-4 w-px shrink-0 bg-border/60" aria-hidden />}
+          {group.map(({ label, icon }) => (
+            <InertControl
+              key={label}
+              label={label}
+              icon={icon}
+              reason={OUT_OF_SCOPE}
+              className="px-1.5 py-1"
+            />
+          ))}
+        </div>
       ))}
-
-      <div className="mx-1 h-5 w-px shrink-0 bg-border" />
-
-      {/* Zoom is the one real control on this bar. */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Zoom out"
-        disabled={zoom <= minZoom}
-        onClick={() => onZoomChange(Math.max(minZoom, zoom / 1.5))}
-      >
-        <ZoomOut />
-      </Button>
-      <input
-        type="range"
-        aria-label="Timeline zoom"
-        min={Math.log(minZoom)}
-        max={Math.log(maxZoom)}
-        step={0.01}
-        value={Math.log(zoom)}
-        onChange={(event) => onZoomChange(Math.exp(Number(event.target.value)))}
-        className="h-1.5 w-20 shrink-0 cursor-pointer appearance-none rounded-full bg-muted accent-primary"
-      />
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Zoom in"
-        disabled={zoom >= maxZoom}
-        onClick={() => onZoomChange(Math.min(maxZoom, zoom * 1.5))}
-      >
-        <ZoomIn />
-      </Button>
     </div>
   )
 }

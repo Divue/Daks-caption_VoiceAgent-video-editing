@@ -1,5 +1,7 @@
 import { Project } from '@captions/shared'
 import type { Overlay, PresetId, Word } from '@captions/shared'
+import { applyStyleChange } from '@/lib/style-change'
+import type { StyleChange } from '@/lib/style-change'
 
 export interface ProjectHistoryState {
   past: Project[]
@@ -11,6 +13,8 @@ export type ProjectAction =
   | { type: 'SET_PROJECT'; project: Project }
   | { type: 'REPLACE_PRESENT'; project: Project }
   | { type: 'UPDATE_WORD'; wordId: string; patch: Partial<Word> }
+  | { type: 'UPDATE_WORDS'; wordIds: string[]; patch: Partial<Word> }
+  | { type: 'PATCH_WORDS_STYLE'; wordIds: string[]; change: StyleChange }
   | { type: 'SET_PRESET'; presetId: PresetId }
   | { type: 'ADD_OVERLAY'; overlay: Overlay }
   | { type: 'UNDO' }
@@ -57,6 +61,40 @@ export function projectReducer(state: ProjectHistoryState, action: ProjectAction
         words: state.present.words.map((word) =>
           word.id === action.wordId ? { ...word, ...action.patch } : word,
         ),
+      })
+    }
+
+    // Setting a whole line's emotion touches N words but is ONE user action, so it is one
+    // commit and therefore one undo step. N separate UPDATE_WORDs would make the user press
+    // Ctrl+Z once per word to take back a single click.
+    case 'UPDATE_WORDS': {
+      const targets = new Set(action.wordIds)
+      return commit(state, {
+        ...state.present,
+        words: state.present.words.map((word) =>
+          targets.has(word.id) ? { ...word, ...action.patch } : word,
+        ),
+      })
+    }
+
+    // A style override merges KEY BY KEY, so it cannot go through UPDATE_WORDS: that spreads one
+    // identical patch over every target, which would replace each word's whole override with the
+    // same object and wipe whatever else it held. Each word merges the change onto its own style.
+    case 'PATCH_WORDS_STYLE': {
+      const targets = new Set(action.wordIds)
+      return commit(state, {
+        ...state.present,
+        words: state.present.words.map((word) => {
+          if (!targets.has(word.id)) return word
+          const style = applyStyleChange(word.style, action.change)
+          if (style === undefined) {
+            // Drop the key rather than storing `style: undefined` — the zod schema's .optional()
+            // accepts an absent key, and this object is round-tripped through JSON.
+            const { style: _dropped, ...rest } = word
+            return rest
+          }
+          return { ...word, style }
+        }),
       })
     }
 

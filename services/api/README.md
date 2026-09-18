@@ -57,7 +57,7 @@ Errors are always flat: `{"error": "<code>", ...}`.
 | GET | `/projects/{id}/status` | `{state: not_started\|running\|done\|failed, stages: {audio, transcribe, sarvam, align, prosody, tag, build: {state, ms, detail?, error?}}, error, elapsedMs, status}`. Poll ~2 s. transcribe and sarvam run concurrently |
 | GET | `/projects/{id}` | the `Project` (packages/shared) with `videoUrl` = fresh presigned GET (1 h). Headers `X-Project-Version`, `X-Schema-Version`. `409 not_ready` before the first successful run |
 | GET | `/projects` | list (your prefix) |
-| PATCH | `/projects/{id}/words/{wordId}` | any of `text startMs endMs emphasis emotion stretch emoji style signals` + optional `version`. `style` merges per key (null removes). Whole Project re-validated → `422 invalid_project`; stale `version` → `409 stale_version {currentVersion}`; no `version` = last write wins |
+| PATCH | `/projects/{id}/words/{wordId}` | any of `text startMs endMs emphasis emotion stretch single emoji style signals` + optional `version`. `style` merges per key (null removes); any other field set to null removes it. `single: true` makes the word its own caption block (grouping, see `packages/shared/src/blocks.ts` rule 4). Whole Project re-validated → `422 invalid_project`; stale `version` → `409 stale_version {currentVersion}`; no `version` = last write wins |
 | PATCH | `/projects/{id}` | `{presetId?, settings?, version?}` → `{project, version}` |
 | GET | `/projects/{id}/cost` | `{totalUsd, byService, byStage, unverifiedRates, usdPerMinute, events[]}` |
 | GET | `/costs?from=YYYY-MM-DD&to=YYYY-MM-DD` | UTC days, ≤ 31; adds `projectCount`, `meanUsdPerProject`, `byProject` |

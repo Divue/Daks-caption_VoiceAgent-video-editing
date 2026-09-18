@@ -30,7 +30,7 @@ export function EditorPreviewMock() {
                   fontFamily: style.fontFamily,
                   color: style.color,
                   fontWeight: style.weight,
-                  textTransform: style.uppercase ? 'uppercase' : 'none',
+                  textTransform: style.textCase === 'upper' ? 'uppercase' : style.textCase === 'lower' ? 'lowercase' : 'none',
                   fontSize: Math.min(style.fontSize * 0.3, 22),
                   textShadow: '0 1px 4px rgba(0, 0, 0, 0.7)',
                 }}

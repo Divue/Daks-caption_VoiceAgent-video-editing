@@ -4,15 +4,34 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+  Design language: DESIGN.md (Mistral AI teardown).
+
+  Two things carry the brand and are worth stating plainly, because they are easy to sand off
+  in a later refactor:
+
+  1. The neutrals are WARM, not grey. Every surface and every border carries a little chroma on
+     the yellow-orange axis. A neutral-grey dark theme with an orange button reads as a generic
+     dashboard; the warm tint is what makes the orange look like it belongs.
+  2. The "sunset stripe" — red -> orange -> yellow -> cream — is the brand recognizer. In the
+     editor it is a 2px band under the header and the fill of the playhead, not decoration
+     sprayed everywhere. DESIGN.md: it closes every page, it does not carpet them.
+
+  Geometry is editorial, not playful: 12px cards, 8-10px buttons, full-round reserved for badges.
+*/
 @theme inline {
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    --radius-sm: calc(var(--radius) - 4px);
-    --radius-md: calc(var(--radius) - 2px);
+    --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+    --radius-sm: calc(var(--radius) - 6px);
+    --radius-md: calc(var(--radius) - 4px);
     --radius-lg: var(--radius);
     --radius-xl: calc(var(--radius) + 4px);
     --radius-2xl: calc(var(--radius) + 8px);
     --radius-3xl: calc(var(--radius) + 12px);
     --radius-4xl: calc(var(--radius) + 16px);
+
     --color-background: var(--background);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
@@ -31,6 +50,17 @@
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
+
+    /* Sunset spectrum — the brand gradient's stops, available as real utilities. */
+    --color-sunset-red: var(--sunset-red);
+    --color-sunset-orange: var(--sunset-orange);
+    --color-sunset-amber: var(--sunset-amber);
+    --color-sunset-yellow: var(--sunset-yellow);
+    --color-cream: var(--cream);
+
+    /* One step above `card`, for controls that sit ON a card (segmented tabs, inputs). */
+    --color-elevated: var(--elevated);
+
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);
     --color-chart-3: var(--chart-3);
@@ -47,72 +77,90 @@
 }
 
 :root {
-    --radius: 0.625rem;
+    /* 12px — DESIGN.md's dominant card radius. Buttons land at 8px through --radius-md. */
+    --radius: 0.75rem;
+
+    /* Sunset spectrum: #fa520f -> #ff8105 -> #ffb83e -> #ffd900, cream #fff8e0. */
+    --sunset-red: oklch(0.556 0.196 30.5);
+    --sunset-orange: oklch(0.661 0.201 41.3);
+    --sunset-amber: oklch(0.816 0.152 71.4);
+    --sunset-yellow: oklch(0.888 0.185 96.2);
+    --cream: oklch(0.977 0.028 96.4);
+
+    /* Light surfaces: canvas white over warm cream, ink text. */
     --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --foreground: oklch(0.232 0 0);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: oklch(0.232 0 0);
+    --elevated: oklch(0.985 0.008 95);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.55 0.25 280);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.96 0.025 280);
-    --accent-foreground: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.232 0 0);
+    --primary: oklch(0.638 0.204 37.6);
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.977 0.028 96.4);
+    --secondary-foreground: oklch(0.232 0 0);
+    --muted: oklch(0.975 0.006 95);
+    --muted-foreground: oklch(0.545 0.012 70);
+    --accent: oklch(0.966 0.035 88);
+    --accent-foreground: oklch(0.232 0 0);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.65 0.2 280);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.99 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.55 0.25 280);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.96 0.025 280);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.65 0.2 280);
+    --border: oklch(0.915 0.008 90);
+    --input: oklch(0.878 0.012 88);
+    --ring: oklch(0.638 0.204 37.6);
+    --chart-1: oklch(0.638 0.204 37.6);
+    --chart-2: oklch(0.816 0.152 71.4);
+    --chart-3: oklch(0.888 0.185 96.2);
+    --chart-4: oklch(0.545 0.012 70);
+    --chart-5: oklch(0.371 0 0);
+    --sidebar: oklch(0.985 0.008 95);
+    --sidebar-foreground: oklch(0.232 0 0);
+    --sidebar-primary: oklch(0.638 0.204 37.6);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.966 0.035 88);
+    --sidebar-accent-foreground: oklch(0.232 0 0);
+    --sidebar-border: oklch(0.915 0.008 90);
+    --sidebar-ring: oklch(0.638 0.204 37.6);
 }
 
+/*
+  The editor runs dark. Video work is judged against the frame, and a bright chrome around a
+  9:16 reel drags the eye off the only thing that matters; DESIGN.md's own IDE mockups are dark
+  for the same reason. The neutrals stay on the warm axis so the orange reads as brand rather
+  than as an alert colour.
+*/
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.65 0.22 280);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.28 0.04 280);
-    --accent-foreground: oklch(0.985 0 0);
+    --background: oklch(0.163 0.005 62);
+    --foreground: oklch(0.967 0.012 92);
+    --card: oklch(0.201 0.006 62);
+    --card-foreground: oklch(0.967 0.012 92);
+    --elevated: oklch(0.241 0.008 62);
+    --popover: oklch(0.216 0.007 62);
+    --popover-foreground: oklch(0.967 0.012 92);
+    --primary: oklch(0.672 0.198 39);
+    --primary-foreground: oklch(0.145 0.01 45);
+    --secondary: oklch(0.256 0.009 62);
+    --secondary-foreground: oklch(0.967 0.012 92);
+    --muted: oklch(0.241 0.008 62);
+    --muted-foreground: oklch(0.706 0.014 80);
+    --accent: oklch(0.297 0.045 48);
+    --accent-foreground: oklch(0.967 0.012 92);
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.65 0.22 280);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.65 0.22 280);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.28 0.04 280);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.65 0.22 280);
+    --border: oklch(0.86 0.04 80 / 12%);
+    --input: oklch(0.86 0.04 80 / 18%);
+    --ring: oklch(0.672 0.198 39);
+    --chart-1: oklch(0.672 0.198 39);
+    --chart-2: oklch(0.816 0.152 71.4);
+    --chart-3: oklch(0.888 0.185 96.2);
+    --chart-4: oklch(0.706 0.014 80);
+    --chart-5: oklch(0.45 0.01 70);
+    --sidebar: oklch(0.183 0.006 62);
+    --sidebar-foreground: oklch(0.967 0.012 92);
+    --sidebar-primary: oklch(0.672 0.198 39);
+    --sidebar-primary-foreground: oklch(0.145 0.01 45);
+    --sidebar-accent: oklch(0.256 0.012 55);
+    --sidebar-accent-foreground: oklch(0.967 0.012 92);
+    --sidebar-border: oklch(0.86 0.04 80 / 12%);
+    --sidebar-ring: oklch(0.672 0.198 39);
 }
 
 @layer base {
@@ -122,4 +170,71 @@
   body {
     @apply bg-background text-foreground;
     }
+}
+
+@layer components {
+  /*
+    The brand recognizer. One horizontal band, red -> orange -> yellow -> cream, used where a
+    surface ends: under the editor header, and as the played portion of the timeline.
+  */
+  .sunset-stripe {
+    background-image: linear-gradient(
+      90deg,
+      var(--sunset-red) 0%,
+      var(--sunset-orange) 34%,
+      var(--sunset-amber) 62%,
+      var(--sunset-yellow) 82%,
+      var(--cream) 100%
+    );
+  }
+
+  /* The same spectrum turned vertical, for the rail beside an active panel. */
+  .sunset-stripe-y {
+    background-image: linear-gradient(
+      180deg,
+      var(--sunset-red) 0%,
+      var(--sunset-orange) 45%,
+      var(--sunset-amber) 100%
+    );
+  }
+
+  /* Editorial display voice — DESIGN.md pairs a near-serif display against Inter for everything
+     else, and that contrast IS the brand. Instrument Serif is already loaded for the captions. */
+  .font-display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  /* DESIGN.md's level-3 "mockup" elevation, used for the video frame. */
+  .shadow-stage {
+    box-shadow: rgba(0, 0, 0, 0.45) 0px 12px 32px -8px, rgba(0, 0, 0, 0.25) 0px 2px 8px -2px;
+  }
+
+  /* Section eyebrow: 11px/600/1px tracking, per {typography.micro-uppercase}. */
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+}
+
+/* The scrollbars inside the dark editor panels; the default light ones cut holes in the chrome. */
+.dark ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background-color: oklch(0.86 0.04 80 / 14%);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.86 0.04 80 / 26%);
 }

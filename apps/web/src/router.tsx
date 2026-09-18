@@ -12,9 +12,20 @@ function resolveProjectId(search: string): string | null {
   return new URLSearchParams(search).get('id')
 }
 
+/**
+ * `?demo=1` opens the bundled fixture instead of a stored project, and only does anything when
+ * VITE_USE_FIXTURE is set. It is a URL the developer types, NOT a mode that changes what `/editor`
+ * means: without it, `/editor` with no `?id=` is still the upload screen. Making the env flag
+ * alone hijack the route took the upload flow away from anyone running with it on.
+ */
+function resolveDemo(search: string): boolean {
+  return new URLSearchParams(search).get('demo') === '1'
+}
+
 interface Location {
   route: Route
   projectId: string | null
+  demo: boolean
 }
 
 interface RouterContextValue extends Location {
@@ -27,6 +38,7 @@ function readLocation(): Location {
   return {
     route: resolveRoute(window.location.pathname),
     projectId: resolveProjectId(window.location.search),
+    demo: resolveDemo(window.location.search),
   }
 }
 
@@ -47,7 +59,8 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     if (next !== window.location.pathname + window.location.search) {
       window.history.pushState({}, '', next)
     }
-    setLocation({ route, projectId: projectId ?? null })
+    // Navigating always leaves demo mode: it is reachable only by typing the URL.
+    setLocation({ route, projectId: projectId ?? null, demo: false })
   }, [])
 
   return <RouterContext.Provider value={{ ...location, navigate }}>{children}</RouterContext.Provider>

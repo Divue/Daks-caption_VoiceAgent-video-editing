@@ -15,8 +15,12 @@ const EmptyEditor = lazy(() =>
  * ProjectProvider only mounts once a real project exists — see plan §4.6: the project is
  * non-nullable, so the mount is gated rather than the value made optional.
  */
+/** `?demo=1`, and only when the build opted in. See `resolveDemo` in router.tsx. */
+const FIXTURE_AVAILABLE = import.meta.env.VITE_USE_FIXTURE === 'true'
+
 export function AppRoot() {
-  const { route, projectId } = useRoute()
+  const { route, projectId, demo } = useRoute()
+  const fixture = demo && FIXTURE_AVAILABLE
 
   if (route !== '/editor') {
     return (
@@ -32,7 +36,8 @@ export function AppRoot() {
     <div className="dark min-h-screen bg-background text-foreground">
       <Suspense fallback={null}>
         <ProjectSyncProvider initialProjectId={projectId}>
-          {projectId || import.meta.env.VITE_USE_FIXTURE === 'true' ? <EditorBootstrap /> : <EmptyEditor />}
+          {/* No project and no demo flag means the upload screen — always. */}
+          {projectId || fixture ? <EditorBootstrap fixture={fixture} /> : <EmptyEditor />}
         </ProjectSyncProvider>
       </Suspense>
     </div>

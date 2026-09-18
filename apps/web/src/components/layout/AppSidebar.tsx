@@ -1,17 +1,13 @@
 import { Clapperboard, FolderOpen, Home, LayoutTemplate, Settings, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useRoute } from '@/router'
 
 interface NavItem {
   label: string
   icon: typeof Home
+  /** Where it goes. Items with no destination are still inert and say so on hover. */
+  go?: () => void
 }
-
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Home', icon: Home },
-  { label: 'Projects', icon: FolderOpen },
-  { label: 'Editor', icon: Clapperboard },
-  { label: 'Templates', icon: LayoutTemplate },
-]
 
 /**
  * Static nav rail — only "Editor" is a real destination; there's no router yet.
@@ -21,6 +17,17 @@ const NAV_ITEMS: NavItem[] = [
  * width belongs to the video.
  */
 export function AppSidebar() {
+  const { navigate } = useRoute()
+
+  // Home and Projects were inert; both have a real destination, so they get one. Templates does
+  // not exist yet and stays inert rather than being wired to something that is not it.
+  const items: NavItem[] = [
+    { label: 'Home', icon: Home, go: () => navigate('/') },
+    { label: 'Projects', icon: FolderOpen, go: () => navigate('/editor') },
+    { label: 'Editor', icon: Clapperboard },
+    { label: 'Templates', icon: LayoutTemplate },
+  ]
+
   return (
     <aside className="flex w-14 shrink-0 flex-col border-r border-border/60 bg-sidebar text-sidebar-foreground">
       <div className="flex h-12 items-center justify-center">
@@ -35,14 +42,15 @@ export function AppSidebar() {
 
 
       <nav className="flex flex-1 flex-col items-center gap-1 p-2 pt-2">
-        {NAV_ITEMS.map(({ label, icon: Icon }) => {
+        {items.map(({ label, icon: Icon, go }) => {
           const isActive = label === 'Editor'
           return (
             <button
               key={label}
               type="button"
               aria-current={isActive ? 'page' : undefined}
-              title={label}
+              onClick={go}
+              title={go || isActive ? label : `${label} — not built yet`}
               className={cn(
                 'relative flex size-9 items-center justify-center rounded-md transition-colors',
                 isActive

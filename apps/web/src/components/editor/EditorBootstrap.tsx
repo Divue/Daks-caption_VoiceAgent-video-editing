@@ -12,17 +12,6 @@ import { ProjectProvider } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
 import { WordPatchProvider } from '@/state/word-patch-context'
 
-/**
- * Fixture mode, documented in the root CLAUDE.md: "the web app loads the fixture directly when
- * VITE_USE_FIXTURE=true". It skips the bootstrap GET entirely, so the editor renders with no API
- * running — which is what makes UI work and the demo possible offline.
- *
- * It is not a fake backend. `projectId` stays null in fixture mode, and every writer already
- * checks it (`if (!projectId) return` in useWordPatch), so edits stay local and honest rather
- * than pretending to save. Nothing here simulates a server response.
- */
-const USE_FIXTURE = import.meta.env.VITE_USE_FIXTURE === 'true'
-
 type BootstrapState =
   | { k: 'loading' }
   | { k: 'loaded'; project: Project; version: number }
@@ -36,13 +25,24 @@ type BootstrapState =
  * ProjectProvider needs the project to exist before it mounts. This component owns that
  * one bootstrap GET; ProjectLoader owns every fetch after it.
  */
-export function EditorBootstrap() {
+/**
+ * `fixture` loads the bundled demo project instead of fetching one, so the editor renders with no
+ * API running — which is what makes UI work and an offline demo possible. It is reached only by
+ * `/editor?demo=1` on a build with VITE_USE_FIXTURE set (router.tsx), never by the env flag alone:
+ * letting the flag decide meant `/editor` stopped being the upload screen for anyone running with
+ * it on, and there was then no route to the dropzone at all.
+ *
+ * It is not a fake backend. `projectId` stays null, and every writer already checks it
+ * (`if (!projectId) return` in useWordPatch), so edits stay local and honest rather than
+ * pretending to save. Nothing here simulates a server response.
+ */
+export function EditorBootstrap({ fixture = false }: { fixture?: boolean }) {
   const { projectId, setVersion, setLifecycle } = useSync()
   const [state, setState] = useState<BootstrapState>({ k: 'loading' })
   const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
-    if (USE_FIXTURE) {
+    if (fixture) {
       // The fixture's videoUrl is a placeholder ("demo.mp4"), not a file that exists. Left in
       // place it mounts a <video> that never loads, never fires `error` under the dev server's
       // SPA fallback, and so stays attached as the playback clock reporting currentTime 0 —
@@ -91,11 +91,11 @@ export function EditorBootstrap() {
       })
 
     return () => controller.abort()
-  }, [projectId, reloadToken, setVersion, setLifecycle])
+  }, [projectId, fixture, reloadToken, setVersion, setLifecycle])
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), [])
 
-  if (!projectId && !USE_FIXTURE) return null
+  if (!projectId && !fixture) return null
 
   if (state.k === 'loading') {
     return <EditorMessage title="Loading project…" detail={projectId ?? ''} />

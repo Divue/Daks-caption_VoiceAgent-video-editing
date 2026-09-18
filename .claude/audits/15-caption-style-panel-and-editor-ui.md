@@ -98,17 +98,24 @@ them. Preset-scope writes are one `patchStyle` call over N words on the existing
 `PresetOverride` is stamped with the preset it was made against and dropped **during render** when
 `presetId` changes. An effect would paint one frame of, say, Chamak's 2.19× scale on Nazm.
 
-## 6. Fixture mode (`VITE_USE_FIXTURE`)
+## 6. Fixture mode (`VITE_USE_FIXTURE` + `?demo=1`)
 
-Documented in the root `CLAUDE.md` but never built. `EditorBootstrap` now skips the bootstrap GET
-and seeds from `demo-project.json` when the flag is set. `projectId` stays null, and every writer
+Documented in the root `CLAUDE.md` but never built. `EditorBootstrap` skips the bootstrap GET and
+seeds from `demo-project.json`.
+
+**It is reached only by `/editor?demo=1`, on a build with the env flag set.** The first cut let the
+env flag alone decide, which meant `/editor` stopped being the upload screen for anyone running
+with it on: "Get started" dropped you into the fixture project with no video, no dropzone and no
+route to one. The flag arms the mode; the URL enters it. `projectId` stays null, and every writer
 already guards on it, so edits stay local — this is not a fake backend and nothing simulates a
 server response. Without it the editor cannot be opened at all without a deployed API, which made
 UI work and the demo impossible offline.
 
-**Known limit:** `durationMs` comes only from the `<video>` element's metadata, so with the
-fixture's placeholder `videoUrl` there is no playhead and the caption overlay never advances. That
-is honest (no video, no clock) and not worth faking; the preset swatches render through the same
+**Superseded:** the first cut had no playhead in fixture mode, because `durationMs` came only from
+the `<video>` element's metadata. `PlaybackProvider` now takes a `fallbackDurationMs` (the
+project's own) and runs a detached clock when no element is attached, so the fixture scrubs and
+plays. A video that failed to load also detaches now, rather than staying attached and pinning the
+transport at 0. The preset swatches still render through the same
 resolver and are the visual check that matters.
 
 ## 7. Editor UI

@@ -4,7 +4,7 @@ import { AgentCommandBar } from '@/components/agent/AgentCommandBar'
 import { WordInspector } from '@/components/inspector/WordInspector'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { AppSidebar } from '@/components/layout/AppSidebar'
-import { PlayerPlaceholder } from '@/components/player/PlayerPlaceholder'
+import { VideoStage } from '@/components/preview/VideoStage'
 import { PresetPicker } from '@/components/presets/PresetPicker'
 import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -14,9 +14,11 @@ import { useAgentActivity } from '@/hooks/useAgentActivity'
 import { useSelection } from '@/hooks/useSelection'
 import { useUndoRedoShortcuts } from '@/hooks/useUndoRedoShortcuts'
 import { useProject } from '@/state/project-context'
+import { useSync } from '@/state/sync-context'
 
 function App() {
   const { project } = useProject()
+  const { localPreviewUrl } = useSync()
   const { selectedWordId, select } = useSelection()
   const { entries, addEntry } = useAgentActivity()
   const [micStatus, setMicStatus] = useState<MicStatus>('idle')
@@ -44,7 +46,11 @@ function App() {
         <main className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
           <section className="flex min-h-[420px] flex-col gap-3 p-3 lg:min-h-0 lg:min-w-[420px] lg:flex-1 lg:overflow-hidden">
             <div className="min-h-[300px] flex-1 lg:min-h-0">
-              <PlayerPlaceholder />
+              <VideoStage
+                src={localPreviewUrl ?? project.videoUrl}
+                width={project.width}
+                height={project.height}
+              />
             </div>
             <UploadDropzone />
           </section>

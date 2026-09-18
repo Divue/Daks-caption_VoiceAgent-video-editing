@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date
+from datetime import date, datetime, timezone
 
 import pytest
 
@@ -68,7 +68,7 @@ def test_rollups(aws):
     summary = costs.project_summary("a", 15000)
     assert summary["totalUsd"] == pytest.approx(0.003) and summary["unverifiedRates"] == ["sarvam"]
     assert summary["usdPerMinute"] == pytest.approx(0.012) and len(summary["events"]) == 2
-    today = date.today()
+    today = datetime.now(timezone.utc).date()
     agg = costs.range_summary(today, today)
     assert agg["projectCount"] == 2 and agg["totalUsd"] == pytest.approx(0.012)
     assert agg["meanUsdPerProject"] == pytest.approx(0.006)

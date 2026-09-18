@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import get_settings
-from .routers import projects
+from .routers import agent, costs, projects, render
 
 settings = get_settings()  # fail fast at startup, listing every missing variable
 
@@ -32,3 +32,6 @@ def health():
 
 
 app.include_router(projects.router)
+app.include_router(costs.router)
+app.include_router(agent.router)
+app.include_router(render.router)

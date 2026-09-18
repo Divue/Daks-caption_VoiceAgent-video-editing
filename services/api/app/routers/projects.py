@@ -1,20 +1,22 @@
-"""Project routes: create/upload, read, list. (process/status/patch are added in later steps.)
+"""Project routes: create/upload, process, status, read, list, patch.
 
 Every Project leaves this API through `_project_body`, which dumps with exclude_none: the zod
 schema's `.optional()` accepts a missing key but rejects `null`.
 """
 from __future__ import annotations
 
+import time
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from .. import s3
+from ..jobs import runner
 from ..schema import PresetId, Project
-from ..store import projects
+from ..store import jobs, projects
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -70,3 +72,40 @@ def get_project(project_id: str, response: Response):
             "detail": "no captions yet; POST /projects/{id}/process and poll /status"})
     _version_headers(response, record.version, record.schema_version)
     return _project_body(record)
+
+
+@router.post("/{project_id}/process", status_code=202)
+def process_project(project_id: str, background: BackgroundTasks, force: bool = False):
+    """Start the pipeline. The client calls this after its presigned POST to S3 returned.
+
+    Re-running REPLACES every word and re-numbers every word id (ids are positional,
+    build.py). With manual edits present that is destructive, so it needs ?force=true —
+    this is a refuse-to-destroy guard, not a merge.
+    """
+    record = _record_or_404(project_id)
+    if record.has_manual_edits and not force:
+        return JSONResponse(status_code=409, content={
+            "error": "has_manual_edits",
+            "detail": "re-running replaces all words and invalidates word ids; "
+                      "pass ?force=true to discard manual edits"})
+    if not record.s3_key or not s3.exists(record.s3_key):
+        return JSONResponse(status_code=400, content={
+            "error": "upload_missing", "detail": "no source video in S3 yet; finish the presigned upload first"})
+    run_id = uuid.uuid4().hex[:12]
+    try:
+        job = jobs.start(project_id, run_id)
+    except jobs.AlreadyRunning as exc:
+        return JSONResponse(status_code=409, content={"error": "already_running", "job": exc.job})
+    projects.set_status(project_id, "processing")
+    background.add_task(runner.run_job, project_id, run_id, time.time())
+    return job
+
+
+@router.get("/{project_id}/status")
+def project_status(project_id: str):
+    record = _record_or_404(project_id)
+    job = jobs.get(project_id)
+    if job is None:
+        return {"projectId": project_id, "state": "not_started", "status": record.status,
+                "stages": jobs.empty_stages(), "error": None}
+    return {**job, "status": record.status}

@@ -23,7 +23,7 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 
@@ -93,10 +93,26 @@ def mint_join_token(room: str, identity: str) -> LiveKitTokenResponse:
 @livekit_router.post("/livekit-token", response_model=LiveKitTokenResponse)
 def issue_livekit_token(request: LiveKitTokenRequest) -> LiveKitTokenResponse:
     """POST /agent/livekit-token — mint a room-join token for the frontend's
-    LiveKit client to use (see apps/web/src/hooks/useLiveKitVoice.ts, once
-    built). Raises FastAPI's normal 500 path on LiveKitConfigurationError,
-    unlike /agent/command's graceful status="error" pattern — there is no
-    AgentCommandResponse-shaped contract for this endpoint since it isn't
-    running the agent, it's issuing a transport credential.
+    LiveKit client (apps/web/src/hooks/useVoiceInput.ts).
+
+    "LiveKit isn't configured" is a deployment fact, not a crash, so it
+    answers 503 in main.py's flat `{"error": ...}` shape rather than an
+    opaque 500. The editor treats that specific answer as "use the browser's
+    own speech recognition instead" — a deliberate fallback path, so it must
+    be distinguishable from a real failure.
+
+    Deliberately NOT an AgentCommandResponse: this endpoint issues a
+    transport credential, it does not run the agent, and dressing it in the
+    agent's envelope would imply a turn happened.
     """
-    return mint_join_token(request.room, request.identity)
+    try:
+        return mint_join_token(request.room, request.identity)
+    except LiveKitConfigurationError as exc:
+        raise HTTPException(
+            503,
+            {
+                "error": "livekit_not_configured",
+                "detail": str(exc),
+                "fallback": "browser_speech_recognition",
+            },
+        ) from exc

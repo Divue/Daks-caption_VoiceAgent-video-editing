@@ -95,8 +95,15 @@ function App() {
       addEntry('Voice input stopped')
       return
     }
-    addEntry('Voice input started')
-    void voice.start()
+    // Which transport actually started is logged, not assumed: LiveKit falls back to the
+    // browser's own recognition when it is not configured, and the log must not imply we are
+    // running a service we are not.
+    void voice.start().then((result) => {
+      if (result === 'livekit') addEntry('Listening (LiveKit)')
+      else if (result === 'browser') addEntry('Listening (browser speech recognition)')
+      else if (result === 'denied') addEntry('Microphone blocked by the browser', 'error')
+      else addEntry('No microphone transport available', 'error')
+    })
   }
 
   function handleSubmitCommand(command: string) {

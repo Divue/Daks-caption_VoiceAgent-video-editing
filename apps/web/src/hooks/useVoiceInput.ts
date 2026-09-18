@@ -22,12 +22,16 @@ import type { MicStatus } from '@/hooks/useAgentActivity'
  * claims to be listening when it is not.
  */
 
+/** What `start()` actually managed to do — returned rather than read back off `status`,
+ *  which a caller's closure would see one render stale. */
+export type VoiceStartResult = 'livekit' | 'browser' | 'denied' | 'unavailable'
+
 interface UseVoiceInputResult {
   status: MicStatus
   /** Speech recognised so far but not yet final. Shown to the user, never submitted. */
   interim: string | null
   transport: 'livekit' | 'browser' | null
-  start: () => Promise<void>
+  start: () => Promise<VoiceStartResult>
   stop: () => void
 }
 
@@ -177,7 +181,7 @@ export function useVoiceInput(onTranscript: (text: string) => void): UseVoiceInp
     setTransport('livekit')
   }, [])
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (): Promise<VoiceStartResult> => {
     setInterim(null)
     setStatus('listening')
 
@@ -188,13 +192,14 @@ export function useVoiceInput(onTranscript: (text: string) => void): UseVoiceInp
       stream.getTracks().forEach((track) => track.stop())
     } catch (cause) {
       const name = cause instanceof DOMException ? cause.name : ''
-      setStatus(name === 'NotAllowedError' || name === 'SecurityError' ? 'denied' : 'error')
-      return
+      const denied = name === 'NotAllowedError' || name === 'SecurityError'
+      setStatus(denied ? 'denied' : 'error')
+      return denied ? 'denied' : 'unavailable'
     }
 
     try {
       await startLiveKit()
-      return
+      return 'livekit'
     } catch (cause) {
       // Not configured, not deployed, or unreachable. Fall back rather than failing the feature —
       // and say so, so nobody believes LiveKit is working when it is not.
@@ -203,7 +208,11 @@ export function useVoiceInput(onTranscript: (text: string) => void): UseVoiceInp
       roomRef.current = null
     }
 
-    if (!startBrowser()) setStatus('error')
+    if (!startBrowser()) {
+      setStatus('error')
+      return 'unavailable'
+    }
+    return 'browser'
   }, [startLiveKit, startBrowser])
 
   return { status, interim, transport, start, stop }

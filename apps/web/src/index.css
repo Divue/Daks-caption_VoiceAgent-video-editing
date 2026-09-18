@@ -177,7 +177,7 @@
  * Ported from the standalone voice-video-editor prototype's tailwind.config.ts (a Tailwind v3
  * JS config) into this project's Tailwind v4 CSS-based theme. Namespaced under names (canvas,
  * ink-*, signal, precision, display/heading/body/label/mono-sm) that don't overlap the shadcn
- * tokens above, so the editor's look is unaffected — see design.md for the source spec.
+ * tokens above, so the editor's look is unaffected — see LANDING_DESIGN.md for the source spec.
  */
 @theme {
   --color-canvas: #0a0a0c;

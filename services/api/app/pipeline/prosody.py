@@ -95,7 +95,8 @@ def analyze(wav_path: str, words: list[dict]) -> list[dict]:
     fallback = statistics.median(voiced_pitch) if voiced_pitch else 0.0
     pitch = [p if p == p else fallback for p in pitch]
 
-    median_rate = statistics.median(rate)
+    # All-zero spans (Sarvam text but no Transcribe timings) would make the median 0.
+    median_rate = statistics.median(rate) or max(statistics.fmean(rate), 1.0)
     loud_z, pitch_z = _z(loudness), _z(pitch)
 
     out = []

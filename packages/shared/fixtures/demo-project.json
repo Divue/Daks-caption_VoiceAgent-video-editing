@@ -8,7 +8,7 @@
   "words": [
     {
       "id": "w1",
-      "text": "Hellooooo",
+      "text": "Hello",
       "startMs": 300,
       "endMs": 1350,
       "emphasis": true,
@@ -191,7 +191,7 @@
     },
     {
       "id": "w14",
-      "text": "Whaaaat",
+      "text": "What",
       "startMs": 7000,
       "endMs": 7900,
       "emphasis": true,

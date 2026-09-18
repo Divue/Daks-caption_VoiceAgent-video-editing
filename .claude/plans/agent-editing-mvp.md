@@ -61,6 +61,14 @@ disagree, the code wins, and the plan should name the gap rather than paper over
 
 ---
 
+## What is already right — do not redesign it
+
+P4's core decisions are sound and the plan should build on them, not replace them: tools return
+patches instead of persisting; every tool result is validated against the real `Project` schema
+before it is returned; an unknown `wordId` is a tool error rather than a silent no-op; the loop is
+capped; and the status enum (`ok` / `unsupported` / `error` / `not_implemented`) lets the agent admit
+it cannot do something. The criticisms below are about granularity and readiness, not architecture.
+
 ## The architectural lever
 
 **The agent does not save anything. The editor does.**
@@ -132,7 +140,11 @@ P4 has a LiveKit worker and an STT provider. Plan P3's half:
 - what happens to a half-applied turn when the user interrupts
 
 Note `CLAUDE.md`'s stack says Transcribe + Bedrock; **LiveKit is new.** Flag it as a decision for the
-lead rather than assuming it.
+lead rather than assuming it, and weigh it against the cheaper path: `/agent/voice-command` already
+takes a **transcript, not audio**, so push-to-talk in the browser → Transcribe → that endpoint gets
+talk-and-edit working with no realtime transport and no extra service. Say what LiveKit buys that the
+demo actually needs — barge-in and partial transcripts are real benefits, but they are not free in a
+3-day MVP.
 
 ## Part F — new editor features worth building, and the tools P4 would wrap
 
@@ -192,11 +204,15 @@ zoom, music or object tracking.
 ## Part G — the thing the agent most obviously cannot do
 
 `Preset` is not stored, so the emphasis **face**, per-emotion styling, stretch tuning, reveal mode,
-alignment and the auto-emphasis interval have no per-word home and cannot be persisted at all.
+alignment, glow layers, the auto-emphasis interval and **`wordsPerLine`** have no per-word home and
+cannot be persisted at all.
 
 "Make the emphasised words bigger", "make angry words shake harder", "reveal the words one at a
-time" are among the most natural things a creator would say, and every one is currently impossible.
-"Make every word Anton" works; "make emphasised words Anton" does not.
+time", **"fewer words per line"** are among the most natural things a creator would say, and every
+one is currently impossible. "Make every word Anton" works; "make emphasised words Anton" does not.
+
+`wordsPerLine` deserves singling out: it is a constant request in short-form captioning, it changes
+the whole shape of the output, and it is one integer.
 
 **Evaluate storing preset overrides on the `Project`.** That is a schema change: `project.ts` +
 `schema.py` + a migration, lead sign-off, and it touches P1's folder. Give the cost, the smallest
@@ -224,7 +240,9 @@ Implementation. Export / Remotion (P2, still 501). Auth. Editing inside
 A plan document at `.claude/plans/…`, containing:
 
 1. **The MVP** — a sequenced list of 1–2h P3 tasks that gets typed-command editing working end to
-   end, with undo and honest failure. Voice after text, not before.
+   end, with undo and honest failure. The blocking order is: **rebase P4's branch onto schema v2 →
+   mount the agent router → typed commands applying with undo → only then voice.** Voice layered on
+   a loop that cannot undo just makes the failures louder. Depart from that order only with a reason.
 2. **The tool/feature catalogue** — the Part F table, ready for P4 to turn into tools.
 3. **Decisions needing the lead** — the stale-branch rebase, who mounts the agent router, the
    overlays endpoint, preset-override storage, LiveKit. Each with a recommendation, not just a

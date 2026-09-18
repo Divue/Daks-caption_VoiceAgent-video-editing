@@ -20,8 +20,7 @@ import json
 import os
 from dataclasses import dataclass, field
 
-import boto3
-
+from .. import aws_fallback
 from ..costs import cost_event
 
 TONES = ("neutral", "hype", "anger")
@@ -142,7 +141,7 @@ def analyze(words: list[dict], *, model_id: str | None = None) -> Semantics:
     try:
         # client creation included: bad credentials must fall back, not fail the run
         model_id = model_id or os.environ["BEDROCK_MODEL_ID"]
-        client = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_REGION", "ap-south-1"))
+        client = aws_fallback.client("bedrock-runtime", os.environ.get("AWS_REGION", "ap-south-1"))
         with cost_event(stage="tag", service="bedrock", model_id=model_id) as ev:
             response = client.converse(
                 modelId=model_id,

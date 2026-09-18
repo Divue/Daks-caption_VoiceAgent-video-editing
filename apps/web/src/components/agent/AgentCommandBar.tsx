@@ -1,23 +1,22 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Send, X } from 'lucide-react'
+import { ChevronDown, Send, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { DEFAULT_CHIPS, DEMO_PROMPTS, isRefusalPrompt } from '@/lib/demo-prompts'
 import type { MicStatus } from '@/hooks/useAgentActivity'
 import { MicButton } from './MicButton'
 
 /**
- * Things this app can actually do. Suggesting a feature we do not have is the same sin as drawing
- * a timeline for an editor we are not building (audit 16 §1, §2.16), so every chip here maps to a
- * real tool the agent can call.
+ * The chips are the eleven prompts from `lib/demo-prompts.ts`, which mirror the ones
+ * `services/api/scripts/agent_demo.py` runs against the real agent. Two rules hold here:
+ * suggesting a feature we do not have is the same sin as drawing a timeline for an editor we are
+ * not building (audit 16 §1, §2.16), and a reworded prompt is an untested prompt — so a chip
+ * inserts the tested string verbatim, and the one prompt the agent is meant to REFUSE is labelled
+ * as a refusal instead of being dressed up as a capability.
  */
-const SUGGESTIONS = [
-  'Make that line angry',
-  'Emphasise the loudest word in each line',
-  'Switch to the Chamak preset',
-  'Push the captions 200ms later',
-]
+const REFUSAL_LABEL = "won't work — on purpose"
 
 interface AgentCommandBarProps {
   micStatus: MicStatus
@@ -41,6 +40,7 @@ export function AgentCommandBar({
   onCancel,
 }: AgentCommandBarProps) {
   const [value, setValue] = useState('')
+  const [showAll, setShowAll] = useState(false)
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -48,6 +48,13 @@ export function AgentCommandBar({
     if (!trimmed) return
     onSubmitCommand(trimmed)
     setValue('')
+    setShowAll(false)
+  }
+
+  /** A chip loads the command; it never sends it. The presenter presses enter themselves. */
+  function pick(command: string) {
+    setValue(command)
+    setShowAll(false)
   }
 
   const status = busy
@@ -116,18 +123,72 @@ export function AgentCommandBar({
             {status.text}
           </p>
         ) : (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="eyebrow mr-1 text-muted-foreground/70">Try</span>
-            {SUGGESTIONS.map((suggestion) => (
+          /* Three chips inline — the bar is the headline control and must stay one line tall.
+             The other eight (including the refusal) are one click away in a list that closes as
+             soon as a command is loaded. */
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="eyebrow mr-1 text-muted-foreground/70">Try</span>
+              {DEFAULT_CHIPS.map((prompt) => (
+                <button
+                  key={prompt.n}
+                  type="button"
+                  onClick={() => pick(prompt.command)}
+                  title={prompt.title}
+                  className="rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground active:scale-[0.98]"
+                >
+                  {prompt.command}
+                </button>
+              ))}
               <button
-                key={suggestion}
                 type="button"
-                onClick={() => setValue(suggestion)}
-                className="rounded-md border border-border/70 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground active:scale-[0.98]"
+                onClick={() => setShowAll((open) => !open)}
+                aria-expanded={showAll}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground/80 transition-colors hover:text-foreground"
               >
-                {suggestion}
+                {showAll ? 'Fewer' : `All ${DEMO_PROMPTS.length}`}
+                <ChevronDown
+                  className={cn('size-3 transition-transform', showAll && 'rotate-180')}
+                />
               </button>
-            ))}
+            </div>
+
+            {showAll ? (
+              <ul className="max-h-44 overflow-y-auto rounded-md border border-border/60 bg-background/40 p-1">
+                {DEMO_PROMPTS.map((prompt) => {
+                  const refusal = isRefusalPrompt(prompt)
+                  return (
+                    <li key={prompt.n}>
+                      <button
+                        type="button"
+                        onClick={() => pick(prompt.command)}
+                        className="flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-left text-xs transition-colors hover:bg-muted/60"
+                      >
+                        <span className="w-4 shrink-0 text-right tabular-nums text-muted-foreground/50">
+                          {prompt.n}
+                        </span>
+                        <span
+                          className={cn(
+                            'min-w-0 flex-1 truncate',
+                            refusal ? 'text-muted-foreground/70' : 'text-foreground/90',
+                          )}
+                        >
+                          {prompt.command}
+                        </span>
+                        <span
+                          className={cn(
+                            'shrink-0 text-[11px]',
+                            refusal ? 'text-muted-foreground' : 'text-muted-foreground/60',
+                          )}
+                        >
+                          {refusal ? REFUSAL_LABEL : prompt.title}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : null}
           </div>
         )}
       </div>

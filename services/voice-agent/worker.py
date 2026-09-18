@@ -61,7 +61,14 @@ class TranscriptionOnlyAgent(Agent):
 server = AgentServer()
 
 
-@server.rtc_session(agent_name="caption-editor-voice-transport")
+# NO agent_name on purpose. Setting one turns OFF LiveKit's automatic dispatch: a named
+# agent only ever joins rooms something explicitly dispatches it to, so with a name here the
+# worker registered happily, the browser joined happily, and no transcriber ever appeared —
+# a silent failure that looks exactly like a working system. Verified against a real
+# livekit-server: named -> the room stays empty; unnamed -> the agent joins on its own.
+# This product has exactly one kind of room and it always wants transcription, so automatic
+# dispatch is the honest default and the token endpoint stays a token endpoint.
+@server.rtc_session()
 async def entrypoint(ctx: agents.JobContext) -> None:
     try:
         stt_plugin = get_stt_plugin()

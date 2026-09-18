@@ -18,6 +18,7 @@ import { Project } from '@captions/shared'
 import { applyAgentPatch, createInitialState, projectReducer } from '../src/state/project-reducer'
 import type { AgentPatch, ProjectHistoryState } from '../src/state/project-reducer'
 import { summarisePatches, summariseTurn } from '../src/lib/agent-summary'
+import { DEFAULT_CHIPS, DEMO_PROMPTS, isRefusalPrompt } from '../src/lib/demo-prompts'
 
 let failures = 0
 function check(label: string, ok: boolean, detail = '') {
@@ -195,6 +196,51 @@ console.log('\nagent summary — a change, not JSON')
     fixture,
   )
   check('a cleared style key says cleared', cleared[0]?.includes('cleared'), cleared[0])
+}
+
+console.log('\ndemo prompts — the tested set cannot drift')
+{
+  // `lib/demo-prompts.ts` is a hand-copy of `services/api/scripts/agent_demo.py`, and the whole
+  // value of it is that the strings are the ones that were actually run against Bedrock. Nothing
+  // here can prove a string still matches the Python (different language, different process), but
+  // it can stop the half-edit: a dropped prompt, a duplicate left behind by a copy-paste, an empty
+  // command, or a refusal that quietly became a suggestion.
+  check('eleven prompts', DEMO_PROMPTS.length === 11, `got ${DEMO_PROMPTS.length}`)
+  check(
+    'numbered 1..11 in order',
+    DEMO_PROMPTS.every((p, i) => p.n === i + 1),
+    DEMO_PROMPTS.map((p) => p.n).join(','),
+  )
+  check(
+    'every command is non-empty',
+    DEMO_PROMPTS.every((p) => p.command.trim().length > 0),
+  )
+  check(
+    'every title and reason is non-empty',
+    DEMO_PROMPTS.every((p) => p.title.trim().length > 0 && p.why.trim().length > 0),
+  )
+  check(
+    'commands are unique',
+    new Set(DEMO_PROMPTS.map((p) => p.command)).size === DEMO_PROMPTS.length,
+  )
+  check('titles are unique', new Set(DEMO_PROMPTS.map((p) => p.title)).size === DEMO_PROMPTS.length)
+  check(
+    'no command has leading/trailing whitespace',
+    DEMO_PROMPTS.every((p) => p.command === p.command.trim()),
+  )
+
+  const refusals = DEMO_PROMPTS.filter(isRefusalPrompt)
+  check('exactly one prompt is tagged as the refusal', refusals.length === 1, `got ${refusals.length}`)
+  check('the refusal is prompt 11', refusals[0]?.n === 11, `got ${refusals[0]?.n}`)
+  check(
+    'every prompt carries at least one tag',
+    DEMO_PROMPTS.every((p) => p.tags.length > 0),
+  )
+
+  // The inline chips are the ones shown without a click, so the refusal must not be among them.
+  check('the default chips are real prompts', DEFAULT_CHIPS.every((c) => DEMO_PROMPTS.includes(c)))
+  check('there are 1-4 default chips', DEFAULT_CHIPS.length >= 1 && DEFAULT_CHIPS.length <= 4, `got ${DEFAULT_CHIPS.length}`)
+  check('no default chip is the refusal', !DEFAULT_CHIPS.some(isRefusalPrompt))
 }
 
 console.log(failures === 0 ? '\nAll checks passed.\n' : `\n${failures} check(s) FAILED.\n`)

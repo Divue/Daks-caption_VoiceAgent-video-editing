@@ -1,4 +1,5 @@
-# Local dev: only the Python API runs in Docker. Web and Remotion run natively (npm run dev).
+# Local dev: the Python API, the LiveKit dev server and the voice worker run in Docker.
+# Web and Remotion run natively (npm run dev).
 services:
   api:
     build:
@@ -17,3 +18,33 @@ services:
     # Note: --reload restarts the process on every save, which kills a running pipeline job.
     # The job then shows as failed ("worker lost") once its heartbeat goes stale.
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
+
+  # LiveKit in --dev mode: an in-process, single-node server with the well-known
+  # placeholder credentials devkey/secret. It exists so voice works on a laptop with no
+  # LiveKit Cloud account and no signup. These credentials are public and must never be
+  # used anywhere but local dev.
+  livekit:
+    image: livekit/livekit-server:latest
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "7880:7880"   # signalling/HTTP — this is the URL the BROWSER connects to
+      - "7881:7881"   # RTC over TCP
+      - "7882:7882/udp"   # RTC over UDP
+
+  # Speech-to-text only: joins the room, transcribes the mic, and lets LiveKit forward the
+  # text back on the `lk.transcription` stream. No LLM, no TTS. The browser takes that
+  # transcript and calls POST /agent/voice-command — the same planner a typed command uses.
+  voice-agent:
+    build: ./services/voice-agent
+    env_file: .env
+    volumes:
+      # Source mounted so a worker edit is a restart, not a rebuild — the image bakes the
+      # code in, which silently serves a stale worker if you only `restart`.
+      - ./services/voice-agent:/srv
+      - ~/.aws:/root/.aws:ro   # AWS Transcribe streaming credentials
+    environment:
+      # Inside the compose network the worker reaches LiveKit by service name; the browser
+      # reaches it on localhost. The API mints tokens carrying the browser-facing URL.
+      LIVEKIT_URL: ws://livekit:7880
+    depends_on:
+      - livekit

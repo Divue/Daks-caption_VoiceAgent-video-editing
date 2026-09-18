@@ -12,6 +12,42 @@ process that joins LiveKit rooms, not an HTTP API — it does not run inside
 always-on host — App Runner's existing container is not a fit) is a P1
 decision, not resolved by this code.
 
+## Running it locally (the whole voice path, no LiveKit account)
+
+`docker compose up -d` brings up three services: `api`, `livekit` and `voice-agent`.
+The `livekit` service is `livekit-server --dev`, a single-node server using the
+well-known placeholder credentials `devkey` / `secret` that it prints on startup.
+They are public, they are in `.env.example`, and they must never be used anywhere
+but a laptop.
+
+Two URLs for the same server, on purpose:
+
+| Who | LIVEKIT_URL | Why |
+|---|---|---|
+| the browser | `ws://localhost:7880` (`.env`, echoed by the token endpoint) | the browser is not on the compose network |
+| this worker | `ws://livekit:7880` (set in `docker-compose.yml`) | service name, inside the network |
+
+With no `LIVEKIT_*` set at all, `POST /agent/livekit-token` answers
+`503 livekit_not_configured` and the editor falls back to the browser's own
+SpeechRecognition. That is a supported path, not a broken one.
+
+### Verifying it actually works
+
+`scripts/check_voice_e2e.py` speaks a real phrase into a real room and asserts a
+transcript comes back — see its docstring for the two commands. Everything in that
+path is real except the mouth (the audio is rendered by AWS Polly rather than spoken).
+Use it before a demo: every failure mode in this path is silent, and "voice doesn't
+work" is indistinguishable from "the agent wasn't dispatched" without it.
+
+### Automatic dispatch — do not add an `agent_name`
+
+`@server.rtc_session()` is deliberately unnamed. Giving a worker an `agent_name`
+turns OFF LiveKit's automatic dispatch: the worker registers, the browser joins, and
+no transcriber ever appears — verified against a real server. A named agent would
+need something to explicitly dispatch it per room, which would drag the token
+endpoint into agent orchestration for no benefit here, since this product has exactly
+one kind of room and it always wants transcription.
+
 ## Why it exists
 
 The AI/voice agent's core (`services/api/app/agent/`) is fully built and

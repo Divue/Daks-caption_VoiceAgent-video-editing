@@ -53,3 +53,40 @@ def test_get_rewrites_video_url_to_presigned(aws, demo_doc):
     url = client().get("/projects/demo-project").json()["videoUrl"]
     assert url.startswith("https://test-bucket.s3.ap-south-1.amazonaws.com/t1/projects/demo-project/source.mp4?")
     assert "X-Amz-Signature" in url
+
+
+def _seed(demo_doc):
+    project = Project.model_validate(demo_doc)
+    projects.put_project(project.id, project, expected_version=None, manual_edit=False, seed=True)
+
+
+def test_patch_word_roundtrip_and_stale_409(aws, demo_doc):
+    _seed(demo_doc)
+    c = client()
+    r = c.patch("/projects/demo-project/words/w2", json={"text": "bhai", "style": {"color": "#ff2d55"}, "version": 1})
+    assert r.status_code == 200 and r.json()["version"] == 2 and r.headers["X-Project-Version"] == "2"
+    assert c.get("/projects/demo-project").json()["words"][1]["text"] == "bhai"
+    stale = c.patch("/projects/demo-project/words/w2", json={"text": "overwrite", "version": 1})
+    assert stale.status_code == 409 and stale.json()["currentVersion"] == 2
+    assert c.get("/projects/demo-project").json()["words"][1]["text"] == "bhai"
+
+
+def test_patch_word_rejections(aws, demo_doc):
+    _seed(demo_doc)
+    c = client()
+    assert c.patch("/projects/demo-project/words/w2", json={"stretch": 0.2}).status_code == 422
+    assert c.patch("/projects/demo-project/words/w2", json={"style": {"x": 150}}).status_code == 422
+    assert c.patch("/projects/demo-project/words/w2", json={"bogus": 1}).status_code == 422
+    assert c.patch("/projects/demo-project/words/w2", json={}).status_code == 400
+    assert c.patch("/projects/demo-project/words/w999", json={"text": "x"}).status_code == 404
+    assert c.patch("/projects/nope/words/w1", json={"text": "x"}).status_code == 404
+    assert projects.get("demo-project").version == 1
+
+
+def test_patch_project_preset(aws, demo_doc):
+    _seed(demo_doc)
+    r = client().patch("/projects/demo-project", json={"presetId": "hinglish-bold", "settings": {"emojis": False}})
+    assert r.status_code == 200
+    body = r.json()["project"]
+    assert body["presetId"] == "hinglish-bold" and body["settings"] == {"emojis": False, "emotionLayer": True}
+    assert client().patch("/projects/demo-project", json={"presetId": "comic-sans"}).status_code == 422

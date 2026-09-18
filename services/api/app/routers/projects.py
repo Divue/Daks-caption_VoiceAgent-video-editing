@@ -11,11 +11,11 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Response
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .. import s3
 from ..jobs import runner
-from ..schema import PresetId, Project
+from ..schema import Emotion, PresetId, Project, Signals
 from ..store import jobs, projects
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -109,3 +109,61 @@ def project_status(project_id: str):
         return {"projectId": project_id, "state": "not_started", "status": record.status,
                 "stages": jobs.empty_stages(), "error": None}
     return {**job, "status": record.status}
+
+
+class WordPatch(BaseModel):
+    """Any subset of the mutable Word fields. `style` merges key-by-key; a null style key removes it.
+    `version` opts in to conflict detection; omitted means last write wins."""
+    model_config = ConfigDict(extra="forbid")
+    text: Optional[str] = None
+    startMs: Optional[int] = None
+    endMs: Optional[int] = None
+    emphasis: Optional[bool] = None
+    emotion: Optional[Emotion] = None
+    stretch: Optional[float] = None
+    emoji: Optional[str] = None
+    style: Optional[dict] = None
+    signals: Optional[Signals] = None
+    version: Optional[int] = None
+
+
+class ProjectPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    presetId: Optional[PresetId] = None
+    settings: Optional[dict] = None
+    version: Optional[int] = None
+
+
+def _apply(response: Response, project_id: str, fn, patch: dict, version: Optional[int]):
+    try:
+        return fn(project_id, patch, version)
+    except projects.NotFound:
+        raise HTTPException(404, {"error": "not_found", "projectId": project_id}) from None
+    except projects.WordNotFound as exc:
+        raise HTTPException(404, {"error": "word_not_found", "wordId": str(exc)}) from None
+    except projects.StaleVersion as exc:
+        raise HTTPException(409, {"error": "stale_version", "currentVersion": exc.current_version}) from None
+    except ValidationError as exc:
+        raise HTTPException(422, {"error": "invalid_project", "detail": exc.errors(include_url=False,
+                                                                                  include_context=False)}) from None
+
+
+@router.patch("/{project_id}/words/{word_id}")
+def patch_word(project_id: str, word_id: str, req: WordPatch, response: Response):
+    patch = req.model_dump(exclude_unset=True, exclude={"version"})
+    if not patch:
+        raise HTTPException(400, {"error": "empty_patch"})
+    word, version = _apply(response, project_id,
+                           lambda pid, p, v: projects.patch_word(pid, word_id, p, v), patch, req.version)
+    _version_headers(response, version, projects.SCHEMA_VERSION)
+    return {"word": word.model_dump(mode="json", exclude_none=True), "version": version}
+
+
+@router.patch("/{project_id}")
+def patch_project(project_id: str, req: ProjectPatch, response: Response):
+    patch = req.model_dump(exclude_unset=True, exclude={"version"})
+    if not patch:
+        raise HTTPException(400, {"error": "empty_patch"})
+    project, version = _apply(response, project_id, projects.patch_project, patch, req.version)
+    _version_headers(response, version, projects.SCHEMA_VERSION)
+    return {"project": _project_body(_record_or_404(project_id), project), "version": version}

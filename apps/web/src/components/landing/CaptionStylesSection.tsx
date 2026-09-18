@@ -1,42 +1,64 @@
+import { PRESETS } from '@captions/shared'
+import type { PresetId } from '@captions/shared'
+import { CaptionLine } from '@/components/captions/CaptionLine'
+import type { CaptionLineWord } from '@/components/captions/CaptionLine'
 import { AnimatedSection } from './AnimatedSection'
+import { RISE, stagger } from './reveal-classes'
+import { SectionHeader } from './SectionHeader'
+import { SectionSeam } from './SectionSeam'
+import { SpotlightCard } from './SpotlightCard'
+import { VideoFrame } from './VideoFrame'
+import { STILL_FOOTAGE } from './video-shapes'
 
-/** Illustrative marketing style categories — not the editor's real PRESETS data. */
-const STYLES = [
-  { name: 'Modern', fontFamily: 'Inter', weight: 600, color: '#F5F5F7', uppercase: false },
-  { name: 'Bold', fontFamily: 'Poppins', weight: 800, color: '#FFFFFF', uppercase: true },
-  { name: 'Karaoke', fontFamily: 'Poppins', weight: 700, color: '#FFE600', uppercase: false },
-  { name: 'Cinematic', fontFamily: 'Instrument Serif', weight: 400, color: '#FFFFF0', uppercase: false },
+const PRESET_ORDER: PresetId[] = ['kathmandu', 'mrbeast', 'minimal', 'hinglish-bold']
+
+/** The same line in every preset: plain words plus one emphasised word. */
+const SAMPLE: CaptionLineWord[] = [
+  { text: 'ab' },
+  { text: 'ye' },
+  { text: 'sunta', emphasis: true },
+  { text: 'hai' },
 ]
 
+/**
+ * The editor's real presets (packages/shared PRESETS), each rendering the same line.
+ * Presets are the base look; emphasis and emotion layer on top of whichever one you pick.
+ */
 export function CaptionStylesSection() {
   return (
-    <section id="templates" className="border-t py-16">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <AnimatedSection>
-          <p className="text-center text-sm font-semibold text-primary">Caption styles</p>
-        </AnimatedSection>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STYLES.map((style, index) => (
-            <AnimatedSection key={style.name} style={{ transitionDelay: `${index * 75}ms` }}>
-              <div className="rounded-xl border p-3">
-                <div
-                  className="flex h-20 items-center justify-center overflow-hidden rounded-md bg-neutral-900 px-2 text-center"
-                  style={{
-                    fontFamily: style.fontFamily,
-                    fontWeight: style.weight,
-                    color: style.color,
-                    textTransform: style.uppercase ? 'uppercase' : 'none',
-                    fontSize: 18,
-                  }}
-                >
-                  Hellooooo bhai
-                </div>
-                <p className="mt-2 text-center text-sm font-medium text-foreground">{style.name}</p>
-              </div>
-            </AnimatedSection>
+    <section id="templates" className="relative">
+      <div className="mx-auto max-w-300 px-4 py-24 sm:px-6 lg:py-32">
+        <SectionHeader
+          eyebrow="Styles"
+          title="Pick a base look. The emotion rides on top."
+          lede="Four presets to start from. Emphasis, anger and stretch keep working whichever you choose."
+        />
+
+        <ul className="mt-16 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {PRESET_ORDER.map((presetId, index) => (
+            <li key={presetId}>
+              <AnimatedSection variant="scale" delay={index * 110}>
+                <SpotlightCard as="figure" className="flex flex-col gap-3 rounded-[20px] border border-hairline bg-surface p-3">
+                  <VideoFrame shape="square" className="w-full rounded-xl">
+                    <div className="absolute inset-0" style={STILL_FOOTAGE} />
+                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2">
+                      <div className={RISE} style={stagger(index, 110, 350)}>
+                        <CaptionLine presetId={presetId} words={SAMPLE} scale={1.5} />
+                      </div>
+                    </div>
+                  </VideoFrame>
+                  <figcaption className="flex items-center justify-between px-1 pb-1">
+                    <span className="text-sm font-medium text-foreground">{PRESETS[presetId].name}</span>
+                    <span className="font-mono text-[11px] text-faint">{PRESETS[presetId].wordsPerLine} words/line</span>
+                  </figcaption>
+                </SpotlightCard>
+              </AnimatedSection>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
+
+      <SectionSeam />
     </section>
   )
 }

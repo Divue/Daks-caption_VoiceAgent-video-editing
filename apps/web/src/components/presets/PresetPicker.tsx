@@ -1,10 +1,12 @@
+import { PRESETS } from '@captions/shared'
+import type { PresetId } from '@captions/shared'
+import { CaptionLine } from '@/components/captions/CaptionLine'
+import type { CaptionLineWord } from '@/components/captions/CaptionLine'
 import { cn } from '@/lib/utils'
 import { useProject } from '@/state/project-context'
-import { PRESETS } from '@captions/shared'
-import type { Style } from '@captions/shared'
 
-/** Scales a preset's authored font size down to fit the small preview box while keeping presets visually distinct. */
-const PREVIEW_SCALE = 0.35
+/** Same line in every preset: plain words plus one emphasised word, so the emphasis layer shows. */
+const SAMPLE: CaptionLineWord[] = [{ text: 'ab' }, { text: 'ye' }, { text: 'sunta', emphasis: true }, { text: 'hai' }]
 
 export function PresetPicker() {
   const { project, dispatch } = useProject()
@@ -20,15 +22,17 @@ export function PresetPicker() {
             aria-pressed={selected}
             onClick={() => dispatch({ type: 'SET_PRESET', presetId: preset.id })}
             className={cn(
-              'flex flex-col gap-3 rounded-xl border bg-card p-3 text-left shadow-sm transition-colors hover:bg-muted',
-              selected && 'border-primary bg-primary/5',
+              'flex flex-col gap-3 rounded-xl border p-3 text-left transition-colors duration-150',
+              selected
+                ? 'border-signal/50 bg-surface-raised'
+                : 'border-hairline bg-surface hover:border-hairline-strong',
             )}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-semibold text-card-foreground">{preset.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{preset.wordsPerLine} words/line</span>
+              <span className="text-sm font-semibold text-foreground">{preset.name}</span>
+              <span className="shrink-0 font-mono text-[11px] text-faint">{preset.wordsPerLine} words/line</span>
             </div>
-            <PresetPreview style={preset.base} />
+            <PresetPreview presetId={preset.id} />
           </button>
         )
       })}
@@ -36,19 +40,14 @@ export function PresetPicker() {
   )
 }
 
-function PresetPreview({ style }: { style: Style }) {
+/** A short 2:1 frame (size container) rendering the sample through the shared CaptionLine. */
+function PresetPreview({ presetId }: { presetId: PresetId }) {
   return (
     <div
-      className="flex h-16 items-center justify-center overflow-hidden rounded-md bg-black/85 px-2 text-center"
-      style={{
-        fontFamily: style.fontFamily,
-        fontSize: style.fontSize * PREVIEW_SCALE,
-        color: style.color,
-        fontWeight: style.weight,
-        textTransform: style.uppercase ? 'uppercase' : 'none',
-      }}
+      className="relative flex aspect-[2/1] items-center overflow-hidden rounded-lg bg-background ring-1 ring-white/6"
+      style={{ containerType: 'size' }}
     >
-      Hellooooo bhai
+      <CaptionLine presetId={presetId} words={SAMPLE} scale={1.4} className="w-full" />
     </div>
   )
 }

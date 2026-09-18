@@ -1,36 +1,39 @@
-import { useProject } from '@/state/project-context'
 import { PRESETS } from '@captions/shared'
-import type { Style } from '@captions/shared'
+import { CaptionLine } from '@/components/captions/CaptionLine'
+import { useProject } from '@/state/project-context'
 
-/** Renders real project words with real preset styling — an honest live preview, not fabricated caption text. */
-export function CaptionPreviewOverlay() {
+interface CaptionPreviewOverlayProps {
+  /** The group containing this word is shown; with nothing selected, the first group. */
+  selectedWordId: string | null
+}
+
+/**
+ * Real project words rendered with the real preset and every layer (emphasis, emotion,
+ * the word's own style override) through the shared CaptionLine — the same renderer the
+ * landing page uses. Shows one caption group of `preset.wordsPerLine` words. Sizes are in
+ * cqmin, so the parent frame must be a size container.
+ */
+export function CaptionPreviewOverlay({ selectedWordId }: CaptionPreviewOverlayProps) {
   const { project } = useProject()
-  const preset = PRESETS[project.presetId]
-  const words = project.words.slice(0, 3)
+  const perLine = PRESETS[project.presetId].wordsPerLine
+  const selectedIndex = Math.max(0, project.words.findIndex((word) => word.id === selectedWordId))
+  const groupStart = Math.floor(selectedIndex / perLine) * perLine
+  const words = project.words.slice(groupStart, groupStart + perLine)
 
   if (words.length === 0) return null
 
   return (
-    <div className="pointer-events-none absolute inset-x-3 bottom-6 flex flex-wrap justify-center gap-x-1.5 gap-y-1 text-center">
-      {words.map((word) => {
-        const style: Style = { ...preset.base, ...(word.emphasis ? preset.emphasis : {}) }
-        return (
-          <span
-            key={word.id}
-            style={{
-              fontFamily: style.fontFamily,
-              color: style.color,
-              fontWeight: style.weight,
-              textTransform: style.uppercase ? 'uppercase' : 'none',
-              fontSize: Math.min(style.fontSize * 0.35, 26),
-              textShadow: '0 1px 4px rgba(0, 0, 0, 0.7)',
-            }}
-          >
-            {word.text}
-            {word.emoji ? ` ${word.emoji}` : ''}
-          </span>
-        )
-      })}
+    <div className="pointer-events-none absolute inset-x-0 bottom-[12%]">
+      <CaptionLine
+        presetId={project.presetId}
+        words={words.map((word) => ({
+          text: word.text,
+          emphasis: word.emphasis,
+          emotion: word.emotion,
+          emoji: word.emoji,
+          style: word.style,
+        }))}
+      />
     </div>
   )
 }

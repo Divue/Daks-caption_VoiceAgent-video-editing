@@ -12,7 +12,7 @@ export function AppHeader({ projectId }: AppHeaderProps) {
   const { navigate } = useRoute()
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-hairline bg-background px-4">
       <div className="flex min-w-0 items-center gap-3">
         <Button
           type="button"
@@ -24,9 +24,9 @@ export function AppHeader({ projectId }: AppHeaderProps) {
           <ArrowLeft className="size-4" />
           <span className="hidden sm:inline">Back to Projects</span>
         </Button>
-        <div className="h-5 w-px bg-border" />
+        <div className="h-5 w-px bg-hairline" />
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-sm font-medium text-foreground">{projectId}</span>
+          <span className="truncate font-mono text-[13px] text-foreground">{projectId}</span>
           <button
             type="button"
             aria-label="Rename project"
@@ -39,12 +39,12 @@ export function AppHeader({ projectId }: AppHeaderProps) {
 
       <div className="flex shrink-0 items-center gap-1.5">
         <UndoRedoControls />
-        <div className="mx-1 h-5 w-px bg-border" />
-        <Button type="button" variant="outline" size="sm" className="gap-1.5">
+        <div className="mx-1 h-5 w-px bg-hairline" />
+        <Button type="button" variant="outline" size="sm" className="gap-1.5 rounded-full">
           <Share2 className="size-4" />
           <span className="hidden sm:inline">Share</span>
         </Button>
-        <Button type="button" size="sm" className="gap-1.5">
+        <Button type="button" size="sm" className="gap-1.5 rounded-full px-4">
           <Download className="size-4" />
           Export
         </Button>

@@ -25,6 +25,7 @@ patches. Remotion renders the JSON for preview (Player) and export (Lambda).
 If a task needs a change outside your folder or to the schema: STOP and tell the human.
 
 ## Rules for every Claude Code session
+- Follow the repo-local rules in `.claude/rules.md`.
 - Read `packages/shared/src/project.ts` before writing code that touches project data.
 - Build and test against `packages/shared/fixtures/demo-project.json` first, real data second.
 - `services/api/app/schema.py` mirrors `project.ts`. They change together, in the same PR, by the lead.
@@ -33,6 +34,8 @@ If a task needs a change outside your folder or to the schema: STOP and tell the
 - Agent tool calls are validated against the schema before being applied. The video transcript is
   passed to the LLM as data (wrapped in tags), never as instructions.
 - Keep tasks small (1–2h), plan first, commit when something works.
+- Keep every source file under 800 lines; split reusable logic into focused modules before a file grows too large.
+- Maintain docs with every feature change, especially route behavior, commands, env vars, and known limitations.
 - No auth, no Step Functions, no object tracking, no general video editing (cut from MVP scope).
 
 ## Stack

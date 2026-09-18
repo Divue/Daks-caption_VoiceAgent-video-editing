@@ -91,8 +91,8 @@ export function UploadDropzone() {
   return (
     <Card
       className={cn(
-        'flex flex-col items-center justify-center gap-2 border-dashed p-4 text-center transition-colors',
-        isDragging && 'border-primary bg-primary/5',
+        'flex flex-col items-center justify-center gap-2 rounded-[20px] border-dashed border-hairline-strong bg-surface p-4 text-center shadow-none transition-colors duration-150',
+        isDragging && 'border-signal bg-signal-dim/40',
       )}
       onDragOver={(event) => {
         event.preventDefault()
@@ -105,12 +105,12 @@ export function UploadDropzone() {
       <UploadCloud className="size-5 text-muted-foreground" />
       <div>
         <p className="text-sm font-medium text-foreground">Upload a video</p>
-        <p className="text-xs text-muted-foreground">or drag and drop it here · MP4, WebM, MOV</p>
+        <p className="font-mono text-[11px] text-faint">or drag and drop · MP4, WebM, MOV</p>
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
+      <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => inputRef.current?.click()}>
         Browse files
       </Button>
-      {fileName && <p className="text-xs text-muted-foreground">Loaded: {fileName}</p>}
+      {fileName && <p className="font-mono text-[11px] text-muted-foreground">Loaded: {fileName}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}
     </Card>
   )

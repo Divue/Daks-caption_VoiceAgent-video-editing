@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PanelLabel } from '@/components/layout/PanelLabel'
 import { Input } from '@/components/ui/input'
 import { useProject } from '@/state/project-context'
 import { TranscriptWordRow } from './TranscriptWordRow'
@@ -18,8 +19,11 @@ export function TranscriptPanel({ selectedWordId, onSelectWord }: TranscriptPane
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 flex-col gap-2 border-b p-3">
-        <p className="text-sm font-semibold text-foreground">Transcript</p>
+      <div className="flex shrink-0 flex-col gap-2 border-b border-hairline p-3">
+        <div className="flex items-baseline justify-between">
+          <PanelLabel>Transcript</PanelLabel>
+          <span className="font-mono text-[11px] text-faint">{project.words.length} words</span>
+        </div>
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -29,7 +33,7 @@ export function TranscriptPanel({ selectedWordId, onSelectWord }: TranscriptPane
       </div>
       <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
         {words.length === 0 ? (
-          <p className="p-2 text-sm text-muted-foreground">No words match "{query}".</p>
+          <p className="p-2 font-mono text-xs text-faint">No words match "{query}".</p>
         ) : (
           words.map((word) => (
             <TranscriptWordRow

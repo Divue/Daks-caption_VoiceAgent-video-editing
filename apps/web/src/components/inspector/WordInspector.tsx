@@ -1,3 +1,5 @@
+import { LayerTags } from '@/components/captions/LayerTags'
+import { PanelLabel } from '@/components/layout/PanelLabel'
 import { formatTimestamp } from '@/lib/format'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,8 +21,8 @@ export function WordInspector({ selectedWordId }: WordInspectorProps) {
   if (!word) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-1 p-8 text-center">
-        <p className="font-medium text-foreground">No word selected</p>
-        <p className="text-sm text-muted-foreground">Select a word in the transcript to edit it.</p>
+        <PanelLabel>No word selected</PanelLabel>
+        <p className="text-sm text-muted-foreground">Pick a word in the transcript to edit it.</p>
       </div>
     )
   }
@@ -30,15 +32,18 @@ export function WordInspector({ selectedWordId }: WordInspectorProps) {
   return (
     <div className="flex flex-col gap-6 overflow-y-auto p-4">
       <div>
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Selected word</p>
-        <p className="truncate text-lg font-semibold text-foreground">{word.text}</p>
-        <p className="text-xs text-muted-foreground tabular-nums">
+        <PanelLabel>Selected word</PanelLabel>
+        <div className="mt-1 flex items-center gap-2">
+          <p className="min-w-0 truncate font-display text-xl font-semibold text-foreground">{word.text}</p>
+          <LayerTags word={word} />
+        </div>
+        <p className="font-mono text-xs text-precision/80 tabular-nums">
           {formatTimestamp(word.startMs)} — {formatTimestamp(word.endMs)}
         </p>
       </div>
 
       <div className="flex flex-col gap-4">
-        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Word properties</p>
+        <PanelLabel>Word properties</PanelLabel>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="word-text">Text</Label>
@@ -86,7 +91,7 @@ export function WordInspector({ selectedWordId }: WordInspectorProps) {
         </div>
       </div>
 
-      <div className="border-t pt-4">
+      <div className="border-t border-hairline pt-4">
         <StyleOverrideFields style={word.style} onChange={(style: Partial<Style> | undefined) => patch({ style })} />
       </div>
     </div>

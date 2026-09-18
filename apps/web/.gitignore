@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Landing-page demo footage is committed; the root .gitignore excludes *.mp4 everywhere else.
+!public/demo/*.mp4
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

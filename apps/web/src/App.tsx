@@ -42,20 +42,20 @@ function App() {
         <AppHeader projectId={project.id} />
 
         <main className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-          <section className="flex min-h-[420px] flex-col gap-3 p-3 lg:min-h-0 lg:min-w-[420px] lg:flex-1 lg:overflow-hidden">
+          <section className="flex min-h-[420px] shrink-0 flex-col gap-3 p-3 lg:min-h-0 lg:shrink lg:min-w-[420px] lg:flex-1 lg:overflow-hidden">
             <div className="min-h-[300px] flex-1 lg:min-h-0">
-              <PlayerPlaceholder />
+              <PlayerPlaceholder selectedWordId={selectedWordId} />
             </div>
             <UploadDropzone />
           </section>
 
-          <section className="flex min-h-[320px] flex-col border-t lg:min-h-0 lg:w-[340px] lg:shrink-0 lg:overflow-hidden lg:border-t-0 lg:border-l">
+          <section className="flex min-h-[320px] shrink-0 flex-col border-t border-hairline bg-surface/40 lg:min-h-0 lg:w-[340px] lg:shrink-0 lg:overflow-hidden lg:border-t-0 lg:border-l">
             <TranscriptPanel selectedWordId={selectedWordId} onSelectWord={select} />
           </section>
 
-          <section className="flex min-h-[320px] flex-col border-t lg:min-h-0 lg:w-[300px] lg:shrink-0 lg:overflow-hidden lg:border-t-0 lg:border-l">
+          <section className="flex min-h-[320px] shrink-0 flex-col border-t border-hairline bg-surface/40 lg:min-h-0 lg:w-[300px] lg:shrink-0 lg:overflow-hidden lg:border-t-0 lg:border-l">
             <Tabs defaultValue="inspector" className="flex h-full min-h-0 flex-col">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="m-2 grid w-[calc(100%-1rem)] grid-cols-3 rounded-full bg-surface-raised">
                 <TabsTrigger value="inspector">Inspector</TabsTrigger>
                 <TabsTrigger value="presets">Presets</TabsTrigger>
                 <TabsTrigger value="agent">Agent Log</TabsTrigger>

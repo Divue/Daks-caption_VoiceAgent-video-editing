@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
+import { PanelLabel } from '@/components/layout/PanelLabel'
 import { cn } from '@/lib/utils'
 import type { Style } from '@captions/shared'
 
@@ -53,7 +54,7 @@ export function StyleOverrideFields({ style, onChange }: StyleOverrideFieldsProp
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Style</p>
+      <PanelLabel>Style override</PanelLabel>
 
       <div className="flex flex-col gap-1.5">
         <Label>Font</Label>
@@ -77,7 +78,7 @@ export function StyleOverrideFields({ style, onChange }: StyleOverrideFieldsProp
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <Label>Size</Label>
-          <span className="text-xs text-muted-foreground tabular-nums">{style?.fontSize ?? DEFAULTS.fontSize}px</span>
+          <span className="font-mono text-xs text-muted-foreground tabular-nums">{style?.fontSize ?? DEFAULTS.fontSize}px</span>
         </div>
         <Slider
           value={[style?.fontSize ?? DEFAULTS.fontSize]}
@@ -125,7 +126,7 @@ export function StyleOverrideFields({ style, onChange }: StyleOverrideFieldsProp
       </button>
 
       {showMore && (
-        <div className="flex flex-col gap-4 border-t pt-4">
+        <div className="flex flex-col gap-4 border-t border-hairline pt-4">
           <OverrideRow
             label="Uppercase"
             enabled={style?.uppercase !== undefined}
@@ -247,7 +248,7 @@ function SliderOverrideRow({ label, value, min, max, enabled, onToggle, onChange
           onValueChange={([next]) => onChange(next)}
           className="flex-1"
         />
-        <span className="w-8 shrink-0 text-right text-xs text-muted-foreground tabular-nums">{value ?? min}</span>
+        <span className="w-8 shrink-0 text-right font-mono text-xs text-muted-foreground tabular-nums">{value ?? min}</span>
       </div>
     </OverrideRow>
   )

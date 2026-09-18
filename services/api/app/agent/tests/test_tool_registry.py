@@ -167,15 +167,18 @@ def test_tool_spec_rejects_non_basemodel_schemas() -> None:
 
 
 EXPECTED_ALL_TOOLS = {
-    "get_project_context",
-    "get_timeline",
-    "find_words",
-    "update_caption_style",
-    "move_caption",
-    "scale_caption",
-    "apply_preset",
-    "add_overlay",
+    # read-only context
+    "get_project_context", "get_timeline", "find_words",
+    # per-word edits, every one taking a LIST of word ids
+    "set_text", "set_emphasis", "set_emotion", "set_stretch", "set_single",
+    "set_emoji", "shift_timing", "set_position", "update_caption_style",
+    "emphasise_peaks",
+    # project-level
+    "apply_preset", "set_settings", "set_preset_override",
+    # vision
     "analyze_frame",
+    # registered but DISABLED — nothing renders an overlay, so it is never offered
+    "add_overlay",
 }
 
 # As of Phase 5, every tool in the approved MVP set has a real handler and
@@ -186,12 +189,9 @@ EXPECTED_ALL_TOOLS = {
 # "currently usable": analyze_frame fails honestly against every real
 # fixture today, since none has a backend-readable videoUrl (see the Phase
 # 5 audit / test_vision_tools.py).
-EXPECTED_AVAILABLE_TOOLS = {
-    "get_project_context", "get_timeline", "find_words",
-    "update_caption_style", "move_caption", "scale_caption",
-    "apply_preset", "add_overlay", "analyze_frame",
-}
-EXPECTED_PLANNED_TOOLS = EXPECTED_ALL_TOOLS - EXPECTED_AVAILABLE_TOOLS
+EXPECTED_DISABLED_TOOLS = {"add_overlay"}
+EXPECTED_AVAILABLE_TOOLS = EXPECTED_ALL_TOOLS - EXPECTED_DISABLED_TOOLS
+EXPECTED_PLANNED_TOOLS: set[str] = set()
 
 
 def test_default_catalog_matches_approved_mvp_tool_set() -> None:

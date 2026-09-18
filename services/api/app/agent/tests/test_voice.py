@@ -32,7 +32,9 @@ from app.agent.voice import (  # noqa: E402
 )
 from app.schema import Project  # noqa: E402
 
-FIXTURES = Path(__file__).resolve().parents[5] / "packages" / "shared" / "fixtures"
+from app.agent.tests._fixtures import fixtures_dir  # noqa: E402
+
+FIXTURES = fixtures_dir()
 DEMO_PROJECT = FIXTURES / "demo-project.json"
 
 FAILURES: list[str] = []
@@ -112,10 +114,10 @@ def test_voice_transcript_reaches_the_same_planner_response_as_typed_text() -> N
     command = "move this caption to the bottom left"
 
     voice_client = FakeBedrockClient(
-        [tool_use_response("move_caption", {"wordId": word_id, "x": 10, "y": 90}), end_turn_response("Moved it.")]
+        [tool_use_response("update_caption_style", {"wordIds": [word_id], "patch": {"x": 10, "y": 90}}), end_turn_response("Moved it.")]
     )
     text_client = FakeBedrockClient(
-        [tool_use_response("move_caption", {"wordId": word_id, "x": 10, "y": 90}), end_turn_response("Moved it.")]
+        [tool_use_response("update_caption_style", {"wordIds": [word_id], "patch": {"x": 10, "y": 90}}), end_turn_response("Moved it.")]
     )
 
     voice_response = run_agent_voice_command(project=project, transcript=command, client=voice_client)
@@ -232,7 +234,7 @@ def test_voice_input_cannot_bypass_tool_validation() -> None:
     # proves voice-derived commands get IDENTICAL tool argument validation.
     client = FakeBedrockClient(
         [
-            tool_use_response("move_caption", {"wordId": project.words[0].id, "x": 500, "y": 50}),  # x out of range
+            tool_use_response("update_caption_style", {"wordIds": [project.words[0].id], "patch": {"x": 500, "y": 50}}),  # x out of range
             end_turn_response("Done."),
         ]
     )
@@ -245,7 +247,7 @@ def test_voice_input_cannot_bypass_tool_validation() -> None:
 def test_voice_input_real_tool_execution_error_is_not_bypassed() -> None:
     project = load_demo_project()
     client = FakeBedrockClient(
-        [tool_use_response("move_caption", {"wordId": "does-not-exist", "x": 1, "y": 1}), end_turn_response("UNSUPPORTED: word not found.")]
+        [tool_use_response("update_caption_style", {"wordIds": ["does-not-exist"], "patch": {"x": 1, "y": 1}}), end_turn_response("UNSUPPORTED: word not found.")]
     )
     response = run_agent_voice_command(project=project, transcript="move the missing word", client=client)
 

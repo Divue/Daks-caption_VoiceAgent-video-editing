@@ -111,9 +111,13 @@ def project_status(project_id: str):
     return {**job, "status": record.status}
 
 
-class WordPatch(BaseModel):
-    """Any subset of the mutable Word fields. `style` merges key-by-key; a null style key removes it.
-    `version` opts in to conflict detection; omitted means last write wins."""
+class WordFields(BaseModel):
+    """The mutable Word fields, and nothing else.
+
+    Split out of `WordPatch` so the bulk route's per-word entry carries EXACTLY the same fields
+    without inheriting `version` — a bulk call has one version for the whole batch, not one per
+    word. `WordPatch`'s own shape is unchanged.
+    """
     model_config = ConfigDict(extra="forbid")
     text: Optional[str] = None
     startMs: Optional[int] = None
@@ -125,6 +129,23 @@ class WordPatch(BaseModel):
     emoji: Optional[str] = None
     style: Optional[dict] = None
     signals: Optional[Signals] = None
+
+
+class WordPatch(WordFields):
+    """Any subset of the mutable Word fields. `style` merges key-by-key; a null style key removes it.
+    `version` opts in to conflict detection; omitted means last write wins."""
+    version: Optional[int] = None
+
+
+class WordsPatchEntry(WordFields):
+    """One word's patch inside a bulk PATCH: the same fields as `WordPatch`, plus the word it hits."""
+    wordId: str = Field(min_length=1)
+
+
+class WordsPatch(BaseModel):
+    """Many per-word patches applied as ONE atomic write. See `patch_words` below."""
+    model_config = ConfigDict(extra="forbid")
+    words: list[WordsPatchEntry] = []
     version: Optional[int] = None
 
 
@@ -132,10 +153,16 @@ class ProjectPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
     presetId: Optional[PresetId] = None
     settings: Optional[dict] = None
+    # Persisted preset tweaks (wordsPerLine, the emphasis face/scale, reveal, per-emotion styling).
+    # Merges key-by-key like `settings`, but a null KEY removes that one override and a null
+    # OBJECT clears them all — see store/projects.patch_project.
+    presetOverride: Optional[dict] = None
     version: Optional[int] = None
 
 
-def _apply(response: Response, project_id: str, fn, patch: dict, version: Optional[int]):
+def _apply(response: Response, project_id: str, fn, patch: dict | list, version: Optional[int]):
+    """Every store error, mapped to this API's flat error bodies. `patch` is whatever `fn` takes:
+    a dict for the single-word/project routes, an ordered list of (wordId, patch) for the bulk one."""
     try:
         return fn(project_id, patch, version)
     except projects.NotFound:
@@ -147,6 +174,30 @@ def _apply(response: Response, project_id: str, fn, patch: dict, version: Option
     except ValidationError as exc:
         raise HTTPException(422, {"error": "invalid_project", "detail": exc.errors(include_url=False,
                                                                                   include_context=False)}) from None
+
+
+@router.patch("/{project_id}/words")
+def patch_words(project_id: str, req: WordsPatch, response: Response):
+    """Bulk per-word edit: one validation, one write, ONE version bump, all-or-nothing.
+
+    The single-word route is fine for a click in the inspector. One agent turn is not: a 94-word
+    restyle would be 94 sequential round trips through the same version counter, each one a read,
+    a full-Project validation and a conditional write, and any failure half-way leaves the project
+    half-styled. Here a single unknown wordId fails the whole call (404 `word_not_found`, nothing
+    written) and the client gets back exactly one new version to send with its next edit.
+
+    Body:  {"words": [{"wordId": "w1", ...WordPatch fields}, ...], "version": 7}
+    Reply: {"words": [ ...the updated words, in request order... ], "version": 8}
+    """
+    entries = [(entry.wordId, entry.model_dump(exclude_unset=True, exclude={"wordId"}))
+               for entry in req.words]
+    empty = [word_id for word_id, patch in entries if not patch]
+    if not entries or empty:
+        raise HTTPException(400, {"error": "empty_patch", **({"wordIds": empty} if empty else {})})
+    words, version = _apply(response, project_id,
+                            lambda pid, p, v: projects.patch_words(pid, p, v), entries, req.version)
+    _version_headers(response, version, projects.SCHEMA_VERSION)
+    return {"words": [w.model_dump(mode="json", exclude_none=True) for w in words], "version": version}
 
 
 @router.patch("/{project_id}/words/{word_id}")

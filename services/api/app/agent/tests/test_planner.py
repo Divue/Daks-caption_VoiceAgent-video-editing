@@ -26,7 +26,9 @@ import app.agent.planner as planner_module  # noqa: E402
 from app.agent.contracts import AgentCommandRequest  # noqa: E402
 from app.schema import Project  # noqa: E402
 
-FIXTURES = Path(__file__).resolve().parents[5] / "packages" / "shared" / "fixtures"
+from app.agent.tests._fixtures import fixtures_dir  # noqa: E402
+
+FIXTURES = fixtures_dir()
 DEMO_PROJECT = FIXTURES / "demo-project.json"
 
 FAILURES: list[str] = []
@@ -97,7 +99,7 @@ def test_tool_selection_and_execution_flow() -> None:
     word_id = project.words[0].id
     client = FakeBedrockClient(
         [
-            tool_use_response("move_caption", {"wordId": word_id, "x": 10, "y": 90}, text="Moving it now."),
+            tool_use_response("update_caption_style", {"wordIds": [word_id], "patch": {"x": 10, "y": 90}}, text="Moving it now."),
             end_turn_response("Moved the caption to the bottom-left."),
         ]
     )
@@ -117,7 +119,7 @@ def test_malformed_tool_call_missing_required_fields() -> None:
     word_id = project.words[0].id
     client = FakeBedrockClient(
         [
-            tool_use_response("move_caption", {"wordId": word_id, "x": 10}),  # missing required 'y'
+            tool_use_response("update_caption_style", {"patch": {"x": 10}}),  # missing required 'wordIds'
             end_turn_response("UNSUPPORTED: I couldn't complete that positioning request."),
         ]
     )
@@ -152,7 +154,7 @@ def test_invalid_tool_arguments_out_of_range() -> None:
     word_id = project.words[0].id
     client = FakeBedrockClient(
         [
-            tool_use_response("move_caption", {"wordId": word_id, "x": 500, "y": 50}),  # x out of 0-100
+            tool_use_response("update_caption_style", {"wordIds": [word_id], "patch": {"x": 500, "y": 50}}),  # x out of 0-100
             end_turn_response("Done."),
         ]
     )
@@ -168,7 +170,7 @@ def test_tool_execution_error_unknown_word_id() -> None:
     project = load_demo_project()
     client = FakeBedrockClient(
         [
-            tool_use_response("move_caption", {"wordId": "does-not-exist", "x": 10, "y": 10}),
+            tool_use_response("update_caption_style", {"wordIds": ["does-not-exist"], "patch": {"x": 10, "y": 10}}),
             end_turn_response("UNSUPPORTED: I couldn't find that word."),
         ]
     )
@@ -252,7 +254,7 @@ def test_final_patch_validation_failure_yields_no_patches() -> None:
     word_id = project.words[0].id
     client = FakeBedrockClient(
         [
-            tool_use_response("move_caption", {"wordId": word_id, "x": 10, "y": 10}),
+            tool_use_response("update_caption_style", {"wordIds": [word_id], "patch": {"x": 10, "y": 10}}),
             end_turn_response("Moved it."),
         ]
     )
@@ -278,9 +280,9 @@ def test_planner_never_mutates_the_input_project() -> None:
     word_id = project.words[0].id
 
     scenarios = [
-        FakeBedrockClient([tool_use_response("move_caption", {"wordId": word_id, "x": 5, "y": 5}), end_turn_response("Done.")]),
+        FakeBedrockClient([tool_use_response("update_caption_style", {"wordIds": [word_id], "patch": {"x": 5, "y": 5}}), end_turn_response("Done.")]),
         FakeBedrockClient([end_turn_response("UNSUPPORTED: nope.")]),
-        FakeBedrockClient([tool_use_response("move_caption", {"wordId": "nope", "x": 1, "y": 1}), end_turn_response("UNSUPPORTED: not found.")]),
+        FakeBedrockClient([tool_use_response("update_caption_style", {"wordIds": ["nope"], "patch": {"x": 1, "y": 1}}), end_turn_response("UNSUPPORTED: not found.")]),
     ]
     for client in scenarios:
         planner_module.run_agent_command(AgentCommandRequest(command="anything", project=project), client=client)

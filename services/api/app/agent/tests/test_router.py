@@ -31,7 +31,9 @@ from app.agent.planner import MAX_TOOL_ITERATIONS  # noqa: E402
 from app.agent.router import _default_bedrock_client, router  # noqa: E402
 from app.schema import Project  # noqa: E402
 
-FIXTURES = Path(__file__).resolve().parents[5] / "packages" / "shared" / "fixtures"
+from app.agent.tests._fixtures import fixtures_dir  # noqa: E402
+
+FIXTURES = fixtures_dir()
 DEMO_PROJECT = FIXTURES / "demo-project.json"
 
 FAILURES: list[str] = []
@@ -107,7 +109,7 @@ def test_valid_text_command_reaches_the_real_planner() -> None:
     project = load_raw_project()
     word_id = project["words"][0]["id"]
     fake_client = FakeBedrockClient(
-        [tool_use_response("move_caption", {"wordId": word_id, "x": 10, "y": 90}), end_turn_response("Moved it.")]
+        [tool_use_response("update_caption_style", {"wordIds": [word_id], "patch": {"x": 10, "y": 90}}), end_turn_response("Moved it.")]
     )
     client = TestClient(build_test_app(fake_client))
 
@@ -129,7 +131,7 @@ def test_optional_patch_fields_are_omitted_not_serialized_as_null() -> None:
     project = load_raw_project()
     word_id = project["words"][0]["id"]
     fake_client = FakeBedrockClient(
-        [tool_use_response("move_caption", {"wordId": word_id, "x": 10, "y": 90}), end_turn_response("Moved it.")]
+        [tool_use_response("update_caption_style", {"wordIds": [word_id], "patch": {"x": 10, "y": 90}}), end_turn_response("Moved it.")]
     )
     client = TestClient(build_test_app(fake_client))
 
@@ -229,7 +231,7 @@ def test_voice_command_reaches_the_same_planner_as_text() -> None:
     project = load_raw_project()
     word_id = project["words"][0]["id"]
     fake_client = FakeBedrockClient(
-        [tool_use_response("move_caption", {"wordId": word_id, "x": 5, "y": 5}), end_turn_response("Moved it.")]
+        [tool_use_response("update_caption_style", {"wordIds": [word_id], "patch": {"x": 5, "y": 5}}), end_turn_response("Moved it.")]
     )
     client = TestClient(build_test_app(fake_client))
 
@@ -255,7 +257,7 @@ def test_voice_command_gets_identical_validation_as_text() -> None:
     project = load_raw_project()
     word_id = project["words"][0]["id"]
     fake_client = FakeBedrockClient(
-        [tool_use_response("move_caption", {"wordId": word_id, "x": 500, "y": 50}), end_turn_response("Done.")]
+        [tool_use_response("update_caption_style", {"wordIds": [word_id], "patch": {"x": 500, "y": 50}}), end_turn_response("Done.")]
     )
     client = TestClient(build_test_app(fake_client))
 

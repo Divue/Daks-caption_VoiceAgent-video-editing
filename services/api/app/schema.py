@@ -80,6 +80,31 @@ class Settings(BaseModel):
     emotionLayer: bool
 
 
+# Mirrors RevealMode in packages/shared/src/presets.ts, inlined in PresetOverride there too.
+RevealMode = Literal["none", "dim", "hidden"]
+
+
+class EmotionOverride(BaseModel):
+    """One emotion's persisted contribution. `scale` is a multiplier, never a px size."""
+    style: StylePatch
+    scale: Optional[float] = Field(default=None, gt=0)
+
+
+class PresetOverride(BaseModel):
+    """Persisted tweaks to the active preset's CONDITIONAL layers. Mirrors PresetOverride in
+    packages/shared/src/project.ts — an explicit allow-list, deliberately NOT a partial Preset.
+
+    `Preset` is code-only so it can grow with no mirror and no migration; a property only moves
+    here when a user/agent command has to survive a reload. `emotion` is a PARTIAL map (the zod
+    side needs `z.partialRecord`, because zod v4's `z.record(enum, …)` demands every key).
+    """
+    wordsPerLine: Optional[int] = Field(default=None, ge=1, le=8)
+    emphasis: Optional[StylePatch] = None
+    emphasisScale: Optional[float] = Field(default=None, gt=0)
+    reveal: Optional[RevealMode] = None
+    emotion: Optional[dict[Emotion, EmotionOverride]] = None
+
+
 class Project(BaseModel):
     id: str
     videoUrl: str
@@ -87,6 +112,9 @@ class Project(BaseModel):
     width: int = Field(gt=0)
     height: int = Field(gt=0)
     presetId: PresetId
+    # Optional and additive: stored v2 documents parse unchanged, so no migration and no
+    # SCHEMA_VERSION bump (store/projects.py MIGRATIONS).
+    presetOverride: Optional[PresetOverride] = None
     words: list[Word]
     overlays: list[Overlay]
     settings: Settings

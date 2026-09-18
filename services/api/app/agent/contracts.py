@@ -10,11 +10,105 @@ behind these shapes.
 """
 from __future__ import annotations
 
-from typing import Annotated, Literal, Union
+from typing import Annotated, Any, Literal, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SerializeAsAny, field_serializer, field_validator, model_serializer
 
-from app.schema import Overlay, PresetId, Signals, StylePatch, Project
+from app.schema import Overlay, PresetId, PresetOverride, Signals, StylePatch, Project
+
+# The sentinel a patch carries for "remove this key", for fields whose real
+# type has no spare value to mean it (`single: bool | None`). `emoji` uses
+# the empty string instead, because that is already the editor's own
+# cleared value (apps/web/src/hooks/useWordPatch.ts `toWordPatch`: `emoji
+# === '' ? null : emoji`), and mirroring it keeps one convention, not two.
+#
+# WHY A SENTINEL AT ALL, instead of just `None`. Both agent routes serialize
+# with `response_model_exclude_none=True` (router.py), and
+# `validation.apply_patch` merges with `exclude_none=True`, because an
+# UNTOUCHED optional serializing as JSON null would blank a real field
+# through the frontend reducer's `{ ...word, ...patch }` spread. But the
+# style-override contract is the opposite for a field the caller DID name:
+# "a value sets the key, an explicit null REMOVES it, an absent key leaves
+# it untouched" (.claude/audits/15 §4; `_merge_style` in
+# services/api/app/store/projects.py). Those two rules only coexist if
+# "clear" is a value that is NOT `None` in Python but serializes TO `None` —
+# exclusion is decided on the pre-serializer value, so a field serializer
+# that maps the sentinel to `None` survives both exclude_none passes and
+# lands on the wire as a real JSON `null`. Verified over HTTP in
+# tests/test_router.py, against the raw response dict.
+CLEAR = "__clear__"
+
+_STYLE_KEYS = frozenset(StylePatch.model_fields)
+_PRESET_OVERRIDE_KEYS = frozenset(PresetOverride.model_fields)
+
+
+class AgentStylePatch(StylePatch):
+    """A `StylePatch` that can also REMOVE style keys.
+
+    `StylePatch` (app/schema.py, lead-owned) is subclassed, never modified:
+    every field, type and range it declares is inherited untouched, and the
+    only addition is `cleared`, a list of key names this patch removes.
+    `cleared` is `exclude=True`, so it never appears on the wire itself —
+    the wrap serializer below turns each named key into an explicit JSON
+    `null`, which is exactly what the style-override contract removes a key
+    on.
+    """
+
+    cleared: list[str] = Field(default_factory=list, exclude=True)
+
+    @field_validator("cleared")
+    @classmethod
+    def _keys_must_be_real_style_fields(cls, value: list[str]) -> list[str]:
+        unknown = [key for key in value if key not in _STYLE_KEYS]
+        if unknown:
+            raise ValueError(f"not style keys: {', '.join(sorted(unknown))}")
+        return value
+
+    @model_serializer(mode="wrap")
+    def _serialize_with_explicit_nulls(self, handler) -> dict[str, Any]:
+        data = handler(self)
+        for key in self.cleared:
+            data[key] = None
+        return data
+
+
+class AgentPresetOverridePatch(PresetOverride):
+    """A `PresetOverride` that can also REMOVE override keys.
+
+    Same relationship to `PresetOverride` that `AgentStylePatch` has to
+    `StylePatch`, and for the same reason: the override merges per key, so
+    "put the line length back to the preset's" is an explicit JSON `null`
+    on that key, not an omitted key. `cleared` is `exclude=True` and never
+    appears on the wire; the wrap serializer turns each named key into a
+    real null, which survives `response_model_exclude_none=True` because it
+    is written after exclusion runs.
+    """
+
+    cleared: list[str] = Field(default_factory=list, exclude=True)
+
+    @field_validator("cleared")
+    @classmethod
+    def _keys_must_be_real_override_fields(cls, value: list[str]) -> list[str]:
+        unknown = [key for key in value if key not in _PRESET_OVERRIDE_KEYS]
+        if unknown:
+            raise ValueError(f"not preset-override keys: {', '.join(sorted(unknown))}")
+        return value
+
+    @model_serializer(mode="wrap")
+    def _serialize_with_explicit_nulls(self, handler) -> dict[str, Any]:
+        data = handler(self)
+        for key in self.cleared:
+            data[key] = None
+        return data
+
+
+class SettingsPatch(BaseModel):
+    """Partial `Settings` — the same relationship to Settings that
+    StylePatch has to Style. Merges per key: an omitted key is untouched
+    (audit 17 §3.4)."""
+
+    emojis: bool | None = None
+    emotionLayer: bool | None = None
 
 
 class WordPatch(BaseModel):
@@ -34,9 +128,24 @@ class WordPatch(BaseModel):
     emphasis: bool | None = None
     emotion: Literal["neutral", "angry", "excited"] | None = None
     stretch: float | None = Field(default=None, ge=1)
+    # `CLEAR` removes the key (the word goes back to "not pulled out"); see
+    # CLEAR's comment above for why a plain None cannot mean that.
+    single: bool | Literal["__clear__"] | None = None
+    # `""` removes the key — the editor's own cleared value for an emoji.
     emoji: str | None = None
-    style: StylePatch | None = None
+    # SerializeAsAny so an `AgentStylePatch` assigned here serializes with
+    # ITS serializer (the explicit-null one) rather than being flattened to
+    # the declared `StylePatch`. A plain `StylePatch` still works unchanged.
+    style: SerializeAsAny[StylePatch] | None = None
     signals: Signals | None = None
+
+    @field_serializer("single")
+    def _serialize_single(self, value: bool | str | None) -> bool | None:
+        return None if value == CLEAR else value
+
+    @field_serializer("emoji")
+    def _serialize_emoji(self, value: str | None) -> str | None:
+        return None if value == "" else value
 
 
 class UpdateWordAction(BaseModel):
@@ -54,6 +163,33 @@ class SetPresetAction(BaseModel):
     presetId: PresetId
 
 
+class SetSettingsAction(BaseModel):
+    """Mirrors apps/web's `{ type: 'SET_SETTINGS', settings }` action
+    (apps/web/src/state/project-reducer.ts), which already exists in the
+    frontend reducer AND in its `AgentPatch` union — the reducer case
+    `{ ...project, settings: { ...project.settings, ...patch.settings } }`
+    merges per key, so a patch carrying only `emojis` leaves `emotionLayer`
+    alone."""
+
+    type: Literal["SET_SETTINGS"] = "SET_SETTINGS"
+    settings: SettingsPatch
+
+
+class SetPresetOverrideAction(BaseModel):
+    """Mirrors apps/web's `{ type: 'SET_PRESET_OVERRIDE', override }` action.
+
+    This is the ONLY way to reach the conditional layers — the emphasis
+    face, per-emotion styling, reveal mode and words-per-line. They are not
+    per-word `Style` keys (a word cannot say "when emphasised"), so
+    "make the emphasised words bigger" and "fewer words per line" are this
+    action, and are NOT expressible as a style write over every word. The
+    distinction is real and must not be blurred (audit 17 §4).
+    """
+
+    type: Literal["SET_PRESET_OVERRIDE"] = "SET_PRESET_OVERRIDE"
+    override: AgentPresetOverridePatch
+
+
 class AddOverlayAction(BaseModel):
     """Mirrors apps/web's `{ type: 'ADD_OVERLAY', overlay }` action."""
 
@@ -61,11 +197,21 @@ class AddOverlayAction(BaseModel):
     overlay: Overlay
 
 
-# The agent only ever emits these three action shapes. SET_PROJECT, UNDO and
+# The agent only ever emits these five action shapes. SET_PROJECT, UNDO and
 # REDO exist in the frontend reducer but are not agent outputs: SET_PROJECT
 # is a full replace (not a patch), and UNDO/REDO are user history controls,
 # not something a command produces.
-AgentPatch = Union[UpdateWordAction, SetPresetAction, AddOverlayAction]
+#
+# ADD_OVERLAY stays in the union (the shape is still valid and
+# validation.py still applies it) even though `add_overlay` is no longer
+# offered to the model — see tools/project_tools.py for why.
+AgentPatch = Union[
+    UpdateWordAction,
+    SetPresetAction,
+    SetSettingsAction,
+    SetPresetOverrideAction,
+    AddOverlayAction,
+]
 DiscriminatedAgentPatch = Annotated[AgentPatch, Field(discriminator="type")]
 
 
@@ -90,7 +236,42 @@ class SelectionContext(BaseModel):
     """
 
     selectedWordId: str | None = None
+    # Multi/range selection. Supersedes `selectedWordId` when present and
+    # non-empty; `selectedWordId` is kept for back-compat, never removed.
+    selectedWordIds: list[str] | None = None
     playheadMs: int | None = Field(default=None, ge=0)
+    # The caption block under the playhead, e.g. "b-w7". Carried for the
+    # model's benefit as a LABEL only — audit 17 §2: blocks are derived, a
+    # block id changes when the grouping changes, and block indices shift
+    # as you edit. Never an addressing handle.
+    activeBlockId: str | None = None
+    # That block's word ids, resolved by the EDITOR (which owns
+    # deriveBlocks). This is what "this line" means; the model works in
+    # word ids only and is never asked to count or index.
+    activeBlockWordIds: list[str] | None = None
+
+    def resolved_word_ids(self) -> list[str]:
+        """The word ids "this word"/"these words" refers to.
+
+        `selectedWordIds` wins when present and non-empty; otherwise
+        `selectedWordId` alone; otherwise empty. One helper, so the prompt
+        text and any future caller cannot disagree about the precedence.
+        """
+        if self.selectedWordIds:
+            return list(self.selectedWordIds)
+        if self.selectedWordId:
+            return [self.selectedWordId]
+        return []
+
+    def is_empty(self) -> bool:
+        """True when the frontend sent nothing usable — there is then
+        nothing to put in the conversation."""
+        return not (
+            self.resolved_word_ids()
+            or self.playheadMs is not None
+            or self.activeBlockId
+            or self.activeBlockWordIds
+        )
 
 
 class AgentCommandRequest(BaseModel):

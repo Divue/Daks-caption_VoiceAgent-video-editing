@@ -37,8 +37,10 @@ from app.agent.tools.vision_tools import (  # noqa: E402
 )
 from app.schema import Project  # noqa: E402
 
-REPO_ROOT = Path(__file__).resolve().parents[5]
-FIXTURES_DIR = REPO_ROOT / "packages" / "shared" / "fixtures"
+from app.agent.tests._fixtures import fixtures_dir  # noqa: E402
+
+FIXTURES = fixtures_dir()
+FIXTURES_DIR = FIXTURES
 
 FAILURES: list[str] = []
 

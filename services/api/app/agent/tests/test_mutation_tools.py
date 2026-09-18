@@ -21,19 +21,25 @@ from pydantic import ValidationError  # noqa: E402
 from app.agent.contracts import UpdateWordAction, WordPatch  # noqa: E402
 from app.agent.tools import ToolNotImplementedError, ToolStatus, default_registry  # noqa: E402
 from app.agent.tools.errors import ToolExecutionError  # noqa: E402
-from app.agent.tools.project_tools import add_overlay, apply_preset  # noqa: E402
+from app.agent.tools.project_tools import (  # noqa: E402
+    add_overlay,
+    apply_preset,
+    set_preset_override,
+)
 from app.agent.tools.schemas import (  # noqa: E402
     AddOverlayArgs,
     ApplyPresetArgs,
-    MoveCaptionArgs,
-    ScaleCaptionArgs,
+    SetPositionArgs,
+    SetPresetOverrideArgs,
     UpdateCaptionStyleArgs,
 )
-from app.agent.tools.style_tools import move_caption, scale_caption, update_caption_style  # noqa: E402
+from app.agent.tools.style_tools import set_position, update_caption_style  # noqa: E402
 from app.agent.validation import PatchError, apply_patch  # noqa: E402
 from app.schema import Project, StylePatch  # noqa: E402
 
-FIXTURES = Path(__file__).resolve().parents[5] / "packages" / "shared" / "fixtures"
+from app.agent.tests._fixtures import fixtures_dir  # noqa: E402
+
+FIXTURES = fixtures_dir()
 DEMO_PROJECT = FIXTURES / "demo-project.json"
 
 FAILURES: list[str] = []
@@ -68,19 +74,54 @@ def snapshot(project: Project) -> dict:
 # --- update_caption_style -----------------------------------------------------
 def test_update_caption_style_valid(project: Project) -> None:
     target = project.words[0]
-    args = UpdateCaptionStyleArgs(wordId=target.id, patch=StylePatch(color="#FFE600", glow=5))
+    args = UpdateCaptionStyleArgs(wordIds=[target.id], patch=StylePatch(color="#FFE600", glow=5))
     result = update_caption_style(args, project)
 
-    check("update_caption_style returns an UPDATE_WORD patch", result.patch.type == "UPDATE_WORD")
-    check("patch targets the requested wordId", result.patch.wordId == target.id)
-    check("patch carries the requested color", result.patch.patch.style.color == "#FFE600")
-    check("patch carries the requested glow", result.patch.patch.style.glow == 5)
-    check("patch does not set unrelated style fields", result.patch.patch.style.fontSize is None)
+    check("update_caption_style returns one UPDATE_WORD patch", len(result.patches) == 1)
+    patch = result.patches[0]
+    check("it is an UPDATE_WORD patch", patch.type == "UPDATE_WORD")
+    check("patch targets the requested wordId", patch.wordId == target.id)
+    check("patch carries the requested color", patch.patch.style.color == "#FFE600")
+    check("patch carries the requested glow", patch.patch.style.glow == 5)
+    check("patch does not set unrelated style fields", patch.patch.style.fontSize is None)
+
+
+def test_update_caption_style_applies_to_many_words_in_one_call(project: Project) -> None:
+    """The whole point of the plural form: one line restyled is one tool call, not four."""
+    ids = [w.id for w in project.words[:4]]
+    result = update_caption_style(UpdateCaptionStyleArgs(wordIds=ids, patch=StylePatch(color="#ff2d55")), project)
+    check("one patch per word id", [p.wordId for p in result.patches] == ids)
+    check("every patch carries the same change", all(p.patch.style.color == "#ff2d55" for p in result.patches))
+
+
+def test_update_caption_style_clear_keys_serialise_as_explicit_nulls(project: Project) -> None:
+    """A cleared style key must reach the wire as a real null: that is what the
+    style-override contract removes an override on (audit 15 §4). An omitted key
+    leaves the override in place, which is the opposite of what the user asked for."""
+    target = project.words[0]
+    result = update_caption_style(
+        UpdateCaptionStyleArgs(wordIds=[target.id], clearKeys=["color"]), project
+    )
+    wire = result.patches[0].model_dump(mode="json")
+    check("the cleared key is present and null", "color" in wire["patch"]["style"] and wire["patch"]["style"]["color"] is None)
+
+
+def test_update_caption_style_rejects_meaningless_calls(project: Project) -> None:
+    target = project.words[0]
+    check(
+        "setting nothing and clearing nothing is rejected",
+        raises(ToolExecutionError, lambda: update_caption_style(UpdateCaptionStyleArgs(wordIds=[target.id]), project)),
+    )
+    check(
+        "setting and clearing the same key is rejected",
+        raises(ToolExecutionError, lambda: update_caption_style(
+            UpdateCaptionStyleArgs(wordIds=[target.id], patch=StylePatch(color="#fff"), clearKeys=["color"]), project)),
+    )
 
 
 def test_update_caption_style_unknown_word_id(project: Project) -> None:
     before = snapshot(project)
-    args = UpdateCaptionStyleArgs(wordId="does-not-exist", patch=StylePatch(color="#fff"))
+    args = UpdateCaptionStyleArgs(wordIds=["does-not-exist"], patch=StylePatch(color="#fff"))
     check(
         "update_caption_style raises ToolExecutionError for an unknown wordId",
         raises(ToolExecutionError, lambda: update_caption_style(args, project)),
@@ -99,59 +140,77 @@ def test_update_caption_style_rejects_out_of_range_values_at_construction() -> N
     )
 
 
-# --- move_caption --------------------------------------------------------------
-def test_move_caption_valid(project: Project) -> None:
-    target = project.words[0]
-    result = move_caption(MoveCaptionArgs(wordId=target.id, x=10, y=90), project)
-    check("move_caption returns an UPDATE_WORD patch", result.patch.type == "UPDATE_WORD")
-    check("move_caption sets x", result.patch.patch.style.x == 10)
-    check("move_caption sets y", result.patch.patch.style.y == 90)
-    check("move_caption does not set fontSize/color", result.patch.patch.style.fontSize is None and result.patch.patch.style.color is None)
+# --- set_position -------------------------------------------------------------
+# `move_caption` and `scale_caption` used to be tested here. Both were deleted as thin
+# wrappers over update_caption_style (see style_tools.py's module docstring); their
+# effects are covered by the update_caption_style tests above, and the half of
+# move_caption people actually asked for — "move the captions up" — is set_position.
+def test_set_position_valid(project: Project) -> None:
+    ids = [w.id for w in project.words[:3]]
+    result = set_position(SetPositionArgs(wordIds=ids, position="top"), project)
+    check("set_position returns one patch per word", len(result.patches) == 3)
+    check("every patch is an UPDATE_WORD", all(p.type == "UPDATE_WORD" for p in result.patches))
+    check("each patch sets y", all(p.patch.style.y is not None for p in result.patches))
+    check("top is nearer the top of the frame than bottom",
+          result.patches[0].patch.style.y
+          < set_position(SetPositionArgs(wordIds=ids, position="bottom"), project).patches[0].patch.style.y)
+    check("set_position does not touch fontSize or colour",
+          all(p.patch.style.fontSize is None and p.patch.style.color is None for p in result.patches))
 
 
-def test_move_caption_unknown_word_id(project: Project) -> None:
+def test_set_position_unknown_word_id(project: Project) -> None:
     before = snapshot(project)
     check(
-        "move_caption raises ToolExecutionError for an unknown wordId",
-        raises(ToolExecutionError, lambda: move_caption(MoveCaptionArgs(wordId="nope", x=0, y=0), project)),
+        "set_position raises ToolExecutionError for an unknown wordId",
+        raises(ToolExecutionError, lambda: set_position(SetPositionArgs(wordIds=["nope"], position="top"), project)),
     )
     check("project is unchanged after the failure", snapshot(project) == before)
 
 
-def test_move_caption_rejects_out_of_range_position_at_construction() -> None:
+def test_set_position_rejects_unknown_anchor_at_construction() -> None:
     check(
-        "MoveCaptionArgs rejects x > 100 at construction",
-        raises(ValidationError, lambda: MoveCaptionArgs(wordId="w1", x=150, y=0)),
-    )
-    check(
-        "MoveCaptionArgs rejects negative y at construction",
-        raises(ValidationError, lambda: MoveCaptionArgs(wordId="w1", x=0, y=-5)),
+        "SetPositionArgs rejects an anchor that is not top/middle/bottom",
+        raises(ValidationError, lambda: SetPositionArgs(wordIds=["w1"], position="somewhere")),
     )
 
 
-# --- scale_caption --------------------------------------------------------------
-def test_scale_caption_valid(project: Project) -> None:
-    target = project.words[0]
-    result = scale_caption(ScaleCaptionArgs(wordId=target.id, fontSize=120), project)
-    check("scale_caption returns an UPDATE_WORD patch", result.patch.type == "UPDATE_WORD")
-    check("scale_caption sets fontSize", result.patch.patch.style.fontSize == 120)
-    check("scale_caption does not set x/y/color", result.patch.patch.style.x is None and result.patch.patch.style.color is None)
+# --- set_preset_override ------------------------------------------------------
+# The conditional layers. None of these can be expressed as a per-word style, which is
+# exactly why the tool exists: "make the EMPHASISED words bigger" has no per-word home.
+def test_set_preset_override_valid(project: Project) -> None:
+    result = set_preset_override(SetPresetOverrideArgs(wordsPerLine=2), project)
+    check("set_preset_override returns a SET_PRESET_OVERRIDE patch", result.patch.type == "SET_PRESET_OVERRIDE")
+    check("it carries the value", result.patch.override.wordsPerLine == 2)
 
 
-def test_scale_caption_unknown_word_id(project: Project) -> None:
+def test_set_preset_override_clear_keys_serialise_as_explicit_nulls(project: Project) -> None:
+    result = set_preset_override(SetPresetOverrideArgs(clearKeys=["wordsPerLine"]), project)
+    wire = result.patch.model_dump(mode="json")
+    check("a cleared key is an explicit null on the wire, not an omitted key",
+          "wordsPerLine" in wire["override"] and wire["override"]["wordsPerLine"] is None)
+
+
+def test_set_preset_override_rejects_empty_and_contradictory_calls(project: Project) -> None:
+    check(
+        "a call that sets nothing and clears nothing is rejected",
+        raises(ToolExecutionError, lambda: set_preset_override(SetPresetOverrideArgs(), project)),
+    )
+    check(
+        "setting and clearing the same key is rejected",
+        raises(ToolExecutionError, lambda: set_preset_override(
+            SetPresetOverrideArgs(wordsPerLine=3, clearKeys=["wordsPerLine"]), project)),
+    )
+    check(
+        "clearKeys naming something that is not an override key is rejected",
+        raises(ToolExecutionError, lambda: set_preset_override(
+            SetPresetOverrideArgs(clearKeys=["nonsense"]), project)),
+    )
+
+
+def test_set_preset_override_does_not_mutate_the_project(project: Project) -> None:
     before = snapshot(project)
-    check(
-        "scale_caption raises ToolExecutionError for an unknown wordId",
-        raises(ToolExecutionError, lambda: scale_caption(ScaleCaptionArgs(wordId="nope", fontSize=50), project)),
-    )
-    check("project is unchanged after the failure", snapshot(project) == before)
-
-
-def test_scale_caption_rejects_non_positive_size_at_construction() -> None:
-    check(
-        "ScaleCaptionArgs rejects fontSize=0 at construction",
-        raises(ValidationError, lambda: ScaleCaptionArgs(wordId="w1", fontSize=0)),
-    )
+    set_preset_override(SetPresetOverrideArgs(wordsPerLine=2), project)
+    check("project is unchanged by a successful call too", snapshot(project) == before)
 
 
 # --- apply_preset -----------------------------------------------------------
@@ -230,7 +289,7 @@ def test_apply_patch_still_catches_a_smuggled_invalid_value(project: Project) ->
 
 # --- registry integration -----------------------------------------------------
 def test_all_five_tools_are_registered_as_available() -> None:
-    for name in ("update_caption_style", "move_caption", "scale_caption", "apply_preset", "add_overlay"):
+    for name in ("update_caption_style", "set_position", "set_preset_override", "apply_preset", "set_settings"):
         spec = default_registry.get_spec(name)
         check(f"{name} is registered as AVAILABLE", spec.status is ToolStatus.AVAILABLE)
         handler_ok = True
@@ -248,7 +307,7 @@ def test_this_phases_five_tools_did_not_leave_anything_planned_that_they_own() -
     checks this phase's own 5 tools are gone from the PLANNED list, so it
     doesn't need updating again for Phase 5's unrelated change."""
     planned = {s.name for s in default_registry.list_specs(status=ToolStatus.PLANNED)}
-    this_phases_tools = {"update_caption_style", "move_caption", "scale_caption", "apply_preset", "add_overlay"}
+    this_phases_tools = {"update_caption_style", "set_position", "set_preset_override", "apply_preset", "set_settings"}
     check("none of this phase's 5 tools remain PLANNED", planned.isdisjoint(this_phases_tools))
 
 
@@ -256,16 +315,20 @@ def main() -> int:
     project = load_demo_project()
 
     test_update_caption_style_valid(project)
+    test_update_caption_style_applies_to_many_words_in_one_call(project)
+    test_update_caption_style_clear_keys_serialise_as_explicit_nulls(project)
+    test_update_caption_style_rejects_meaningless_calls(project)
     test_update_caption_style_unknown_word_id(project)
     test_update_caption_style_rejects_out_of_range_values_at_construction()
 
-    test_move_caption_valid(project)
-    test_move_caption_unknown_word_id(project)
-    test_move_caption_rejects_out_of_range_position_at_construction()
+    test_set_position_valid(project)
+    test_set_position_unknown_word_id(project)
+    test_set_position_rejects_unknown_anchor_at_construction()
 
-    test_scale_caption_valid(project)
-    test_scale_caption_unknown_word_id(project)
-    test_scale_caption_rejects_non_positive_size_at_construction()
+    test_set_preset_override_valid(project)
+    test_set_preset_override_clear_keys_serialise_as_explicit_nulls(project)
+    test_set_preset_override_rejects_empty_and_contradictory_calls(project)
+    test_set_preset_override_does_not_mutate_the_project(project)
 
     test_apply_preset_valid(project)
     test_apply_preset_rejects_unknown_preset_at_construction(project)

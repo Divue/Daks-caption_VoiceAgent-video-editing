@@ -1,0 +1,673 @@
+{
+ "stage": "2-transcribe-hi",
+ "engine": "aws-transcribe hi-IN",
+ "nWords": 95,
+ "devanagari": "ये जानते हुए कि हर साल मेरी बर्थडे कैसे मनती है । अपने बर्थडे से एक महीना पहले जो मैं खाद देखना चालू कर देती हूँ कि ओह माई गोद लोग मेरे लिए चाय तारे शक्कर पारे लेके आएँगे । मेरा साल का सबसे घटिया दिन ज्यादा है मेरा बर्थडे हर साल ये ट्रैक रिकॉर्ड है की मैं अपने बर्थडे पे रोई हूँ । अब मैं अपना मुँह से जा के बैठ गयी हूँ की ही हाय मेरी बर्थडे आ रही है बिया निकलेगी कोई बढ़िया नहीं निकलेगी मुझे भी पता है रोना मचने वाला है उस दिन ।",
+ "words": [
+  {
+   "i": 0,
+   "dev": "ये",
+   "asrRoman": "ye",
+   "startMs": 39,
+   "endMs": 280
+  },
+  {
+   "i": 1,
+   "dev": "जानते",
+   "asrRoman": "jaante",
+   "startMs": 280,
+   "endMs": 720
+  },
+  {
+   "i": 2,
+   "dev": "हुए",
+   "asrRoman": "hue",
+   "startMs": 720,
+   "endMs": 959
+  },
+  {
+   "i": 3,
+   "dev": "कि",
+   "asrRoman": "ki",
+   "startMs": 959,
+   "endMs": 1080
+  },
+  {
+   "i": 4,
+   "dev": "हर",
+   "asrRoman": "har",
+   "startMs": 1080,
+   "endMs": 1360
+  },
+  {
+   "i": 5,
+   "dev": "साल",
+   "asrRoman": "saal",
+   "startMs": 1360,
+   "endMs": 1759
+  },
+  {
+   "i": 6,
+   "dev": "मेरी",
+   "asrRoman": "meri",
+   "startMs": 1759,
+   "endMs": 2000
+  },
+  {
+   "i": 7,
+   "dev": "बर्थडे",
+   "asrRoman": "birthday",
+   "startMs": 2000,
+   "endMs": 2440
+  },
+  {
+   "i": 8,
+   "dev": "कैसे",
+   "asrRoman": "kaise",
+   "startMs": 2440,
+   "endMs": 2759
+  },
+  {
+   "i": 9,
+   "dev": "मनती",
+   "asrRoman": "manti",
+   "startMs": 2759,
+   "endMs": 3079
+  },
+  {
+   "i": 10,
+   "dev": "है",
+   "asrRoman": "hai",
+   "startMs": 3079,
+   "endMs": 3190
+  },
+  {
+   "i": 11,
+   "dev": "अपने",
+   "asrRoman": "apne",
+   "startMs": 3640,
+   "endMs": 3799
+  },
+  {
+   "i": 12,
+   "dev": "बर्थडे",
+   "asrRoman": "birthday",
+   "startMs": 3799,
+   "endMs": 4199
+  },
+  {
+   "i": 13,
+   "dev": "से",
+   "asrRoman": "se",
+   "startMs": 4199,
+   "endMs": 4320
+  },
+  {
+   "i": 14,
+   "dev": "एक",
+   "asrRoman": "ek",
+   "startMs": 4320,
+   "endMs": 4599
+  },
+  {
+   "i": 15,
+   "dev": "महीना",
+   "asrRoman": "mahina",
+   "startMs": 4599,
+   "endMs": 4920
+  },
+  {
+   "i": 16,
+   "dev": "पहले",
+   "asrRoman": "pehle",
+   "startMs": 4920,
+   "endMs": 5239
+  },
+  {
+   "i": 17,
+   "dev": "जो",
+   "asrRoman": "jo",
+   "startMs": 5239,
+   "endMs": 5360
+  },
+  {
+   "i": 18,
+   "dev": "मैं",
+   "asrRoman": "main",
+   "startMs": 5360,
+   "endMs": 5480
+  },
+  {
+   "i": 19,
+   "dev": "खाद",
+   "asrRoman": "khaad",
+   "startMs": 5480,
+   "endMs": 5840
+  },
+  {
+   "i": 20,
+   "dev": "देखना",
+   "asrRoman": "dekhna",
+   "startMs": 5840,
+   "endMs": 6159
+  },
+  {
+   "i": 21,
+   "dev": "चालू",
+   "asrRoman": "chaalu",
+   "startMs": 6159,
+   "endMs": 6440
+  },
+  {
+   "i": 22,
+   "dev": "कर",
+   "asrRoman": "kar",
+   "startMs": 6440,
+   "endMs": 6559
+  },
+  {
+   "i": 23,
+   "dev": "देती",
+   "asrRoman": "deti",
+   "startMs": 6559,
+   "endMs": 6719
+  },
+  {
+   "i": 24,
+   "dev": "हूँ",
+   "asrRoman": "hoon",
+   "startMs": 6719,
+   "endMs": 6829
+  },
+  {
+   "i": 25,
+   "dev": "कि",
+   "asrRoman": "ki",
+   "startMs": 6829,
+   "endMs": 6960
+  },
+  {
+   "i": 26,
+   "dev": "ओह",
+   "asrRoman": "oh",
+   "startMs": 6960,
+   "endMs": 7079
+  },
+  {
+   "i": 27,
+   "dev": "माई",
+   "asrRoman": "my",
+   "startMs": 7079,
+   "endMs": 7239
+  },
+  {
+   "i": 28,
+   "dev": "गोद",
+   "asrRoman": "god",
+   "startMs": 7239,
+   "endMs": 7519
+  },
+  {
+   "i": 29,
+   "dev": "लोग",
+   "asrRoman": "log",
+   "startMs": 7519,
+   "endMs": 7719
+  },
+  {
+   "i": 30,
+   "dev": "मेरे",
+   "asrRoman": "mere",
+   "startMs": 7719,
+   "endMs": 7920
+  },
+  {
+   "i": 31,
+   "dev": "लिए",
+   "asrRoman": "liye",
+   "startMs": 7920,
+   "endMs": 8079
+  },
+  {
+   "i": 32,
+   "dev": "चाय",
+   "asrRoman": "chai",
+   "startMs": 8079,
+   "endMs": 8329
+  },
+  {
+   "i": 33,
+   "dev": "तारे",
+   "asrRoman": "taare",
+   "startMs": 8329,
+   "endMs": 8760
+  },
+  {
+   "i": 34,
+   "dev": "शक्कर",
+   "asrRoman": "shakkar",
+   "startMs": 8760,
+   "endMs": 9039
+  },
+  {
+   "i": 35,
+   "dev": "पारे",
+   "asrRoman": "paare",
+   "startMs": 9039,
+   "endMs": 9319
+  },
+  {
+   "i": 36,
+   "dev": "लेके",
+   "asrRoman": "leke",
+   "startMs": 9319,
+   "endMs": 9479
+  },
+  {
+   "i": 37,
+   "dev": "आएँगे",
+   "asrRoman": "aaenge",
+   "startMs": 9479,
+   "endMs": 9750
+  },
+  {
+   "i": 38,
+   "dev": "मेरा",
+   "asrRoman": "mera",
+   "startMs": 9760,
+   "endMs": 9960
+  },
+  {
+   "i": 39,
+   "dev": "साल",
+   "asrRoman": "saal",
+   "startMs": 9960,
+   "endMs": 10239
+  },
+  {
+   "i": 40,
+   "dev": "का",
+   "asrRoman": "ka",
+   "startMs": 10239,
+   "endMs": 10399
+  },
+  {
+   "i": 41,
+   "dev": "सबसे",
+   "asrRoman": "sabse",
+   "startMs": 10399,
+   "endMs": 10640
+  },
+  {
+   "i": 42,
+   "dev": "घटिया",
+   "asrRoman": "ghatiya",
+   "startMs": 10640,
+   "endMs": 10920
+  },
+  {
+   "i": 43,
+   "dev": "दिन",
+   "asrRoman": "din",
+   "startMs": 10920,
+   "endMs": 11079
+  },
+  {
+   "i": 44,
+   "dev": "ज्यादा",
+   "asrRoman": "zyada",
+   "startMs": 11079,
+   "endMs": 11319
+  },
+  {
+   "i": 45,
+   "dev": "है",
+   "asrRoman": "hai",
+   "startMs": 11319,
+   "endMs": 11399
+  },
+  {
+   "i": 46,
+   "dev": "मेरा",
+   "asrRoman": "mera",
+   "startMs": 11399,
+   "endMs": 11600
+  },
+  {
+   "i": 47,
+   "dev": "बर्थडे",
+   "asrRoman": "birthday",
+   "startMs": 11600,
+   "endMs": 12069
+  },
+  {
+   "i": 48,
+   "dev": "हर",
+   "asrRoman": "har",
+   "startMs": 12270,
+   "endMs": 12520
+  },
+  {
+   "i": 49,
+   "dev": "साल",
+   "asrRoman": "saal",
+   "startMs": 12520,
+   "endMs": 12989
+  },
+  {
+   "i": 50,
+   "dev": "ये",
+   "asrRoman": "ye",
+   "startMs": 13079,
+   "endMs": 13319
+  },
+  {
+   "i": 51,
+   "dev": "ट्रैक",
+   "asrRoman": "track",
+   "startMs": 13319,
+   "endMs": 13680
+  },
+  {
+   "i": 52,
+   "dev": "रिकॉर्ड",
+   "asrRoman": "record",
+   "startMs": 13680,
+   "endMs": 14079
+  },
+  {
+   "i": 53,
+   "dev": "है",
+   "asrRoman": "hai",
+   "startMs": 14079,
+   "endMs": 14310
+  },
+  {
+   "i": 54,
+   "dev": "की",
+   "asrRoman": "ki",
+   "startMs": 14399,
+   "endMs": 14560
+  },
+  {
+   "i": 55,
+   "dev": "मैं",
+   "asrRoman": "main",
+   "startMs": 14560,
+   "endMs": 14800
+  },
+  {
+   "i": 56,
+   "dev": "अपने",
+   "asrRoman": "apne",
+   "startMs": 14800,
+   "endMs": 14880
+  },
+  {
+   "i": 57,
+   "dev": "बर्थडे",
+   "asrRoman": "birthday",
+   "startMs": 14880,
+   "endMs": 15159
+  },
+  {
+   "i": 58,
+   "dev": "पे",
+   "asrRoman": "pe",
+   "startMs": 15159,
+   "endMs": 15279
+  },
+  {
+   "i": 59,
+   "dev": "रोई",
+   "asrRoman": "roi",
+   "startMs": 15279,
+   "endMs": 15439
+  },
+  {
+   "i": 60,
+   "dev": "हूँ",
+   "asrRoman": "hoon",
+   "startMs": 15439,
+   "endMs": 15520
+  },
+  {
+   "i": 61,
+   "dev": "अब",
+   "asrRoman": "ab",
+   "startMs": 15569,
+   "endMs": 15680
+  },
+  {
+   "i": 62,
+   "dev": "मैं",
+   "asrRoman": "main",
+   "startMs": 15680,
+   "endMs": 15880
+  },
+  {
+   "i": 63,
+   "dev": "अपना",
+   "asrRoman": "apna",
+   "startMs": 15880,
+   "endMs": 16000
+  },
+  {
+   "i": 64,
+   "dev": "मुँह",
+   "asrRoman": "munh",
+   "startMs": 16000,
+   "endMs": 16180
+  },
+  {
+   "i": 65,
+   "dev": "से",
+   "asrRoman": "se",
+   "startMs": 16180,
+   "endMs": 16280
+  },
+  {
+   "i": 66,
+   "dev": "जा",
+   "asrRoman": "ja",
+   "startMs": 16280,
+   "endMs": 16440
+  },
+  {
+   "i": 67,
+   "dev": "के",
+   "asrRoman": "ke",
+   "startMs": 16440,
+   "endMs": 16559
+  },
+  {
+   "i": 68,
+   "dev": "बैठ",
+   "asrRoman": "baith",
+   "startMs": 16559,
+   "endMs": 16760
+  },
+  {
+   "i": 69,
+   "dev": "गयी",
+   "asrRoman": "gayi",
+   "startMs": 16760,
+   "endMs": 16879
+  },
+  {
+   "i": 70,
+   "dev": "हूँ",
+   "asrRoman": "hoon",
+   "startMs": 16879,
+   "endMs": 16959
+  },
+  {
+   "i": 71,
+   "dev": "की",
+   "asrRoman": "ki",
+   "startMs": 16959,
+   "endMs": 17079
+  },
+  {
+   "i": 72,
+   "dev": "ही",
+   "asrRoman": "hi",
+   "startMs": 17079,
+   "endMs": 17430
+  },
+  {
+   "i": 73,
+   "dev": "हाय",
+   "asrRoman": "haay",
+   "startMs": 17430,
+   "endMs": 17440
+  },
+  {
+   "i": 74,
+   "dev": "मेरी",
+   "asrRoman": "meri",
+   "startMs": 17440,
+   "endMs": 17639
+  },
+  {
+   "i": 75,
+   "dev": "बर्थडे",
+   "asrRoman": "birthday",
+   "startMs": 17639,
+   "endMs": 18040
+  },
+  {
+   "i": 76,
+   "dev": "आ",
+   "asrRoman": "aa",
+   "startMs": 18040,
+   "endMs": 18159
+  },
+  {
+   "i": 77,
+   "dev": "रही",
+   "asrRoman": "rahi",
+   "startMs": 18159,
+   "endMs": 18239
+  },
+  {
+   "i": 78,
+   "dev": "है",
+   "asrRoman": "hai",
+   "startMs": 18239,
+   "endMs": 18399
+  },
+  {
+   "i": 79,
+   "dev": "बिया",
+   "asrRoman": "bia",
+   "startMs": 18399,
+   "endMs": 18760
+  },
+  {
+   "i": 80,
+   "dev": "निकलेगी",
+   "asrRoman": "niklegi",
+   "startMs": 18760,
+   "endMs": 19239
+  },
+  {
+   "i": 81,
+   "dev": "कोई",
+   "asrRoman": "koi",
+   "startMs": 19239,
+   "endMs": 19440
+  },
+  {
+   "i": 82,
+   "dev": "बढ़िया",
+   "asrRoman": "badhiya",
+   "startMs": 19440,
+   "endMs": 19760
+  },
+  {
+   "i": 83,
+   "dev": "नहीं",
+   "asrRoman": "nahi",
+   "startMs": 19760,
+   "endMs": 19879
+  },
+  {
+   "i": 84,
+   "dev": "निकलेगी",
+   "asrRoman": "niklegi",
+   "startMs": 19879,
+   "endMs": 20319
+  },
+  {
+   "i": 85,
+   "dev": "मुझे",
+   "asrRoman": "mujhe",
+   "startMs": 20319,
+   "endMs": 20510
+  },
+  {
+   "i": 86,
+   "dev": "भी",
+   "asrRoman": "bhi",
+   "startMs": 20510,
+   "endMs": 20639
+  },
+  {
+   "i": 87,
+   "dev": "पता",
+   "asrRoman": "pata",
+   "startMs": 20639,
+   "endMs": 20799
+  },
+  {
+   "i": 88,
+   "dev": "है",
+   "asrRoman": "hai",
+   "startMs": 20799,
+   "endMs": 20920
+  },
+  {
+   "i": 89,
+   "dev": "रोना",
+   "asrRoman": "rona",
+   "startMs": 20920,
+   "endMs": 21200
+  },
+  {
+   "i": 90,
+   "dev": "मचने",
+   "asrRoman": "machne",
+   "startMs": 21200,
+   "endMs": 21520
+  },
+  {
+   "i": 91,
+   "dev": "वाला",
+   "asrRoman": "wala",
+   "startMs": 21520,
+   "endMs": 21760
+  },
+  {
+   "i": 92,
+   "dev": "है",
+   "asrRoman": "hai",
+   "startMs": 21760,
+   "endMs": 21840
+  },
+  {
+   "i": 93,
+   "dev": "उस",
+   "asrRoman": "us",
+   "startMs": 21840,
+   "endMs": 22000
+  },
+  {
+   "i": 94,
+   "dev": "दिन",
+   "asrRoman": "din",
+   "startMs": 22000,
+   "endMs": 22200
+  }
+ ]
+}

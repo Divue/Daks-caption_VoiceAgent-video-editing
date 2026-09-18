@@ -1,0 +1,591 @@
+{
+ "stage": "6-bedrock",
+ "model": "global.anthropic.claude-sonnet-4-6",
+ "elapsedS": 12.4,
+ "tokensIn": 7605,
+ "tokensOut": 1519,
+ "costUsd": 0.0456,
+ "lines": [
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 0,
+     "text": "Ye",
+     "held": false
+    },
+    {
+     "i": 1,
+     "text": "jaante",
+     "held": false
+    },
+    {
+     "i": 2,
+     "text": "hue",
+     "held": false
+    },
+    {
+     "i": 3,
+     "text": "ki",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 4,
+     "text": "har",
+     "held": false
+    },
+    {
+     "i": 5,
+     "text": "saal",
+     "held": false
+    },
+    {
+     "i": 6,
+     "text": "meri",
+     "held": false
+    },
+    {
+     "i": 7,
+     "text": "birthday",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 8,
+     "text": "kaise",
+     "held": false
+    },
+    {
+     "i": 9,
+     "text": "manati",
+     "held": false
+    },
+    {
+     "i": 10,
+     "text": "hai",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 11,
+     "text": "Apne",
+     "held": false
+    },
+    {
+     "i": 12,
+     "text": "birthday",
+     "held": false
+    },
+    {
+     "i": 13,
+     "text": "se",
+     "held": false
+    },
+    {
+     "i": 14,
+     "text": "ek",
+     "held": false
+    },
+    {
+     "i": 15,
+     "text": "mahina",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 16,
+     "text": "pehle",
+     "held": false
+    },
+    {
+     "i": 17,
+     "text": "jo",
+     "held": false
+    },
+    {
+     "i": 18,
+     "text": "main",
+     "held": false
+    },
+    {
+     "i": 19,
+     "text": "khwab",
+     "held": false
+    },
+    {
+     "i": 20,
+     "text": "dekhna",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 21,
+     "text": "chalu",
+     "held": false
+    },
+    {
+     "i": 22,
+     "text": "kar",
+     "held": false
+    },
+    {
+     "i": 23,
+     "text": "deti",
+     "held": false
+    },
+    {
+     "i": 24,
+     "text": "hun",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "hype",
+   "words": [
+    {
+     "i": 25,
+     "text": "ki",
+     "held": false
+    },
+    {
+     "i": 26,
+     "text": "oh",
+     "held": false
+    },
+    {
+     "i": 27,
+     "text": "my",
+     "held": false
+    },
+    {
+     "i": 28,
+     "text": "god",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 29,
+     "text": "log",
+     "held": false
+    },
+    {
+     "i": 30,
+     "text": "mere",
+     "held": false
+    },
+    {
+     "i": 31,
+     "text": "liye",
+     "held": false
+    },
+    {
+     "i": 32,
+     "text": "chand",
+     "held": false
+    },
+    {
+     "i": 33,
+     "text": "tare",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 34,
+     "text": "shakkar",
+     "held": false
+    },
+    {
+     "i": 35,
+     "text": "pare",
+     "held": false
+    },
+    {
+     "i": 36,
+     "text": "leke",
+     "held": false
+    },
+    {
+     "i": 37,
+     "text": "aayenge",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 38,
+     "text": "Mera",
+     "held": false
+    },
+    {
+     "i": 39,
+     "text": "saal",
+     "held": false
+    },
+    {
+     "i": 40,
+     "text": "ka",
+     "held": false
+    },
+    {
+     "i": 41,
+     "text": "sabse",
+     "held": false
+    },
+    {
+     "i": 42,
+     "text": "ghatiya",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 43,
+     "text": "din",
+     "held": false
+    },
+    {
+     "i": 44,
+     "text": "zyada",
+     "held": false
+    },
+    {
+     "i": 45,
+     "text": "hai",
+     "held": false
+    },
+    {
+     "i": 46,
+     "text": "mera",
+     "held": false
+    },
+    {
+     "i": 47,
+     "text": "birthday",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 48,
+     "text": "Har",
+     "held": false
+    },
+    {
+     "i": 49,
+     "text": "saal",
+     "held": false
+    },
+    {
+     "i": 50,
+     "text": "ye",
+     "held": false
+    },
+    {
+     "i": 51,
+     "text": "track",
+     "held": false
+    },
+    {
+     "i": 52,
+     "text": "record",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 53,
+     "text": "hai",
+     "held": false
+    },
+    {
+     "i": 54,
+     "text": "ki",
+     "held": false
+    },
+    {
+     "i": 55,
+     "text": "main",
+     "held": false
+    },
+    {
+     "i": 56,
+     "text": "apne",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 57,
+     "text": "birthday",
+     "held": false
+    },
+    {
+     "i": 58,
+     "text": "pe",
+     "held": false
+    },
+    {
+     "i": 59,
+     "text": "roi",
+     "held": false
+    },
+    {
+     "i": 60,
+     "text": "hun",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 61,
+     "text": "Ab",
+     "held": false
+    },
+    {
+     "i": 62,
+     "text": "main",
+     "held": false
+    },
+    {
+     "i": 63,
+     "text": "apna",
+     "held": false
+    },
+    {
+     "i": 64,
+     "text": "munh",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 65,
+     "text": "saja",
+     "held": false
+    },
+    {
+     "i": 66,
+     "text": "ke",
+     "held": false
+    },
+    {
+     "i": 67,
+     "text": "baith",
+     "held": false
+    },
+    {
+     "i": 68,
+     "text": "gayi",
+     "held": false
+    },
+    {
+     "i": 69,
+     "text": "hun",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 70,
+     "text": "ki",
+     "held": false
+    },
+    {
+     "i": 71,
+     "text": "hai",
+     "held": false
+    },
+    {
+     "i": 72,
+     "text": "hai",
+     "held": false
+    },
+    {
+     "i": 73,
+     "text": "meri",
+     "held": false
+    },
+    {
+     "i": 74,
+     "text": "birthday",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 75,
+     "text": "aa",
+     "held": false
+    },
+    {
+     "i": 76,
+     "text": "rahi",
+     "held": false
+    },
+    {
+     "i": 77,
+     "text": "hai",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 78,
+     "text": "Badhiya",
+     "held": false
+    },
+    {
+     "i": 79,
+     "text": "niklegi",
+     "held": false
+    },
+    {
+     "i": 80,
+     "text": "koi",
+     "held": false
+    },
+    {
+     "i": 81,
+     "text": "badhiya",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 82,
+     "text": "nahi",
+     "held": false
+    },
+    {
+     "i": 83,
+     "text": "niklegi",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 84,
+     "text": "Mujhe",
+     "held": false
+    },
+    {
+     "i": 85,
+     "text": "bhi",
+     "held": false
+    },
+    {
+     "i": 86,
+     "text": "pata",
+     "held": false
+    },
+    {
+     "i": 87,
+     "text": "hai",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 88,
+     "text": "rona",
+     "held": false
+    },
+    {
+     "i": 89,
+     "text": "machne",
+     "held": false
+    },
+    {
+     "i": 90,
+     "text": "wala",
+     "held": false
+    },
+    {
+     "i": 91,
+     "text": "hai",
+     "held": false
+    },
+    {
+     "i": 92,
+     "text": "us",
+     "held": false
+    },
+    {
+     "i": 93,
+     "text": "din",
+     "held": false
+    }
+   ]
+  }
+ ],
+ "nRecovered": 1
+}

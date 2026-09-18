@@ -11,3 +11,5 @@ python-multipart
 # NEEDS P1 SIGN-OFF: this file ships into the production API Docker image — see
 # the team's LiveKit integration plan / root ai-agent-report.md for context.
 livekit-api
+requests
+indic-transliteration

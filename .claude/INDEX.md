@@ -34,10 +34,16 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | 08 | `audits/08-video-upload.md` | `components/upload/UploadDropzone.tsx` | Upload flow, video metadata reading |
 | 09 | `audits/09-editor-ui-redesign.md` | Editor shell v2, agent UI seam, layout components | Current editor layout, header/sidebar, agent command bar/mic/log |
 | 10 | `audits/10-landing-page.md` | `pages/LandingPage.tsx`, `components/landing/*`, `router.tsx`, `AppRoot.tsx` | Landing page, routing between `/` and `/editor` |
+| 11 | `audits/11-stt-prosody-pipeline.md` | `services/api/app/pipeline` + `scripts/stt_bakeoff/caption_eval` (P1) | Transcription, word timings, emphasis/stretch/tone, pipeline API design, proposed schema change. **Read the box at the top: ship `app/pipeline/`, the harness is for tuning.** |
 
 Documents 09 and 10 both originate from a single commit (`628a3e6`) that
 combined an editor redesign with a new landing page. They are split by file
 area, not by commit, for readability.
+
+Document 11 is the first audit **outside `apps/web`**. It covers the backend
+transcription/prosody pipeline that produces the `Project` JSON the editor
+consumes. Read it before any work on captions, word timings, emphasis/stretch
+values, or the editor's future API integration.
 
 ## Current architecture summary
 
@@ -51,6 +57,8 @@ Browser
         → Editor UI (player preview, transcript, inspector, presets, upload, undo/redo)
         → Agent command bar / mic button / activity log (UI-only, see below)
   → [NOT YET INTEGRATED] services/api (P1) — no HTTP calls exist in apps/web
+       └─ STT + prosody pipeline: designed, built and measured on 4 real clips,
+          NOT yet wired into the API or the editor. See audits/11.
   → [NOT YET INTEGRATED] services/api/app/agent (P4) — command bar has no backend wired
   → [NOT YET INTEGRATED] remotion/@remotion/player (P2) — preview is a styled div, not the real Player
 ```
@@ -105,6 +113,9 @@ Things Claude must preserve when working in `apps/web`:
   styling.
 - Build and test against `packages/shared/fixtures/demo-project.json` first
   (per root `CLAUDE.md`).
+- Caption elongation is carried by `Word.stretch` (a number), never by repeating
+  letters in `Word.text`. The renderer draws the repeats. Writing "helloooo" into
+  `text` corrupts real spellings — see `audits/11-stt-prosody-pipeline.md` §5.
 - Branch ownership: `apps/web` work happens on `p3-editor`/`aman/*` branches;
   the lead merges to `main`.
 - No fake backend/AI behavior: `useAgentActivity.ts` and `AgentCommandBar.tsx`

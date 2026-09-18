@@ -1,0 +1,325 @@
+{
+ "stage": "6-bedrock",
+ "model": "global.anthropic.claude-sonnet-4-6",
+ "elapsedS": 7.2,
+ "tokensIn": 4297,
+ "tokensOut": 824,
+ "costUsd": 0.0253,
+ "lines": [
+  {
+   "tone": "hype",
+   "words": [
+    {
+     "i": 0,
+     "text": "Hello",
+     "held": false
+    },
+    {
+     "i": 1,
+     "text": "guys",
+     "held": false
+    },
+    {
+     "i": 2,
+     "text": "this",
+     "held": false
+    },
+    {
+     "i": 3,
+     "text": "is",
+     "held": false
+    },
+    {
+     "i": 4,
+     "text": "Shubhair",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 5,
+     "text": "uh",
+     "held": false
+    },
+    {
+     "i": 6,
+     "text": "aaj",
+     "held": false
+    },
+    {
+     "i": 7,
+     "text": "STT",
+     "held": false
+    },
+    {
+     "i": 8,
+     "text": "test",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 9,
+     "text": "karna",
+     "held": false
+    },
+    {
+     "i": 10,
+     "text": "hai",
+     "held": false
+    },
+    {
+     "i": 11,
+     "text": "aur",
+     "held": false
+    },
+    {
+     "i": 12,
+     "text": "yahan",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 13,
+     "text": "hum",
+     "held": false
+    },
+    {
+     "i": 14,
+     "text": "log",
+     "held": false
+    },
+    {
+     "i": 15,
+     "text": "pagal",
+     "held": false
+    },
+    {
+     "i": 16,
+     "text": "ho",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 17,
+     "text": "chuke",
+     "held": false
+    },
+    {
+     "i": 18,
+     "text": "hain",
+     "held": false
+    },
+    {
+     "i": 19,
+     "text": "bhai",
+     "held": false
+    },
+    {
+     "i": 20,
+     "text": "kaam",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 21,
+     "text": "karte",
+     "held": false
+    },
+    {
+     "i": 22,
+     "text": "karte",
+     "held": false
+    },
+    {
+     "i": 23,
+     "text": "so",
+     "held": false
+    },
+    {
+     "i": 24,
+     "text": "hum",
+     "held": false
+    },
+    {
+     "i": 25,
+     "text": "log",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 26,
+     "text": "well",
+     "held": false
+    },
+    {
+     "i": 27,
+     "text": "main",
+     "held": false
+    },
+    {
+     "i": 28,
+     "text": "Benetton",
+     "held": false
+    },
+    {
+     "i": 29,
+     "text": "University",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 30,
+     "text": "se",
+     "held": false
+    },
+    {
+     "i": 31,
+     "text": "hoon",
+     "held": false
+    },
+    {
+     "i": 32,
+     "text": "fourth",
+     "held": false
+    },
+    {
+     "i": 33,
+     "text": "year",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 34,
+     "text": "uh",
+     "held": false
+    },
+    {
+     "i": 35,
+     "text": "I",
+     "held": false
+    },
+    {
+     "i": 36,
+     "text": "don't",
+     "held": false
+    },
+    {
+     "i": 37,
+     "text": "know",
+     "held": false
+    },
+    {
+     "i": 38,
+     "text": "what",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 39,
+     "text": "to",
+     "held": false
+    },
+    {
+     "i": 40,
+     "text": "say",
+     "held": false
+    },
+    {
+     "i": 41,
+     "text": "anymore",
+     "held": false
+    },
+    {
+     "i": 42,
+     "text": "right",
+     "held": false
+    },
+    {
+     "i": 43,
+     "text": "now",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 44,
+     "text": "but",
+     "held": false
+    },
+    {
+     "i": 45,
+     "text": "dekhne",
+     "held": false
+    },
+    {
+     "i": 46,
+     "text": "hain",
+     "held": false
+    },
+    {
+     "i": 47,
+     "text": "testing",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 48,
+     "text": "video",
+     "held": false
+    },
+    {
+     "i": 49,
+     "text": "hash",
+     "held": false
+    },
+    {
+     "i": 50,
+     "text": "one",
+     "held": false
+    }
+   ]
+  }
+ ]
+}

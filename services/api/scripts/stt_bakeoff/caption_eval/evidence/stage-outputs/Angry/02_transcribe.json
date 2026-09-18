@@ -1,0 +1,330 @@
+{
+ "stage": "2-transcribe-hi",
+ "engine": "aws-transcribe hi-IN",
+ "nWords": 46,
+ "devanagari": "व्हाट थे फक भाई व्हाट थे फक इस हैपनिंग भाई । आई एएम फेड उप ओएफ थिस शित भाई आई शोल्ड जस्ट दो खेती बारी भाई एटी थिस पॉइंट । व्हाट थे फक इस व्रोंग विथ यू गाइज भाई तुम लोगों से काम क्यों नहीं होता है बहनचोद ।",
+ "words": [
+  {
+   "i": 0,
+   "dev": "व्हाट",
+   "asrRoman": "what",
+   "startMs": 39,
+   "endMs": 319
+  },
+  {
+   "i": 1,
+   "dev": "थे",
+   "asrRoman": "the",
+   "startMs": 319,
+   "endMs": 519
+  },
+  {
+   "i": 2,
+   "dev": "फक",
+   "asrRoman": "fuck",
+   "startMs": 519,
+   "endMs": 879
+  },
+  {
+   "i": 3,
+   "dev": "भाई",
+   "asrRoman": "bhai",
+   "startMs": 879,
+   "endMs": 1159
+  },
+  {
+   "i": 4,
+   "dev": "व्हाट",
+   "asrRoman": "what",
+   "startMs": 1159,
+   "endMs": 1399
+  },
+  {
+   "i": 5,
+   "dev": "थे",
+   "asrRoman": "the",
+   "startMs": 1399,
+   "endMs": 1519
+  },
+  {
+   "i": 6,
+   "dev": "फक",
+   "asrRoman": "fuck",
+   "startMs": 1519,
+   "endMs": 1799
+  },
+  {
+   "i": 7,
+   "dev": "इस",
+   "asrRoman": "is",
+   "startMs": 1799,
+   "endMs": 2000
+  },
+  {
+   "i": 8,
+   "dev": "हैपनिंग",
+   "asrRoman": "happening",
+   "startMs": 2000,
+   "endMs": 2440
+  },
+  {
+   "i": 9,
+   "dev": "भाई",
+   "asrRoman": "bhai",
+   "startMs": 2440,
+   "endMs": 2789
+  },
+  {
+   "i": 10,
+   "dev": "आई",
+   "asrRoman": "I",
+   "startMs": 3319,
+   "endMs": 3400
+  },
+  {
+   "i": 11,
+   "dev": "एएम",
+   "asrRoman": "am",
+   "startMs": 3400,
+   "endMs": 3559
+  },
+  {
+   "i": 12,
+   "dev": "फेड",
+   "asrRoman": "fed",
+   "startMs": 3559,
+   "endMs": 3799
+  },
+  {
+   "i": 13,
+   "dev": "उप",
+   "asrRoman": "up",
+   "startMs": 3799,
+   "endMs": 3880
+  },
+  {
+   "i": 14,
+   "dev": "ओएफ",
+   "asrRoman": "of",
+   "startMs": 3880,
+   "endMs": 4039
+  },
+  {
+   "i": 15,
+   "dev": "थिस",
+   "asrRoman": "this",
+   "startMs": 4039,
+   "endMs": 4199
+  },
+  {
+   "i": 16,
+   "dev": "शित",
+   "asrRoman": "shit",
+   "startMs": 4199,
+   "endMs": 4440
+  },
+  {
+   "i": 17,
+   "dev": "भाई",
+   "asrRoman": "bhai",
+   "startMs": 4440,
+   "endMs": 4920
+  },
+  {
+   "i": 18,
+   "dev": "आई",
+   "asrRoman": "I",
+   "startMs": 5039,
+   "endMs": 5320
+  },
+  {
+   "i": 19,
+   "dev": "शोल्ड",
+   "asrRoman": "should",
+   "startMs": 5599,
+   "endMs": 5920
+  },
+  {
+   "i": 20,
+   "dev": "जस्ट",
+   "asrRoman": "just",
+   "startMs": 5920,
+   "endMs": 6239
+  },
+  {
+   "i": 21,
+   "dev": "दो",
+   "asrRoman": "do",
+   "startMs": 6239,
+   "endMs": 6519
+  },
+  {
+   "i": 22,
+   "dev": "खेती",
+   "asrRoman": "kheti",
+   "startMs": 6519,
+   "endMs": 6880
+  },
+  {
+   "i": 23,
+   "dev": "बारी",
+   "asrRoman": "bari",
+   "startMs": 6880,
+   "endMs": 7159
+  },
+  {
+   "i": 24,
+   "dev": "भाई",
+   "asrRoman": "bhai",
+   "startMs": 7159,
+   "endMs": 7400
+  },
+  {
+   "i": 25,
+   "dev": "एटी",
+   "asrRoman": "at",
+   "startMs": 7400,
+   "endMs": 7519
+  },
+  {
+   "i": 26,
+   "dev": "थिस",
+   "asrRoman": "this",
+   "startMs": 7519,
+   "endMs": 7719
+  },
+  {
+   "i": 27,
+   "dev": "पॉइंट",
+   "asrRoman": "point",
+   "startMs": 7719,
+   "endMs": 8060
+  },
+  {
+   "i": 28,
+   "dev": "व्हाट",
+   "asrRoman": "what",
+   "startMs": 10039,
+   "endMs": 10319
+  },
+  {
+   "i": 29,
+   "dev": "थे",
+   "asrRoman": "the",
+   "startMs": 10319,
+   "endMs": 10520
+  },
+  {
+   "i": 30,
+   "dev": "फक",
+   "asrRoman": "fuck",
+   "startMs": 10520,
+   "endMs": 11000
+  },
+  {
+   "i": 31,
+   "dev": "इस",
+   "asrRoman": "is",
+   "startMs": 11119,
+   "endMs": 11380
+  },
+  {
+   "i": 32,
+   "dev": "व्रोंग",
+   "asrRoman": "wrong",
+   "startMs": 11560,
+   "endMs": 11920
+  },
+  {
+   "i": 33,
+   "dev": "विथ",
+   "asrRoman": "with",
+   "startMs": 11920,
+   "endMs": 12159
+  },
+  {
+   "i": 34,
+   "dev": "यू",
+   "asrRoman": "you",
+   "startMs": 12159,
+   "endMs": 12359
+  },
+  {
+   "i": 35,
+   "dev": "गाइज",
+   "asrRoman": "guys",
+   "startMs": 12359,
+   "endMs": 12720
+  },
+  {
+   "i": 36,
+   "dev": "भाई",
+   "asrRoman": "bhai",
+   "startMs": 12720,
+   "endMs": 13069
+  },
+  {
+   "i": 37,
+   "dev": "तुम",
+   "asrRoman": "tum",
+   "startMs": 13159,
+   "endMs": 13359
+  },
+  {
+   "i": 38,
+   "dev": "लोगों",
+   "asrRoman": "logon",
+   "startMs": 13359,
+   "endMs": 13479
+  },
+  {
+   "i": 39,
+   "dev": "से",
+   "asrRoman": "se",
+   "startMs": 13479,
+   "endMs": 13600
+  },
+  {
+   "i": 40,
+   "dev": "काम",
+   "asrRoman": "kaam",
+   "startMs": 13600,
+   "endMs": 13920
+  },
+  {
+   "i": 41,
+   "dev": "क्यों",
+   "asrRoman": "kyun",
+   "startMs": 13920,
+   "endMs": 14039
+  },
+  {
+   "i": 42,
+   "dev": "नहीं",
+   "asrRoman": "nahi",
+   "startMs": 14039,
+   "endMs": 14239
+  },
+  {
+   "i": 43,
+   "dev": "होता",
+   "asrRoman": "hota",
+   "startMs": 14239,
+   "endMs": 14279
+  },
+  {
+   "i": 44,
+   "dev": "है",
+   "asrRoman": "hai",
+   "startMs": 14279,
+   "endMs": 14359
+  },
+  {
+   "i": 45,
+   "dev": "बहनचोद",
+   "asrRoman": "bahanchod",
+   "startMs": 14359,
+   "endMs": 14890
+  }
+ ]
+}

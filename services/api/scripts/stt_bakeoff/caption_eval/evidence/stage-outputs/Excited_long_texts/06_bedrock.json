@@ -1,0 +1,105 @@
+{
+ "stage": "6-bedrock",
+ "model": "global.anthropic.claude-sonnet-4-6",
+ "elapsedS": 3.0,
+ "tokensIn": 1606,
+ "tokensOut": 248,
+ "costUsd": 0.0085,
+ "lines": [
+  {
+   "tone": "hype",
+   "words": [
+    {
+     "i": 0,
+     "text": "Hello",
+     "held": false
+    },
+    {
+     "i": 1,
+     "text": "guys",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 2,
+     "text": "right",
+     "held": false
+    },
+    {
+     "i": 3,
+     "text": "now",
+     "held": false
+    },
+    {
+     "i": 4,
+     "text": "I",
+     "held": false
+    },
+    {
+     "i": 5,
+     "text": "am",
+     "held": false
+    },
+    {
+     "i": 6,
+     "text": "at",
+     "held": false
+    },
+    {
+     "i": 7,
+     "text": "my",
+     "held": false
+    },
+    {
+     "i": 8,
+     "text": "house",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 9,
+     "text": "so",
+     "held": false
+    },
+    {
+     "i": 10,
+     "text": "how",
+     "held": false
+    },
+    {
+     "i": 11,
+     "text": "is",
+     "held": false
+    },
+    {
+     "i": 12,
+     "text": "it",
+     "held": false
+    },
+    {
+     "i": 13,
+     "text": "going",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 14,
+     "text": "what",
+     "held": false
+    }
+   ]
+  }
+ ]
+}

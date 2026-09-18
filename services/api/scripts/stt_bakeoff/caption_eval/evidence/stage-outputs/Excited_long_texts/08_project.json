@@ -1,0 +1,236 @@
+{
+ "id": "ee607777",
+ "videoUrl": "s3://.../Excited_long_texts.mp4",
+ "durationMs": 13930,
+ "width": 1080,
+ "height": 1920,
+ "presetId": "hinglish-bold",
+ "words": [
+  {
+   "id": "w0",
+   "text": "Hello",
+   "startMs": 490,
+   "endMs": 1169,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.4,
+    "empPct": 0.73
+   }
+  },
+  {
+   "id": "w1",
+   "text": "guys",
+   "startMs": 1169,
+   "endMs": 2029,
+   "emphasis": 1,
+   "stretch": 4.0,
+   "signals": {
+    "holdPct": 0.93,
+    "empPct": 0.8
+   }
+  },
+  {
+   "id": "w2",
+   "text": "right",
+   "startMs": 3380,
+   "endMs": 3650,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.67,
+    "empPct": 0.67
+   }
+  },
+  {
+   "id": "w3",
+   "text": "now",
+   "startMs": 3650,
+   "endMs": 3990,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.73,
+    "empPct": 0.6
+   }
+  },
+  {
+   "id": "w4",
+   "text": "I",
+   "startMs": 3990,
+   "endMs": 4120,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.07,
+    "empPct": 0.27
+   }
+  },
+  {
+   "id": "w5",
+   "text": "am",
+   "startMs": 5260,
+   "endMs": 5440,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.27,
+    "empPct": 0.13
+   }
+  },
+  {
+   "id": "w6",
+   "text": "at",
+   "startMs": 5440,
+   "endMs": 5579,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.07,
+    "empPct": 0.0
+   }
+  },
+  {
+   "id": "w7",
+   "text": "my",
+   "startMs": 5579,
+   "endMs": 5780,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.4,
+    "empPct": 0.07
+   }
+  },
+  {
+   "id": "w8",
+   "text": "house",
+   "startMs": 5780,
+   "endMs": 6250,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.2,
+    "empPct": 0.47
+   }
+  },
+  {
+   "id": "w9",
+   "text": "so",
+   "startMs": 7219,
+   "endMs": 7519,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.0,
+    "empPct": 0.53
+   }
+  },
+  {
+   "id": "w10",
+   "text": "how",
+   "startMs": 8460,
+   "endMs": 8819,
+   "emphasis": 2,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.53,
+    "empPct": 0.87
+   }
+  },
+  {
+   "id": "w11",
+   "text": "is",
+   "startMs": 8819,
+   "endMs": 8949,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.33,
+    "empPct": 0.33
+   }
+  },
+  {
+   "id": "w12",
+   "text": "it",
+   "startMs": 8949,
+   "endMs": 9300,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.8,
+    "empPct": 0.2
+   }
+  },
+  {
+   "id": "w13",
+   "text": "going",
+   "startMs": 9300,
+   "endMs": 9659,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.6,
+    "empPct": 0.4
+   }
+  },
+  {
+   "id": "w14",
+   "text": "what",
+   "startMs": 11750,
+   "endMs": 12590,
+   "emphasis": 2,
+   "stretch": 2.6,
+   "signals": {
+    "holdPct": 0.87,
+    "empPct": 0.93
+   }
+  }
+ ],
+ "lines": [
+  {
+   "id": "l0",
+   "tone": "hype",
+   "wordIds": [
+    "w0",
+    "w1"
+   ]
+  },
+  {
+   "id": "l1",
+   "tone": "neutral",
+   "wordIds": [
+    "w2",
+    "w3",
+    "w4",
+    "w5",
+    "w6",
+    "w7",
+    "w8"
+   ]
+  },
+  {
+   "id": "l2",
+   "tone": "neutral",
+   "wordIds": [
+    "w9",
+    "w10",
+    "w11",
+    "w12",
+    "w13"
+   ]
+  },
+  {
+   "id": "l3",
+   "tone": "neutral",
+   "wordIds": [
+    "w14"
+   ]
+  }
+ ],
+ "overlays": [],
+ "settings": {
+  "emojis": false,
+  "emotionLayer": true
+ }
+}

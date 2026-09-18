@@ -1,0 +1,6 @@
+{
+ "stage": "1-audio",
+ "sampleRate": 16000,
+ "samples": 245760,
+ "durationMs": 15360
+}

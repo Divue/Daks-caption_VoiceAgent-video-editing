@@ -1,0 +1,752 @@
+{
+ "id": "870a996e",
+ "videoUrl": "s3://.../Normal.mp4",
+ "durationMs": 27178,
+ "width": 1080,
+ "height": 1920,
+ "presetId": "hinglish-bold",
+ "words": [
+  {
+   "id": "w0",
+   "text": "Hello",
+   "startMs": 300,
+   "endMs": 439,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.22,
+    "empPct": 0.75
+   }
+  },
+  {
+   "id": "w1",
+   "text": "guys",
+   "startMs": 439,
+   "endMs": 1200,
+   "emphasis": 1,
+   "stretch": 4.0,
+   "signals": {
+    "holdPct": 0.98,
+    "empPct": 0.82
+   }
+  },
+  {
+   "id": "w2",
+   "text": "this",
+   "startMs": 1480,
+   "endMs": 1639,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.27,
+    "empPct": 0.14
+   }
+  },
+  {
+   "id": "w3",
+   "text": "is",
+   "startMs": 1639,
+   "endMs": 1799,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.18,
+    "empPct": 0.06
+   }
+  },
+  {
+   "id": "w4",
+   "text": "Shubhair",
+   "startMs": 1799,
+   "endMs": 2390,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.43,
+    "empPct": 0.43
+   }
+  },
+  {
+   "id": "w5",
+   "text": "uh",
+   "startMs": 3140,
+   "endMs": 3230,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.57,
+    "empPct": 0.73
+   }
+  },
+  {
+   "id": "w6",
+   "text": "aaj",
+   "startMs": 4219,
+   "endMs": 5019,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.92,
+    "empPct": 0.57
+   }
+  },
+  {
+   "id": "w7",
+   "text": "STT",
+   "startMs": 5300,
+   "endMs": 5820,
+   "emphasis": 3,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.71,
+    "empPct": 0.98
+   }
+  },
+  {
+   "id": "w8",
+   "text": "test",
+   "startMs": 5820,
+   "endMs": 6300,
+   "emphasis": 2,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.39,
+    "empPct": 0.94
+   }
+  },
+  {
+   "id": "w9",
+   "text": "karna",
+   "startMs": 6300,
+   "endMs": 6500,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.0,
+    "empPct": 0.51
+   }
+  },
+  {
+   "id": "w10",
+   "text": "hai",
+   "startMs": 6500,
+   "endMs": 6849,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.31,
+    "empPct": 0.22
+   }
+  },
+  {
+   "id": "w11",
+   "text": "aur",
+   "startMs": 7719,
+   "endMs": 7940,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.0,
+    "empPct": 0.29
+   }
+  },
+  {
+   "id": "w12",
+   "text": "yahan",
+   "startMs": 8449,
+   "endMs": 8689,
+   "emphasis": 2,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.47,
+    "empPct": 0.86
+   }
+  },
+  {
+   "id": "w13",
+   "text": "hum",
+   "startMs": 8699,
+   "endMs": 8859,
+   "emphasis": 2,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.71,
+    "empPct": 0.88
+   }
+  },
+  {
+   "id": "w14",
+   "text": "log",
+   "startMs": 8859,
+   "endMs": 9180,
+   "emphasis": 2,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.69,
+    "empPct": 0.92
+   }
+  },
+  {
+   "id": "w15",
+   "text": "pagal",
+   "startMs": 9180,
+   "endMs": 9659,
+   "emphasis": 2,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.49,
+    "empPct": 0.9
+   }
+  },
+  {
+   "id": "w16",
+   "text": "ho",
+   "startMs": 9659,
+   "endMs": 9779,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.51,
+    "empPct": 0.53
+   }
+  },
+  {
+   "id": "w17",
+   "text": "chuke",
+   "startMs": 9779,
+   "endMs": 10020,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.43,
+    "empPct": 0.71
+   }
+  },
+  {
+   "id": "w18",
+   "text": "hain",
+   "startMs": 10020,
+   "endMs": 10140,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.61,
+    "empPct": 0.31
+   }
+  },
+  {
+   "id": "w19",
+   "text": "bhai",
+   "startMs": 10140,
+   "endMs": 10340,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.71,
+    "empPct": 0.67
+   }
+  },
+  {
+   "id": "w20",
+   "text": "kaam",
+   "startMs": 10340,
+   "endMs": 10779,
+   "emphasis": 0,
+   "stretch": 1.3,
+   "signals": {
+    "holdPct": 0.86,
+    "empPct": 0.45
+   }
+  },
+  {
+   "id": "w21",
+   "text": "karte",
+   "startMs": 10779,
+   "endMs": 11119,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.14,
+    "empPct": 0.0
+   }
+  },
+  {
+   "id": "w22",
+   "text": "karte",
+   "startMs": 11130,
+   "endMs": 11340,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.14,
+    "empPct": 0.02
+   }
+  },
+  {
+   "id": "w23",
+   "text": "so",
+   "startMs": 12960,
+   "endMs": 13450,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.9,
+    "empPct": 0.55
+   }
+  },
+  {
+   "id": "w24",
+   "text": "hum",
+   "startMs": 13920,
+   "endMs": 14159,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.8,
+    "empPct": 0.78
+   }
+  },
+  {
+   "id": "w25",
+   "text": "log",
+   "startMs": 14159,
+   "endMs": 14739,
+   "emphasis": 0,
+   "stretch": 3.9,
+   "signals": {
+    "holdPct": 0.96,
+    "empPct": 0.37
+   }
+  },
+  {
+   "id": "w26",
+   "text": "well",
+   "startMs": 15329,
+   "endMs": 15649,
+   "emphasis": 3,
+   "stretch": 1.6,
+   "signals": {
+    "holdPct": 0.88,
+    "empPct": 0.96
+   }
+  },
+  {
+   "id": "w27",
+   "text": "main",
+   "startMs": 15800,
+   "endMs": 15960,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.71,
+    "empPct": 0.84
+   }
+  },
+  {
+   "id": "w28",
+   "text": "Benetton",
+   "startMs": 15960,
+   "endMs": 16319,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.41,
+    "empPct": 0.76
+   }
+  },
+  {
+   "id": "w29",
+   "text": "University",
+   "startMs": 16319,
+   "endMs": 16840,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.12,
+    "empPct": 0.65
+   }
+  },
+  {
+   "id": "w30",
+   "text": "se",
+   "startMs": 16840,
+   "endMs": 16959,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.0,
+    "empPct": 0.08
+   }
+  },
+  {
+   "id": "w31",
+   "text": "hoon",
+   "startMs": 16959,
+   "endMs": 17159,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.06,
+    "empPct": 0.35
+   }
+  },
+  {
+   "id": "w32",
+   "text": "fourth",
+   "startMs": 17159,
+   "endMs": 17520,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.65,
+    "empPct": 0.59
+   }
+  },
+  {
+   "id": "w33",
+   "text": "year",
+   "startMs": 17520,
+   "endMs": 17770,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.82,
+    "empPct": 0.63
+   }
+  },
+  {
+   "id": "w34",
+   "text": "uh",
+   "startMs": 18640,
+   "endMs": 18960,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.33,
+    "empPct": 0.18
+   }
+  },
+  {
+   "id": "w35",
+   "text": "I",
+   "startMs": 19360,
+   "endMs": 19559,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.65,
+    "empPct": 0.27
+   }
+  },
+  {
+   "id": "w36",
+   "text": "don't",
+   "startMs": 19559,
+   "endMs": 19799,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.84,
+    "empPct": 0.49
+   }
+  },
+  {
+   "id": "w37",
+   "text": "know",
+   "startMs": 19799,
+   "endMs": 20360,
+   "emphasis": 0,
+   "stretch": 3.7,
+   "signals": {
+    "holdPct": 0.94,
+    "empPct": 0.47
+   }
+  },
+  {
+   "id": "w38",
+   "text": "what",
+   "startMs": 20360,
+   "endMs": 20659,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.33,
+    "empPct": 0.2
+   }
+  },
+  {
+   "id": "w39",
+   "text": "to",
+   "startMs": 20659,
+   "endMs": 20799,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.08,
+    "empPct": 0.24
+   }
+  },
+  {
+   "id": "w40",
+   "text": "say",
+   "startMs": 20799,
+   "endMs": 21000,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.53,
+    "empPct": 0.41
+   }
+  },
+  {
+   "id": "w41",
+   "text": "anymore",
+   "startMs": 21000,
+   "endMs": 21479,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.37,
+    "empPct": 0.39
+   }
+  },
+  {
+   "id": "w42",
+   "text": "right",
+   "startMs": 21479,
+   "endMs": 21799,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.27,
+    "empPct": 0.12
+   }
+  },
+  {
+   "id": "w43",
+   "text": "now",
+   "startMs": 21799,
+   "endMs": 22069,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.2,
+    "empPct": 0.04
+   }
+  },
+  {
+   "id": "w44",
+   "text": "but",
+   "startMs": 22360,
+   "endMs": 22639,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.53,
+    "empPct": 0.33
+   }
+  },
+  {
+   "id": "w45",
+   "text": "dekhne",
+   "startMs": 22639,
+   "endMs": 22920,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.08,
+    "empPct": 0.61
+   }
+  },
+  {
+   "id": "w46",
+   "text": "hain",
+   "startMs": 22920,
+   "endMs": 23350,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.71,
+    "empPct": 0.08
+   }
+  },
+  {
+   "id": "w47",
+   "text": "testing",
+   "startMs": 24040,
+   "endMs": 24680,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.59,
+    "empPct": 0.8
+   }
+  },
+  {
+   "id": "w48",
+   "text": "video",
+   "startMs": 24680,
+   "endMs": 25159,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.63,
+    "empPct": 0.69
+   }
+  },
+  {
+   "id": "w49",
+   "text": "hash",
+   "startMs": 25159,
+   "endMs": 25680,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.22,
+    "empPct": 0.16
+   }
+  },
+  {
+   "id": "w50",
+   "text": "one",
+   "startMs": 25680,
+   "endMs": 25979,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.22,
+    "empPct": 0.25
+   }
+  }
+ ],
+ "lines": [
+  {
+   "id": "l0",
+   "tone": "hype",
+   "wordIds": [
+    "w0",
+    "w1",
+    "w2",
+    "w3",
+    "w4"
+   ]
+  },
+  {
+   "id": "l1",
+   "tone": "neutral",
+   "wordIds": [
+    "w5",
+    "w6",
+    "w7",
+    "w8"
+   ]
+  },
+  {
+   "id": "l2",
+   "tone": "neutral",
+   "wordIds": [
+    "w9",
+    "w10",
+    "w11",
+    "w12"
+   ]
+  },
+  {
+   "id": "l3",
+   "tone": "neutral",
+   "wordIds": [
+    "w13",
+    "w14",
+    "w15",
+    "w16"
+   ]
+  },
+  {
+   "id": "l4",
+   "tone": "neutral",
+   "wordIds": [
+    "w17",
+    "w18",
+    "w19",
+    "w20"
+   ]
+  },
+  {
+   "id": "l5",
+   "tone": "neutral",
+   "wordIds": [
+    "w21",
+    "w22",
+    "w23",
+    "w24",
+    "w25"
+   ]
+  },
+  {
+   "id": "l6",
+   "tone": "neutral",
+   "wordIds": [
+    "w26",
+    "w27",
+    "w28",
+    "w29"
+   ]
+  },
+  {
+   "id": "l7",
+   "tone": "neutral",
+   "wordIds": [
+    "w30",
+    "w31",
+    "w32",
+    "w33"
+   ]
+  },
+  {
+   "id": "l8",
+   "tone": "neutral",
+   "wordIds": [
+    "w34",
+    "w35",
+    "w36",
+    "w37",
+    "w38"
+   ]
+  },
+  {
+   "id": "l9",
+   "tone": "neutral",
+   "wordIds": [
+    "w39",
+    "w40",
+    "w41",
+    "w42",
+    "w43"
+   ]
+  },
+  {
+   "id": "l10",
+   "tone": "neutral",
+   "wordIds": [
+    "w44",
+    "w45",
+    "w46",
+    "w47"
+   ]
+  },
+  {
+   "id": "l11",
+   "tone": "neutral",
+   "wordIds": [
+    "w48",
+    "w49",
+    "w50"
+   ]
+  }
+ ],
+ "overlays": [],
+ "settings": {
+  "emojis": false,
+  "emotionLayer": true
+ }
+}

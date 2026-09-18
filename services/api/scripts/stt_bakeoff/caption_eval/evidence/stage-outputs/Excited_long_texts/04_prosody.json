@@ -1,0 +1,9 @@
+{
+ "stage": "4-prosody",
+ "floorDb": -36.3,
+ "speechDb": -18.8,
+ "clipMedianF0": 117.0,
+ "clipMedianDb": -18.8,
+ "frames": 1394,
+ "hopMs": 10
+}

@@ -1,0 +1,365 @@
+{
+ "stage": "2-transcribe-hi",
+ "engine": "aws-transcribe hi-IN",
+ "nWords": 51,
+ "devanagari": "हेलो गाइज थिस इस शुभेर आह । आज एसटी टेस्ट करना है और यहाँ हम लोग पागल हो चुके हैं भाई काम करते करते । सो हम लोग वेल मैं बेड यूनिवर्सिटी से हूँ फोर्थ यर । अह आई डोंट नौ व्हाट तो से एनीमोर राइट नौ बट डिक ने टेस्टिंग वीडियो हैश ओने ।",
+ "words": [
+  {
+   "i": 0,
+   "dev": "हेलो",
+   "asrRoman": "hello",
+   "startMs": 9,
+   "endMs": 439
+  },
+  {
+   "i": 1,
+   "dev": "गाइज",
+   "asrRoman": "guyz",
+   "startMs": 439,
+   "endMs": 1200
+  },
+  {
+   "i": 2,
+   "dev": "थिस",
+   "asrRoman": "this",
+   "startMs": 1480,
+   "endMs": 1639
+  },
+  {
+   "i": 3,
+   "dev": "इस",
+   "asrRoman": "is",
+   "startMs": 1639,
+   "endMs": 1799
+  },
+  {
+   "i": 4,
+   "dev": "शुभेर",
+   "asrRoman": "Shubher",
+   "startMs": 1799,
+   "endMs": 2390
+  },
+  {
+   "i": 5,
+   "dev": "आह",
+   "asrRoman": "ah",
+   "startMs": 3140,
+   "endMs": 3200
+  },
+  {
+   "i": 6,
+   "dev": "आज",
+   "asrRoman": "aaj",
+   "startMs": 4219,
+   "endMs": 5019
+  },
+  {
+   "i": 7,
+   "dev": "एसटी",
+   "asrRoman": "ST",
+   "startMs": 5300,
+   "endMs": 5820
+  },
+  {
+   "i": 8,
+   "dev": "टेस्ट",
+   "asrRoman": "test",
+   "startMs": 5820,
+   "endMs": 6300
+  },
+  {
+   "i": 9,
+   "dev": "करना",
+   "asrRoman": "karna",
+   "startMs": 6300,
+   "endMs": 6500
+  },
+  {
+   "i": 10,
+   "dev": "है",
+   "asrRoman": "hai",
+   "startMs": 6500,
+   "endMs": 6849
+  },
+  {
+   "i": 11,
+   "dev": "और",
+   "asrRoman": "aur",
+   "startMs": 7719,
+   "endMs": 7940
+  },
+  {
+   "i": 12,
+   "dev": "यहाँ",
+   "asrRoman": "yahan",
+   "startMs": 8449,
+   "endMs": 8689
+  },
+  {
+   "i": 13,
+   "dev": "हम",
+   "asrRoman": "hum",
+   "startMs": 8699,
+   "endMs": 8859
+  },
+  {
+   "i": 14,
+   "dev": "लोग",
+   "asrRoman": "log",
+   "startMs": 8859,
+   "endMs": 9180
+  },
+  {
+   "i": 15,
+   "dev": "पागल",
+   "asrRoman": "pagal",
+   "startMs": 9180,
+   "endMs": 9659
+  },
+  {
+   "i": 16,
+   "dev": "हो",
+   "asrRoman": "ho",
+   "startMs": 9659,
+   "endMs": 9779
+  },
+  {
+   "i": 17,
+   "dev": "चुके",
+   "asrRoman": "chuke",
+   "startMs": 9779,
+   "endMs": 10020
+  },
+  {
+   "i": 18,
+   "dev": "हैं",
+   "asrRoman": "hain",
+   "startMs": 10020,
+   "endMs": 10140
+  },
+  {
+   "i": 19,
+   "dev": "भाई",
+   "asrRoman": "bhai",
+   "startMs": 10140,
+   "endMs": 10340
+  },
+  {
+   "i": 20,
+   "dev": "काम",
+   "asrRoman": "kaam",
+   "startMs": 10340,
+   "endMs": 10779
+  },
+  {
+   "i": 21,
+   "dev": "करते",
+   "asrRoman": "karte",
+   "startMs": 10779,
+   "endMs": 11119
+  },
+  {
+   "i": 22,
+   "dev": "करते",
+   "asrRoman": "karte",
+   "startMs": 11130,
+   "endMs": 11340
+  },
+  {
+   "i": 23,
+   "dev": "सो",
+   "asrRoman": "so",
+   "startMs": 12630,
+   "endMs": 12640
+  },
+  {
+   "i": 24,
+   "dev": "हम",
+   "asrRoman": "hum",
+   "startMs": 13920,
+   "endMs": 14159
+  },
+  {
+   "i": 25,
+   "dev": "लोग",
+   "asrRoman": "log",
+   "startMs": 14159,
+   "endMs": 14739
+  },
+  {
+   "i": 26,
+   "dev": "वेल",
+   "asrRoman": "well",
+   "startMs": 15329,
+   "endMs": 15649
+  },
+  {
+   "i": 27,
+   "dev": "मैं",
+   "asrRoman": "main",
+   "startMs": 15800,
+   "endMs": 15960
+  },
+  {
+   "i": 28,
+   "dev": "बेड",
+   "asrRoman": "bed",
+   "startMs": 15960,
+   "endMs": 16319
+  },
+  {
+   "i": 29,
+   "dev": "यूनिवर्सिटी",
+   "asrRoman": "University",
+   "startMs": 16319,
+   "endMs": 16840
+  },
+  {
+   "i": 30,
+   "dev": "से",
+   "asrRoman": "se",
+   "startMs": 16840,
+   "endMs": 16959
+  },
+  {
+   "i": 31,
+   "dev": "हूँ",
+   "asrRoman": "hun",
+   "startMs": 16959,
+   "endMs": 17159
+  },
+  {
+   "i": 32,
+   "dev": "फोर्थ",
+   "asrRoman": "fourth",
+   "startMs": 17159,
+   "endMs": 17520
+  },
+  {
+   "i": 33,
+   "dev": "यर",
+   "asrRoman": "year",
+   "startMs": 17520,
+   "endMs": 17770
+  },
+  {
+   "i": 34,
+   "dev": "अह",
+   "asrRoman": "ah",
+   "startMs": 18500,
+   "endMs": 18520
+  },
+  {
+   "i": 35,
+   "dev": "आई",
+   "asrRoman": "I",
+   "startMs": 19360,
+   "endMs": 19559
+  },
+  {
+   "i": 36,
+   "dev": "डोंट",
+   "asrRoman": "don't",
+   "startMs": 19559,
+   "endMs": 19799
+  },
+  {
+   "i": 37,
+   "dev": "नौ",
+   "asrRoman": "now",
+   "startMs": 19799,
+   "endMs": 20360
+  },
+  {
+   "i": 38,
+   "dev": "व्हाट",
+   "asrRoman": "what",
+   "startMs": 20360,
+   "endMs": 20659
+  },
+  {
+   "i": 39,
+   "dev": "तो",
+   "asrRoman": "to",
+   "startMs": 20659,
+   "endMs": 20799
+  },
+  {
+   "i": 40,
+   "dev": "से",
+   "asrRoman": "say",
+   "startMs": 20799,
+   "endMs": 21000
+  },
+  {
+   "i": 41,
+   "dev": "एनीमोर",
+   "asrRoman": "anymore",
+   "startMs": 21000,
+   "endMs": 21479
+  },
+  {
+   "i": 42,
+   "dev": "राइट",
+   "asrRoman": "right",
+   "startMs": 21479,
+   "endMs": 21799
+  },
+  {
+   "i": 43,
+   "dev": "नौ",
+   "asrRoman": "now",
+   "startMs": 21799,
+   "endMs": 22069
+  },
+  {
+   "i": 44,
+   "dev": "बट",
+   "asrRoman": "but",
+   "startMs": 22360,
+   "endMs": 22639
+  },
+  {
+   "i": 45,
+   "dev": "डिक",
+   "asrRoman": "Dick",
+   "startMs": 22639,
+   "endMs": 22920
+  },
+  {
+   "i": 46,
+   "dev": "ने",
+   "asrRoman": "ne",
+   "startMs": 22920,
+   "endMs": 23350
+  },
+  {
+   "i": 47,
+   "dev": "टेस्टिंग",
+   "asrRoman": "testing",
+   "startMs": 24040,
+   "endMs": 24680
+  },
+  {
+   "i": 48,
+   "dev": "वीडियो",
+   "asrRoman": "video",
+   "startMs": 24680,
+   "endMs": 25159
+  },
+  {
+   "i": 49,
+   "dev": "हैश",
+   "asrRoman": "hash",
+   "startMs": 25159,
+   "endMs": 25680
+  },
+  {
+   "i": 50,
+   "dev": "ओने",
+   "asrRoman": "one",
+   "startMs": 25680,
+   "endMs": 25979
+  }
+ ]
+}

@@ -41,6 +41,7 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | 17 | `audits/17-agent-capability-surface.md` | **Everything the editor can do, as agent tools** (P3 → P4) | Building the voice agent, or adding an editor feature the agent should reach. Lists what is addressable, what persists, what cannot be persisted at all, and the write contract. |
 | — | `talk-and-edit/phase-01-agent-editing-mvp.md` | The agent MVP: turns become saved changes, the tool surface, preset overrides (P3+P4+P1) |
 | — | `talk-and-edit/phase-02-live-voice-and-demo.md` | LiveKit running locally with no account; voice verified speech→transcript→patches; demo prompts in the UI |
+| — | `talk-and-edit/phase-03-clarification-and-vision.md` | The agent asks when under-specified; analyze_frame works; mic bug; graded 16-prompt catalogue |
 | 16 | `audits/16-editor-ui-critique.md` | Editor UI critique + the redesign it drove (P3) | Any editor chrome/layout/colour work. Read §1 first: the timeline was a picture of a video editor we are not building, and most of the ugliness was downstream of that. |
 | 15 | `audits/15-caption-style-panel-and-editor-ui.md` | Caption style panel, the 4 measured presets, **schema v2**, editor UI/theme (P3) | Anything touching `Style`, `Preset`, the style resolver, the inspector panel, style writes, or the editor's look. **Read before any `Style`/`PresetId` change** — v2 renamed two fields and one preset id. |
 

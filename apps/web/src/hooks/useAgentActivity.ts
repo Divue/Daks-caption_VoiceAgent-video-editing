@@ -35,6 +35,17 @@ export function useAgentActivity() {
     setEntries((current) => [...current, { id: crypto.randomUUID(), message, timestamp: Date.now() }])
   }, [])
 
+  /**
+   * Appends a batch of entries the backend already produced (e.g. an
+   * AgentCommandResponse.log from POST /agent/command or
+   * /agent/voice-command), preserving their own id/timestamp rather than
+   * regenerating them here — the backend's log is the real record of what
+   * the agent did.
+   */
+  const addBackendEntries = useCallback((backendEntries: AgentLogEntry[]) => {
+    setEntries((current) => [...current, ...backendEntries])
+  }, [])
+
   useEffect(() => {
     if (!hasLoadedInitial.current) {
       hasLoadedInitial.current = true
@@ -53,5 +64,5 @@ export function useAgentActivity() {
     previous.current = { presetId: project.presetId, videoUrl: project.videoUrl }
   }, [project.presetId, project.videoUrl, addEntry])
 
-  return { entries, addEntry }
+  return { entries, addEntry, addBackendEntries }
 }

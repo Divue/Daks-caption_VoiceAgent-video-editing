@@ -5,3 +5,9 @@ boto3
 librosa
 numpy
 python-multipart
+# LiveKit join-token minting only (services/api/app/agent/livekit_token.py) — NOT
+# livekit-agents/livekit-plugins-aws, which belong solely to services/voice-agent's
+# own requirements.txt (a separate deployable, never merged into this file).
+# NEEDS P1 SIGN-OFF: this file ships into the production API Docker image — see
+# the team's LiveKit integration plan / root ai-agent-report.md for context.
+livekit-api

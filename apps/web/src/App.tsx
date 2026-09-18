@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { AgentActivityPanel } from '@/components/agent/AgentActivityPanel'
 import { AgentCommandBar } from '@/components/agent/AgentCommandBar'
 import { WordInspector } from '@/components/inspector/WordInspector'
@@ -9,29 +8,61 @@ import { PresetPicker } from '@/components/presets/PresetPicker'
 import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { UploadDropzone } from '@/components/upload/UploadDropzone'
-import type { MicStatus } from '@/hooks/useAgentActivity'
 import { useAgentActivity } from '@/hooks/useAgentActivity'
+import { useLiveKitVoice } from '@/hooks/useLiveKitVoice'
 import { useSelection } from '@/hooks/useSelection'
 import { useUndoRedoShortcuts } from '@/hooks/useUndoRedoShortcuts'
+import type { AgentCommandResponse } from '@/lib/agent-client'
+import { submitTextCommand, submitVoiceTranscript } from '@/lib/agent-client'
 import { useProject } from '@/state/project-context'
 
 function App() {
-  const { project } = useProject()
+  const { project, dispatch } = useProject()
   const { selectedWordId, select } = useSelection()
-  const { entries, addEntry } = useAgentActivity()
-  const [micStatus, setMicStatus] = useState<MicStatus>('idle')
+  const { entries, addEntry, addBackendEntries } = useAgentActivity()
   useUndoRedoShortcuts()
 
-  function handleToggleMic() {
-    setMicStatus((current) => {
-      const next: MicStatus = current === 'listening' ? 'idle' : 'listening'
-      addEntry(next === 'listening' ? 'Voice input started' : 'Voice input stopped')
-      return next
-    })
+  // Applies an AgentCommandResponse exactly as services/api/app/agent's own
+  // contract intends: every patch dispatched, in order, through the SAME
+  // project-reducer actions already used for direct user edits (no separate
+  // "agent apply" path), plus the backend's own log entries appended as-is.
+  function applyAgentResponse(response: AgentCommandResponse) {
+    for (const patch of response.patches) {
+      dispatch(patch)
+    }
+    addBackendEntries(response.log)
   }
 
-  function handleSubmitCommand(command: string) {
-    addEntry(`Command submitted: "${command}" (agent not connected yet)`)
+  async function handleSubmitCommand(command: string) {
+    try {
+      const response = await submitTextCommand(command, project, { selectedWordId })
+      applyAgentResponse(response)
+    } catch (error) {
+      console.error('handleSubmitCommand failed', error)
+      addEntry(`Command failed: "${command}" (${error instanceof Error ? error.message : 'unknown error'})`)
+    }
+  }
+
+  async function handleVoiceTranscript(transcript: string) {
+    try {
+      const response = await submitVoiceTranscript(transcript, project, { selectedWordId })
+      applyAgentResponse(response)
+    } catch (error) {
+      console.error('handleVoiceTranscript failed', error)
+      addEntry(`Voice command failed: "${transcript}" (${error instanceof Error ? error.message : 'unknown error'})`)
+    }
+  }
+
+  const { status: micStatus, start: startVoice, stop: stopVoice } = useLiveKitVoice(handleVoiceTranscript)
+
+  function handleToggleMic() {
+    if (micStatus === 'listening' || micStatus === 'processing') {
+      stopVoice()
+      addEntry('Voice input stopped')
+    } else {
+      addEntry('Voice input started')
+      void startVoice()
+    }
   }
 
   return (

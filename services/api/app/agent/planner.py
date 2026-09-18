@@ -263,6 +263,24 @@ def _run_tool(name: str, tool_input: dict, project: Any) -> tuple[dict, list[Age
     )
 
 
+def _unsupported_line(final_text: str) -> str | None:
+    """The model's refusal, if it made one.
+
+    Matched on ANY line, not just the first. The model routinely explains itself
+    before the marker ("Both of those fall outside what I can do in this editor."
+    then "UNSUPPORTED: ..."), and a first-line-only check silently downgraded
+    those turns to status="ok" — so a refusal reached the activity panel wearing
+    a green tick, which is exactly the faked-agent-behaviour the project forbids.
+    Observed for real against Bedrock on "cut the first two seconds and add a
+    whoosh transition"; see scripts/agent_demo.py prompt 11.
+    """
+    for line in final_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("UNSUPPORTED:"):
+            return stripped
+    return None
+
+
 def run_agent_command(
     request: AgentCommandRequest,
     *,
@@ -345,8 +363,14 @@ def run_agent_command(
         log.append(_log("Stopped after too many tool calls without a final answer."))
         return AgentCommandResponse(status="error", patches=[], log=log)
 
-    if final_text.strip().startswith("UNSUPPORTED:"):
-        log.append(_log(final_text.strip()))
+    unsupported_line = _unsupported_line(final_text)
+    if unsupported_line is not None:
+        # The refusal wins even if the model also produced patches: a turn that could
+        # only be half-honoured must not be reported as done. Returning patches beside
+        # an "I can't do that" is how a UI ends up drawing a green tick on a refusal.
+        if collected_patches:
+            logger.info("discarding %d patch(es) from an UNSUPPORTED turn", len(collected_patches))
+        log.append(_log(unsupported_line))
         return AgentCommandResponse(status="unsupported", patches=[], log=log)
 
     validated_project, error = apply_patches(request.project, collected_patches)

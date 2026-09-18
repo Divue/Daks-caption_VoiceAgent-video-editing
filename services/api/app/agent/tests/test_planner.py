@@ -332,6 +332,48 @@ def test_missing_model_configuration_short_circuits_before_any_bedrock_call() ->
     check("the misconfiguration is logged honestly", any("not configured" in entry.message for entry in response.log))
 
 
+def test_unsupported_marker_is_found_after_a_preamble() -> None:
+    """The model usually explains itself BEFORE the marker. A first-line-only check
+    reported those turns as status="ok", so a refusal reached the UI wearing a green
+    tick. Caught against real Bedrock on "cut the first two seconds and add a whoosh
+    transition" (scripts/agent_demo.py prompt 11)."""
+    project = load_demo_project()
+    client = FakeBedrockClient(
+        [
+            end_turn_response(
+                "Both of those requests fall outside what I can do in this editor.\n\n"
+                "UNSUPPORTED: Cutting the video and transitions are not supported."
+            )
+        ]
+    )
+    response = planner_module.run_agent_command(
+        AgentCommandRequest(command="cut the first two seconds", project=project), client=client
+    )
+    check("a refusal after a preamble is still status=unsupported", response.status == "unsupported")
+    check("no patches come back with a refusal", response.patches == [])
+    check(
+        "the refusal line itself is logged, not the preamble",
+        any(entry.message.startswith("UNSUPPORTED:") for entry in response.log),
+    )
+
+
+def test_a_refusal_discards_any_patches_collected_before_it() -> None:
+    """A turn the model could only half-honour must not be reported as done."""
+    project = load_demo_project()
+    word_id = project.words[0].id
+    client = FakeBedrockClient(
+        [
+            tool_use_response("set_emphasis", {"wordIds": [word_id], "emphasis": True}),
+            end_turn_response("I emphasised that word.\nUNSUPPORTED: but I cannot trim the video."),
+        ]
+    )
+    response = planner_module.run_agent_command(
+        AgentCommandRequest(command="emphasise that and trim the start", project=project), client=client
+    )
+    check("status is unsupported, not ok", response.status == "unsupported")
+    check("the partial work is discarded rather than silently applied", response.patches == [])
+
+
 def main() -> int:
     ensure_model_id_configured()
 
@@ -348,6 +390,8 @@ def main() -> int:
     test_planner_never_mutates_the_input_project()
     test_unrecognized_content_blocks_never_leak_into_the_response()
     test_missing_model_configuration_short_circuits_before_any_bedrock_call()
+    test_unsupported_marker_is_found_after_a_preamble()
+    test_a_refusal_discards_any_patches_collected_before_it()
 
     print()
     if FAILURES:

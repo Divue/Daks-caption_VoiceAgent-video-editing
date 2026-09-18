@@ -35,6 +35,7 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | 09 | `audits/09-editor-ui-redesign.md` | Editor shell v2, agent UI seam, layout components | Current editor layout, header/sidebar, agent command bar/mic/log |
 | 10 | `audits/10-landing-page.md` | `pages/LandingPage.tsx`, `components/landing/*`, `router.tsx`, `AppRoot.tsx` | Landing page, routing between `/` and `/editor` |
 | 11 | `audits/11-stt-prosody-pipeline.md` | `services/api/app/pipeline` + `scripts/stt_bakeoff/caption_eval` (P1) | Transcription, word timings, emphasis/stretch/tone, pipeline API design, proposed schema change. **Read the box at the top: ship `app/pipeline/`, the harness is for tuning.** |
+| 12 | `audits/12-api-persistence-layer.md` | `services/api` API + DynamoDB/S3 persistence, job runner, cost logging (P1) | Any API endpoint, project storage, pipeline jobs/status, cost rows, the P4 agent / P2 render seams. Measured e2e on 4 clips; **not deployed, not called by `apps/web`**. |
 
 Documents 09 and 10 both originate from a single commit (`628a3e6`) that
 combined an editor redesign with a new landing page. They are split by file
@@ -57,8 +58,9 @@ Browser
         → Editor UI (player preview, transcript, inspector, presets, upload, undo/redo)
         → Agent command bar / mic button / activity log (UI-only, see below)
   → [NOT YET INTEGRATED] services/api (P1) — no HTTP calls exist in apps/web
-       └─ STT + prosody pipeline: designed, built and measured on 4 real clips,
-          NOT yet wired into the API or the editor. See audits/11.
+       ├─ REST API + DynamoDB/S3 persistence + async pipeline jobs: built and run
+       │  end-to-end on 4 real clips; not deployed. See audits/12 and services/api/README.md.
+       └─ STT + prosody pipeline: wrapped by the API's job runner. See audits/11.
   → [NOT YET INTEGRATED] services/api/app/agent (P4) — command bar has no backend wired
   → [NOT YET INTEGRATED] remotion/@remotion/player (P2) — preview is a styled div, not the real Player
 ```

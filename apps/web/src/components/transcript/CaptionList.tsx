@@ -177,10 +177,15 @@ function WordChip({
 
   return (
     <span
+      // Emphasis has no label anywhere in the panel, so it says what it is on hover. Green said
+      // nothing and, sitting beside the amber/red tone badges, read as a third emotion rather
+      // than a different axis — emphasis is per word, tone is per run.
+      title={word.emphasis ? 'Emphasised — drawn in the preset\u2019s emphasis face' : undefined}
       className={cn(
         'group/word inline-flex items-center rounded transition-colors',
-        // Emphasis reads as a pill, which is a clearer affordance than bold text.
-        word.emphasis && 'bg-emerald-500/15 font-semibold text-emerald-700 dark:text-emerald-400',
+        // Emphasis reads as a pill, which is a clearer affordance than bold text. Primary, because
+        // "the loud word" is exactly what the brand colour is for.
+        word.emphasis && 'bg-primary/15 font-semibold text-primary',
         selected && 'ring-2 ring-primary ring-offset-1',
       )}
     >

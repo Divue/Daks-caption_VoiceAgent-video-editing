@@ -41,6 +41,8 @@ interface CollapsiblePanelProps {
   width?: string
   children: ReactNode
   className?: string
+  /** Hide the panel's own title bar — for panels that already render their own tab strip. */
+  bare?: boolean
 }
 
 export function CollapsiblePanel({
@@ -50,6 +52,7 @@ export function CollapsiblePanel({
   width = 'w-[320px]',
   children,
   className,
+  bare = false,
 }: CollapsiblePanelProps) {
   const [collapsed, setCollapsed] = useUrlFlag(name)
 
@@ -63,7 +66,7 @@ export function CollapsiblePanel({
       aria-expanded={!collapsed}
       title={collapsed ? `Show ${title}` : `Hide ${title}`}
       className={cn(
-        'group flex w-3 shrink-0 items-center justify-center border-border bg-background transition-colors hover:bg-accent',
+        'group flex w-3 shrink-0 items-center justify-center border-border/60 bg-background transition-colors hover:bg-accent',
         side === 'left' ? 'border-r' : 'border-l',
       )}
     >
@@ -77,14 +80,19 @@ export function CollapsiblePanel({
       {side === 'right' && handle}
       <section
         className={cn(
-          'flex min-h-0 flex-col overflow-hidden bg-background transition-[width]',
+          'flex min-h-0 flex-col overflow-hidden bg-card transition-[width]',
           collapsed ? 'w-0 border-0' : width,
-          side === 'left' ? 'border-r' : 'border-l',
+          side === 'left' ? 'border-r border-border/60' : 'border-l border-border/60',
           collapsed && 'pointer-events-none',
           className,
         )}
         aria-hidden={collapsed}
       >
+        {!collapsed && !bare && (
+          <div className="flex h-9 shrink-0 items-center border-b border-border/60 px-4">
+            <span className="eyebrow text-muted-foreground">{title}</span>
+          </div>
+        )}
         {!collapsed && children}
       </section>
       {side === 'left' && handle}

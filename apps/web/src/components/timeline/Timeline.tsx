@@ -108,8 +108,8 @@ export function Timeline({
         <div className="flex shrink-0 flex-col" style={{ width: TRACK_HEADER_WIDTH }}>
           <div className="h-7 shrink-0 border-r border-b bg-muted/40" />
           <TrackHeader name="Captions" icon={Type} iconClassName="text-amber-600" />
-          <TrackHeader name="Video 1" icon={Camera} iconClassName="text-blue-600" />
-          <TrackHeader name="Audio 1" icon={AudioLines} iconClassName="text-emerald-600" />
+          <TrackHeader name="Video 1" icon={Camera} iconClassName="text-sunset-amber" />
+          <TrackHeader name="Audio 1" icon={AudioLines} iconClassName="text-sunset-red" />
         </div>
 
         <div

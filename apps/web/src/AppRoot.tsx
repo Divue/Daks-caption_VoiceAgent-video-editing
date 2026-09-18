@@ -26,11 +26,15 @@ export function AppRoot() {
     )
   }
 
+  // The editor runs dark and the landing page stays light, so the theme is scoped to this
+  // subtree rather than toggled on <html>. See index.css for why the editor is dark at all.
   return (
-    <Suspense fallback={null}>
-      <ProjectSyncProvider initialProjectId={projectId}>
-        {projectId ? <EditorBootstrap /> : <EmptyEditor />}
-      </ProjectSyncProvider>
-    </Suspense>
+    <div className="dark min-h-screen bg-background text-foreground">
+      <Suspense fallback={null}>
+        <ProjectSyncProvider initialProjectId={projectId}>
+          {projectId || import.meta.env.VITE_USE_FIXTURE === 'true' ? <EditorBootstrap /> : <EmptyEditor />}
+        </ProjectSyncProvider>
+      </Suspense>
+    </div>
   )
 }

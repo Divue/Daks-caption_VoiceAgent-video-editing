@@ -38,6 +38,7 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | 12 | `audits/12-api-persistence-layer.md` | `services/api` API + DynamoDB/S3 persistence, job runner, cost logging (P1) | Any API endpoint, project storage, pipeline jobs/status, cost rows, the P4 agent / P2 render seams. Measured e2e on 4 clips; **not deployed, not called by `apps/web`**. |
 | 13 | `audits/13-caption-emotion-and-single.md` | `Word.single` + editable line/word emotion (P3, schema change) | Caption grouping, `deriveBlocks`, emotion editing, or anything that writes words to the API |
 | 14 | `audits/14-kalakar-reference-audit.md` | Kalakar competitor teardown: measured template/font/effect values | Caption *visual* work — presets, fonts, glow/gradient/stroke, reveal behaviour, or picking what to build next |
+| 15 | `audits/15-caption-style-panel-and-editor-ui.md` | Caption style panel, the 4 measured presets, **schema v2**, editor UI/theme (P3) | Anything touching `Style`, `Preset`, the style resolver, the inspector panel, style writes, or the editor's look. **Read before any `Style`/`PresetId` change** — v2 renamed two fields and one preset id. |
 
 Documents 09 and 10 both originate from a single commit (`628a3e6`) that
 combined an editor redesign with a new landing page. They are split by file
@@ -114,7 +115,23 @@ Things Claude must preserve when working in `apps/web`:
   committing; an invalid patch is dropped, not partially applied.
 - `PRESETS` (`packages/shared/src/presets.ts`) is the single source of truth
   for preset visuals. Components read from it; they do not hardcode preset
-  styling.
+  styling. `Preset` is NOT stored — only `presetId` is — so it can grow in
+  TypeScript freely, with no `schema.py` mirror and no migration. `Style` and
+  `PresetId` are the opposite and cost both. Put new visual properties in
+  `Preset` unless they must be overridable per word (audit 15 §2).
+- `lib/caption-style.ts` is PURE — no React, no DOM, no context. P2 takes it
+  into the Remotion composition unchanged. `CaptionRenderer` is props-only for
+  the same reason; it receives its `Preset` rather than reading `PRESETS`.
+- A gradient fill sets `color: transparent`, so its glow MUST be a wrapper
+  `filter: drop-shadow()` and never a `text-shadow` — a text-shadow draws from
+  the glyph colour and renders nothing at all, silently (audit 15 §3).
+- Style overrides merge KEY BY KEY, and a cleared key must be sent as an
+  explicit `null`. `undefined` is dropped by `JSON.stringify` and the removal
+  never reaches the server. Use `patchStyle`/`StyleChange`, never a whole-object
+  `style` write (audit 15 §4).
+- Schema v2: `Style.uppercase` is gone (use `textCase`), and the preset id
+  `kathmandu` is gone (it is `rangmanch`). `store/projects.py` migrates stored
+  v1 rows on read; do not reintroduce either name.
 - Build and test against `packages/shared/fixtures/demo-project.json` first
   (per root `CLAUDE.md`).
 - Caption elongation is carried by `Word.stretch` (a number), never by repeating

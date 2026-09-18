@@ -49,24 +49,42 @@ export function TranscriptPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 flex-col gap-2 border-b p-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-foreground">Captions</p>
-          <span className="text-xs tabular-nums text-muted-foreground">{blocks.length} blocks</span>
+      {/* No title here: CollapsiblePanel's own bar already says CAPTIONS, and two headings
+          stacked read as a bug. The block count keeps its place beside the search field. */}
+      <div className="flex shrink-0 flex-col gap-2 border-b border-border/60 p-3">
+        <div className="flex items-center gap-2">
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search captions…"
+            className="h-8 flex-1 text-sm"
+          />
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+            {blocks.length} blocks
+          </span>
         </div>
-
-        <Input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search captions..."
-          className="h-8 text-sm"
-        />
 
         <div className="flex items-center gap-2">
           <Switch id="merge-short" checked={mergeShort} onCheckedChange={onMergeShortChange} />
           <Label htmlFor="merge-short" className="text-xs font-normal text-muted-foreground">
             Merge very short captions
           </Label>
+        </div>
+
+        {/* The list carries two unlabelled marks on two different axes — a highlighted word is
+            emphasis (per word), a badge at the row's end is tone (per run). Without this, the
+            highlight just looks like a third tone. */}
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground/80">
+          <span className="flex items-center gap-1.5">
+            <span className="rounded bg-primary/15 px-1 font-semibold text-primary">word</span>
+            emphasised
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="rounded bg-amber-500/15 px-1 font-medium text-amber-600 dark:text-amber-400">
+              TONE
+            </span>
+            per line
+          </span>
         </div>
       </div>
 

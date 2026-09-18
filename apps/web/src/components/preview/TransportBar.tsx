@@ -27,7 +27,7 @@ export function TransportBar({
   const progress = durationMs > 0 ? Math.min(100, (timeMs / durationMs) * 100) : 0
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 border-t px-3 py-2">
+    <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border/60 bg-card px-3 py-2">
       <Button type="button" variant="ghost" size="icon-sm" aria-label={isPlaying ? 'Pause' : 'Play'} onClick={toggle}>
         {isPlaying ? <Pause /> : <Play />}
       </Button>
@@ -45,8 +45,14 @@ export function TransportBar({
         value={Math.round(timeMs)}
         onChange={(event) => seek(Number(event.target.value))}
         className="h-1.5 min-w-[120px] flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+        // The played portion carries the sunset spectrum — the same band as the header stripe,
+        // which is what ties the transport to the brand rather than a flat accent fill.
         style={{
-          background: `linear-gradient(to right, var(--color-primary) ${progress}%, var(--color-muted) ${progress}%)`,
+          background: `linear-gradient(to right,
+            var(--sunset-red) 0%,
+            var(--sunset-orange) ${progress * 0.55}%,
+            var(--sunset-amber) ${progress}%,
+            var(--color-muted) ${progress}%)`,
         }}
       />
 

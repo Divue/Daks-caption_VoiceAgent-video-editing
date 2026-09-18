@@ -32,7 +32,9 @@ export function MediaTrack({ label, durationMs, pxPerMs, detail, variant, onSeek
       <div
         className={cn(
           'absolute top-1 bottom-1 left-0 flex items-center gap-2 overflow-hidden rounded border px-2',
-          variant === 'video' ? 'border-blue-500/40 bg-blue-500/20' : 'border-emerald-500/40 bg-emerald-500/20',
+          variant === 'video'
+            ? 'border-sunset-amber/30 bg-sunset-amber/10'
+            : 'border-sunset-red/30 bg-sunset-red/10',
         )}
         style={{ width: durationMs * pxPerMs }}
       >

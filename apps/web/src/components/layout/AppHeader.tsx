@@ -34,7 +34,8 @@ export function AppHeader({ projectId }: AppHeaderProps) {
   }
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b bg-background px-4">
+    <header className="shrink-0">
+      <div className="flex h-14 items-center justify-between gap-4 bg-background px-4">
       <div className="flex min-w-0 items-center gap-3">
         <Button
           type="button"
@@ -48,7 +49,7 @@ export function AppHeader({ projectId }: AppHeaderProps) {
         </Button>
         <div className="h-5 w-px bg-border" />
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-sm font-medium text-foreground">
+          <span className="font-display truncate text-lg text-foreground">
             {projectId}
           </span>
           <InertControl
@@ -86,6 +87,10 @@ export function AppHeader({ projectId }: AppHeaderProps) {
           )}
         </div>
       </div>
+      </div>
+      {/* The sunset stripe. DESIGN.md's brand recognizer — it closes a surface, so it sits under
+          the header rather than being sprayed across the chrome. */}
+      <div className="sunset-stripe h-0.5 w-full" />
     </header>
   )
 }

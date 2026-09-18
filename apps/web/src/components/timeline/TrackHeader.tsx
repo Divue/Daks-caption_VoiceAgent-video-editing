@@ -8,7 +8,7 @@ export const TRACK_HEADER_WIDTH = 132
 interface TrackHeaderProps {
   name: string
   icon: LucideIcon
-  /** Tailwind text colour for the type icon — captions amber, video blue, audio green. */
+  /** Tailwind text colour for the type icon — all three sit on the brand sunset ramp. */
   iconClassName: string
 }
 

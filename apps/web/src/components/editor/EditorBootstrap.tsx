@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Project } from '@captions/shared'
+import demoProject from '@captions/shared/fixtures/demo-project.json'
 import App from '@/App'
 import { EditorMessage } from '@/components/editor/EditorMessage'
 import { getProject, isApiError, startProcess } from '@/lib/api'
@@ -10,6 +11,17 @@ import { PresetOverrideProvider } from '@/state/preset-override-context'
 import { ProjectProvider } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
 import { WordPatchProvider } from '@/state/word-patch-context'
+
+/**
+ * Fixture mode, documented in the root CLAUDE.md: "the web app loads the fixture directly when
+ * VITE_USE_FIXTURE=true". It skips the bootstrap GET entirely, so the editor renders with no API
+ * running — which is what makes UI work and the demo possible offline.
+ *
+ * It is not a fake backend. `projectId` stays null in fixture mode, and every writer already
+ * checks it (`if (!projectId) return` in useWordPatch), so edits stay local and honest rather
+ * than pretending to save. Nothing here simulates a server response.
+ */
+const USE_FIXTURE = import.meta.env.VITE_USE_FIXTURE === 'true'
 
 type BootstrapState =
   | { k: 'loading' }
@@ -30,6 +42,14 @@ export function EditorBootstrap() {
   const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
+    if (USE_FIXTURE) {
+      const parsed = Project.safeParse(demoProject)
+      if (parsed.success) {
+        setState({ k: 'loaded', project: parsed.data, version: 0 })
+        setLifecycle({ k: 'ready' })
+      }
+      return
+    }
     if (!projectId) return
     const controller = new AbortController()
     setState({ k: 'loading' })
@@ -70,14 +90,14 @@ export function EditorBootstrap() {
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), [])
 
-  if (!projectId) return null
+  if (!projectId && !USE_FIXTURE) return null
 
   if (state.k === 'loading') {
-    return <EditorMessage title="Loading project…" detail={projectId} />
+    return <EditorMessage title="Loading project…" detail={projectId ?? ''} />
   }
 
   if (state.k === 'error') {
-    return <BootstrapError error={state.error} projectId={projectId} onRetry={reload} />
+    return <BootstrapError error={state.error} projectId={projectId ?? ''} onRetry={reload} />
   }
 
   return (

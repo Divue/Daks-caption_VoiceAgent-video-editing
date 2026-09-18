@@ -97,7 +97,7 @@ function App() {
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader projectId={project.id} />
 
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
             <CollapsiblePanel name="captions" side="left" title="captions" width="lg:w-[340px] w-full">
               <TranscriptPanel
@@ -116,7 +116,7 @@ function App() {
               />
             </CollapsiblePanel>
 
-            <section className="flex min-h-[320px] min-w-0 flex-1 flex-col p-3 lg:min-h-0">
+            <section className="flex min-h-[320px] min-w-0 flex-1 flex-col p-4 lg:min-h-0">
               <VideoStage
                 src={localPreviewUrl ?? project.videoUrl}
                 width={project.width}
@@ -135,12 +135,30 @@ function App() {
               />
             </section>
 
-            <CollapsiblePanel name="stylePanel" side="right" title="style panel" width="lg:w-[320px] w-full">
-              <Tabs defaultValue="inspector" className="flex h-full min-h-0 flex-col">
-                <TabsList className="grid w-full shrink-0 grid-cols-3">
-                  <TabsTrigger value="inspector">Style</TabsTrigger>
-                  <TabsTrigger value="presets">Presets</TabsTrigger>
-                  <TabsTrigger value="agent">Agent Log</TabsTrigger>
+            <CollapsiblePanel
+              name="stylePanel"
+              side="right"
+              title="style panel"
+              width="lg:w-[340px] w-full"
+              bare
+            >
+              <Tabs defaultValue="inspector" className="flex h-full min-h-0 flex-col gap-0">
+                <TabsList className="h-9 w-full shrink-0 justify-start gap-0 rounded-none border-b border-border/60 bg-transparent p-0">
+                  {/* Underline tabs, per DESIGN.md's segmented-tab: the active one is marked by a
+                      2px primary rule, not a filled pill. */}
+                  {[
+                    ['inspector', 'Style'],
+                    ['presets', 'Presets'],
+                    ['agent', 'Activity'],
+                  ].map(([value, label]) => (
+                    <TabsTrigger
+                      key={value}
+                      value={value}
+                      className="eyebrow h-9 rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                    >
+                      {label}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
 
                 <TabsContent value="inspector" className="min-h-0 flex-1 overflow-hidden">

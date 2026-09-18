@@ -48,11 +48,13 @@ export function VideoStage({ src, width, height, captionLayer }: VideoStageProps
   }, [])
 
   return (
-    <Card className="flex h-full min-h-0 flex-col gap-0 overflow-hidden bg-muted/30 p-0">
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3">
+    <Card className="flex h-full min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-background p-0">
+      {/* A darker well behind the frame: the reel should be the brightest thing on screen, and a
+          card-coloured backdrop puts the chrome and the footage at the same value. */}
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-[oklch(0.125_0.004_62)] p-4">
         <div
           ref={frameRef}
-          className="relative max-h-full overflow-hidden rounded-md border bg-neutral-950 shadow-sm"
+          className="shadow-stage relative max-h-full overflow-hidden rounded-xl bg-black ring-1 ring-white/8"
           // Letterboxing: the frame keeps the source aspect ratio and shrinks to fit its box,
           // so a 9:16 reel and a 16:9 clip both sit correctly inside the same stage.
           style={{ aspectRatio: `${width} / ${height}`, height: '100%', maxWidth: '100%' }}

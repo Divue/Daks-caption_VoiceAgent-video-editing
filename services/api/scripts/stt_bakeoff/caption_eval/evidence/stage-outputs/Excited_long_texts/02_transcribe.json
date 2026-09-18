@@ -1,0 +1,113 @@
+{
+ "stage": "2-transcribe-hi",
+ "engine": "aws-transcribe hi-IN",
+ "nWords": 15,
+ "devanagari": "हेलो गाइज, राइट नौ । आई एएम एटी माई हाउस । सो होव इस इट गोइंग? वो ।",
+ "words": [
+  {
+   "i": 0,
+   "dev": "हेलो",
+   "asrRoman": "hello",
+   "startMs": 490,
+   "endMs": 1169
+  },
+  {
+   "i": 1,
+   "dev": "गाइज",
+   "asrRoman": "guys",
+   "startMs": 1169,
+   "endMs": 2029
+  },
+  {
+   "i": 2,
+   "dev": "राइट",
+   "asrRoman": "right",
+   "startMs": 3380,
+   "endMs": 3650
+  },
+  {
+   "i": 3,
+   "dev": "नौ",
+   "asrRoman": "nau",
+   "startMs": 3650,
+   "endMs": 3990
+  },
+  {
+   "i": 4,
+   "dev": "आई",
+   "asrRoman": "I",
+   "startMs": 5099,
+   "endMs": 5110
+  },
+  {
+   "i": 5,
+   "dev": "एएम",
+   "asrRoman": "am",
+   "startMs": 5260,
+   "endMs": 5440
+  },
+  {
+   "i": 6,
+   "dev": "एटी",
+   "asrRoman": "at",
+   "startMs": 5440,
+   "endMs": 5579
+  },
+  {
+   "i": 7,
+   "dev": "माई",
+   "asrRoman": "my",
+   "startMs": 5579,
+   "endMs": 5780
+  },
+  {
+   "i": 8,
+   "dev": "हाउस",
+   "asrRoman": "house",
+   "startMs": 5780,
+   "endMs": 6250
+  },
+  {
+   "i": 9,
+   "dev": "सो",
+   "asrRoman": "so",
+   "startMs": 7219,
+   "endMs": 7519
+  },
+  {
+   "i": 10,
+   "dev": "होव",
+   "asrRoman": "how",
+   "startMs": 8460,
+   "endMs": 8819
+  },
+  {
+   "i": 11,
+   "dev": "इस",
+   "asrRoman": "is",
+   "startMs": 8819,
+   "endMs": 8949
+  },
+  {
+   "i": 12,
+   "dev": "इट",
+   "asrRoman": "it",
+   "startMs": 8949,
+   "endMs": 9300
+  },
+  {
+   "i": 13,
+   "dev": "गोइंग",
+   "asrRoman": "going",
+   "startMs": 9300,
+   "endMs": 9659
+  },
+  {
+   "i": 14,
+   "dev": "वो",
+   "asrRoman": "wo",
+   "startMs": 11569,
+   "endMs": 11579
+  }
+ ]
+}

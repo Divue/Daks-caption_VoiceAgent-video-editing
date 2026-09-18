@@ -1,0 +1,675 @@
+{
+ "id": "45194956",
+ "videoUrl": "s3://.../Angry.mp4",
+ "durationMs": 15360,
+ "width": 1080,
+ "height": 1920,
+ "presetId": "hinglish-bold",
+ "words": [
+  {
+   "id": "w0",
+   "text": "What",
+   "startMs": 120,
+   "endMs": 319,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.0,
+    "empPct": 0.76
+   }
+  },
+  {
+   "id": "w1",
+   "text": "the",
+   "startMs": 319,
+   "endMs": 519,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.02,
+    "empPct": 0.61
+   }
+  },
+  {
+   "id": "w2",
+   "text": "fuck",
+   "startMs": 519,
+   "endMs": 879,
+   "emphasis": 2,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.61,
+    "empPct": 0.89
+   }
+  },
+  {
+   "id": "w3",
+   "text": "bhai",
+   "startMs": 879,
+   "endMs": 1159,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.83,
+    "empPct": 0.39
+   }
+  },
+  {
+   "id": "w4",
+   "text": "what",
+   "startMs": 1159,
+   "endMs": 1399,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.83,
+    "empPct": 0.85
+   }
+  },
+  {
+   "id": "w5",
+   "text": "the",
+   "startMs": 1399,
+   "endMs": 1519,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.39,
+    "empPct": 0.26
+   }
+  },
+  {
+   "id": "w6",
+   "text": "fuck",
+   "startMs": 1519,
+   "endMs": 1799,
+   "emphasis": 2,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.83,
+    "empPct": 0.93
+   }
+  },
+  {
+   "id": "w7",
+   "text": "is",
+   "startMs": 1799,
+   "endMs": 2000,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.65,
+    "empPct": 0.48
+   }
+  },
+  {
+   "id": "w8",
+   "text": "happening",
+   "startMs": 2000,
+   "endMs": 2440,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.15,
+    "empPct": 0.41
+   }
+  },
+  {
+   "id": "w9",
+   "text": "bhai",
+   "startMs": 2440,
+   "endMs": 2789,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.8,
+    "empPct": 0.0
+   }
+  },
+  {
+   "id": "w10",
+   "text": "I",
+   "startMs": 3319,
+   "endMs": 3409,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.26,
+    "empPct": 0.46
+   }
+  },
+  {
+   "id": "w11",
+   "text": "am",
+   "startMs": 3409,
+   "endMs": 3559,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.5,
+    "empPct": 0.37
+   }
+  },
+  {
+   "id": "w12",
+   "text": "fed",
+   "startMs": 3559,
+   "endMs": 3799,
+   "emphasis": 2,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.74,
+    "empPct": 0.91
+   }
+  },
+  {
+   "id": "w13",
+   "text": "up",
+   "startMs": 3799,
+   "endMs": 3889,
+   "emphasis": 3,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.26,
+    "empPct": 0.96
+   }
+  },
+  {
+   "id": "w14",
+   "text": "of",
+   "startMs": 3889,
+   "endMs": 4039,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.52,
+    "empPct": 0.54
+   }
+  },
+  {
+   "id": "w15",
+   "text": "this",
+   "startMs": 4039,
+   "endMs": 4199,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.54,
+    "empPct": 0.33
+   }
+  },
+  {
+   "id": "w16",
+   "text": "shit",
+   "startMs": 4199,
+   "endMs": 4440,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.83,
+    "empPct": 0.83
+   }
+  },
+  {
+   "id": "w17",
+   "text": "bhai",
+   "startMs": 4440,
+   "endMs": 4920,
+   "emphasis": 0,
+   "stretch": 2.3,
+   "signals": {
+    "holdPct": 0.96,
+    "empPct": 0.22
+   }
+  },
+  {
+   "id": "w18",
+   "text": "I",
+   "startMs": 5039,
+   "endMs": 5320,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.74,
+    "empPct": 0.15
+   }
+  },
+  {
+   "id": "w19",
+   "text": "should",
+   "startMs": 5599,
+   "endMs": 5920,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.83,
+    "empPct": 0.67
+   }
+  },
+  {
+   "id": "w20",
+   "text": "just",
+   "startMs": 5920,
+   "endMs": 6239,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.59,
+    "empPct": 0.65
+   }
+  },
+  {
+   "id": "w21",
+   "text": "do",
+   "startMs": 6239,
+   "endMs": 6519,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.33,
+    "empPct": 0.59
+   }
+  },
+  {
+   "id": "w22",
+   "text": "kheti",
+   "startMs": 6519,
+   "endMs": 6880,
+   "emphasis": 2,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.24,
+    "empPct": 0.87
+   }
+  },
+  {
+   "id": "w23",
+   "text": "baari",
+   "startMs": 6880,
+   "endMs": 7159,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.26,
+    "empPct": 0.7
+   }
+  },
+  {
+   "id": "w24",
+   "text": "bhai",
+   "startMs": 7159,
+   "endMs": 7400,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.72,
+    "empPct": 0.17
+   }
+  },
+  {
+   "id": "w25",
+   "text": "at",
+   "startMs": 7400,
+   "endMs": 7519,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.39,
+    "empPct": 0.11
+   }
+  },
+  {
+   "id": "w26",
+   "text": "this",
+   "startMs": 7519,
+   "endMs": 7719,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.15,
+    "empPct": 0.07
+   }
+  },
+  {
+   "id": "w27",
+   "text": "point",
+   "startMs": 7719,
+   "endMs": 8060,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.35,
+    "empPct": 0.2
+   }
+  },
+  {
+   "id": "w28",
+   "text": "what",
+   "startMs": 10039,
+   "endMs": 10319,
+   "emphasis": 3,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.74,
+    "empPct": 0.98
+   }
+  },
+  {
+   "id": "w29",
+   "text": "the",
+   "startMs": 10319,
+   "endMs": 10520,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.2,
+    "empPct": 0.63
+   }
+  },
+  {
+   "id": "w30",
+   "text": "fuck",
+   "startMs": 10520,
+   "endMs": 11000,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.2,
+    "empPct": 0.72
+   }
+  },
+  {
+   "id": "w31",
+   "text": "is",
+   "startMs": 11119,
+   "endMs": 11380,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.61,
+    "empPct": 0.04
+   }
+  },
+  {
+   "id": "w32",
+   "text": "wrong",
+   "startMs": 11560,
+   "endMs": 11920,
+   "emphasis": 0,
+   "stretch": 2.4,
+   "signals": {
+    "holdPct": 0.98,
+    "empPct": 0.5
+   }
+  },
+  {
+   "id": "w33",
+   "text": "with",
+   "startMs": 11920,
+   "endMs": 12159,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.65,
+    "empPct": 0.13
+   }
+  },
+  {
+   "id": "w34",
+   "text": "you",
+   "startMs": 12159,
+   "endMs": 12359,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.48,
+    "empPct": 0.09
+   }
+  },
+  {
+   "id": "w35",
+   "text": "guys",
+   "startMs": 12359,
+   "endMs": 12720,
+   "emphasis": 0,
+   "stretch": 1.9,
+   "signals": {
+    "holdPct": 0.93,
+    "empPct": 0.28
+   }
+  },
+  {
+   "id": "w36",
+   "text": "bhai",
+   "startMs": 12720,
+   "endMs": 13069,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.57,
+    "empPct": 0.02
+   }
+  },
+  {
+   "id": "w37",
+   "text": "tum",
+   "startMs": 13159,
+   "endMs": 13359,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.35,
+    "empPct": 0.78
+   }
+  },
+  {
+   "id": "w38",
+   "text": "logon",
+   "startMs": 13359,
+   "endMs": 13479,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.04,
+    "empPct": 0.8
+   }
+  },
+  {
+   "id": "w39",
+   "text": "se",
+   "startMs": 13479,
+   "endMs": 13600,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.09,
+    "empPct": 0.35
+   }
+  },
+  {
+   "id": "w40",
+   "text": "kaam",
+   "startMs": 13600,
+   "endMs": 13920,
+   "emphasis": 1,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.65,
+    "empPct": 0.74
+   }
+  },
+  {
+   "id": "w41",
+   "text": "kyon",
+   "startMs": 13920,
+   "endMs": 14039,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.39,
+    "empPct": 0.57
+   }
+  },
+  {
+   "id": "w42",
+   "text": "nahi",
+   "startMs": 14039,
+   "endMs": 14239,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.13,
+    "empPct": 0.43
+   }
+  },
+  {
+   "id": "w43",
+   "text": "hota",
+   "startMs": 14239,
+   "endMs": 14329,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.07,
+    "empPct": 0.52
+   }
+  },
+  {
+   "id": "w44",
+   "text": "hai",
+   "startMs": 14329,
+   "endMs": 14419,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.39,
+    "empPct": 0.24
+   }
+  },
+  {
+   "id": "w45",
+   "text": "behenchod",
+   "startMs": 14419,
+   "endMs": 14890,
+   "emphasis": 0,
+   "stretch": 1.0,
+   "signals": {
+    "holdPct": 0.11,
+    "empPct": 0.3
+   }
+  }
+ ],
+ "lines": [
+  {
+   "id": "l0",
+   "tone": "anger",
+   "wordIds": [
+    "w0",
+    "w1",
+    "w2",
+    "w3"
+   ]
+  },
+  {
+   "id": "l1",
+   "tone": "anger",
+   "wordIds": [
+    "w4",
+    "w5",
+    "w6",
+    "w7",
+    "w8",
+    "w9"
+   ]
+  },
+  {
+   "id": "l2",
+   "tone": "anger",
+   "wordIds": [
+    "w10",
+    "w11",
+    "w12",
+    "w13",
+    "w14"
+   ]
+  },
+  {
+   "id": "l3",
+   "tone": "anger",
+   "wordIds": [
+    "w15",
+    "w16",
+    "w17"
+   ]
+  },
+  {
+   "id": "l4",
+   "tone": "neutral",
+   "wordIds": [
+    "w18",
+    "w19",
+    "w20",
+    "w21"
+   ]
+  },
+  {
+   "id": "l5",
+   "tone": "neutral",
+   "wordIds": [
+    "w22",
+    "w23",
+    "w24",
+    "w25",
+    "w26",
+    "w27"
+   ]
+  },
+  {
+   "id": "l6",
+   "tone": "anger",
+   "wordIds": [
+    "w28",
+    "w29",
+    "w30",
+    "w31",
+    "w32"
+   ]
+  },
+  {
+   "id": "l7",
+   "tone": "anger",
+   "wordIds": [
+    "w33",
+    "w34",
+    "w35",
+    "w36"
+   ]
+  },
+  {
+   "id": "l8",
+   "tone": "anger",
+   "wordIds": [
+    "w37",
+    "w38",
+    "w39",
+    "w40",
+    "w41"
+   ]
+  },
+  {
+   "id": "l9",
+   "tone": "anger",
+   "wordIds": [
+    "w42",
+    "w43",
+    "w44",
+    "w45"
+   ]
+  }
+ ],
+ "overlays": [],
+ "settings": {
+  "emojis": false,
+  "emotionLayer": true
+ }
+}

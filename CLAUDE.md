@@ -65,5 +65,14 @@ If a task needs a change outside your folder or to the schema: STOP and tell the
 - The fixture is mounted into the API container at `/srv/fixtures`. The web app loads the fixture directly
   when `VITE_USE_FIXTURE=true`.
 
+## Engineering audits
+`.claude/INDEX.md` indexes the engineering decision/audit log in `.claude/audits/`.
+Read `INDEX.md` first, then only the audit relevant to your task.
+- Frontend (`apps/web`) decisions: audits 00–10.
+- **Transcription + prosody pipeline** (STT engine choice, word timings, emphasis/
+  stretch/tone rules, measured evidence on the 4 test clips, proposed schema change
+  and pipeline API): `audits/11-stt-prosody-pipeline.md`. Read it before touching
+  captions, word timings, or the `Project` fields `emphasis`/`stretch`/`signals`.
+
 ## Branches
 `p1-pipeline`, `p2-renderer`, `p3-editor`, `p4-agent`. Lead merges to `main` at 1pm and 9pm.

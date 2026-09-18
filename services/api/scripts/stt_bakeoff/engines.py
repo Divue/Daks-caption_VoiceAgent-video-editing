@@ -177,3 +177,34 @@ def romanize_words(words: list[dict]) -> list[dict]:
         for word, new in zip(chunk, roman):
             word["textDevanagari"], word["text"] = word["text"], str(new)
     return out_words
+
+
+def sarvam_translit(wav: Path) -> dict:
+    """Sarvam Saaras v3, translit mode: Hinglish straight out in Roman script.
+
+    No word-level timestamps (chunk level at best) — this is a TEXT engine; timings come
+    from the Transcribe backbone.
+    """
+    import requests
+
+    resp = requests.post(
+        "https://api.sarvam.ai/speech-to-text",
+        headers={"api-subscription-key": os.environ["SARVAM_API_KEY"]},
+        data={"model": "saaras:v3", "mode": "translit", "with_timestamps": "true"},
+        files={"file": (wav.name, wav.open("rb"), "audio/wav")},
+        timeout=300,
+    )
+    resp.raise_for_status()
+    raw = resp.json()
+    words = []
+    for chunk in (raw.get("timestamps") or {}).get("words", []) or []:
+        if isinstance(chunk, dict) and "start_time_seconds" in chunk:
+            words.append({
+                "text": chunk.get("word", ""),
+                "startMs": _ms(chunk["start_time_seconds"]),
+                "endMs": _ms(chunk["end_time_seconds"]),
+            })
+    return {"text": raw.get("transcript", ""), "words": words, "raw": raw}
+
+
+ENGINES["sarvam"] = sarvam_translit

@@ -5,3 +5,5 @@ boto3
 librosa
 numpy
 python-multipart
+requests
+indic-transliteration

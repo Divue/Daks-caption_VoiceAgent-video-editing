@@ -1,0 +1,290 @@
+{
+ "stage": "6-bedrock",
+ "model": "global.anthropic.claude-sonnet-4-6",
+ "elapsedS": 6.2,
+ "tokensIn": 3928,
+ "tokensOut": 725,
+ "costUsd": 0.0227,
+ "lines": [
+  {
+   "tone": "anger",
+   "words": [
+    {
+     "i": 0,
+     "text": "What",
+     "held": false
+    },
+    {
+     "i": 1,
+     "text": "the",
+     "held": false
+    },
+    {
+     "i": 2,
+     "text": "fuck",
+     "held": false
+    },
+    {
+     "i": 3,
+     "text": "bhai",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "anger",
+   "words": [
+    {
+     "i": 4,
+     "text": "what",
+     "held": false
+    },
+    {
+     "i": 5,
+     "text": "the",
+     "held": false
+    },
+    {
+     "i": 6,
+     "text": "fuck",
+     "held": false
+    },
+    {
+     "i": 7,
+     "text": "is",
+     "held": false
+    },
+    {
+     "i": 8,
+     "text": "happening",
+     "held": false
+    },
+    {
+     "i": 9,
+     "text": "bhai",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "anger",
+   "words": [
+    {
+     "i": 10,
+     "text": "I",
+     "held": false
+    },
+    {
+     "i": 11,
+     "text": "am",
+     "held": false
+    },
+    {
+     "i": 12,
+     "text": "fed",
+     "held": false
+    },
+    {
+     "i": 13,
+     "text": "up",
+     "held": false
+    },
+    {
+     "i": 14,
+     "text": "of",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "anger",
+   "words": [
+    {
+     "i": 15,
+     "text": "this",
+     "held": false
+    },
+    {
+     "i": 16,
+     "text": "shit",
+     "held": false
+    },
+    {
+     "i": 17,
+     "text": "bhai",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 18,
+     "text": "I",
+     "held": false
+    },
+    {
+     "i": 19,
+     "text": "should",
+     "held": false
+    },
+    {
+     "i": 20,
+     "text": "just",
+     "held": false
+    },
+    {
+     "i": 21,
+     "text": "do",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "neutral",
+   "words": [
+    {
+     "i": 22,
+     "text": "kheti",
+     "held": false
+    },
+    {
+     "i": 23,
+     "text": "baari",
+     "held": false
+    },
+    {
+     "i": 24,
+     "text": "bhai",
+     "held": false
+    },
+    {
+     "i": 25,
+     "text": "at",
+     "held": false
+    },
+    {
+     "i": 26,
+     "text": "this",
+     "held": false
+    },
+    {
+     "i": 27,
+     "text": "point",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "anger",
+   "words": [
+    {
+     "i": 28,
+     "text": "what",
+     "held": false
+    },
+    {
+     "i": 29,
+     "text": "the",
+     "held": false
+    },
+    {
+     "i": 30,
+     "text": "fuck",
+     "held": false
+    },
+    {
+     "i": 31,
+     "text": "is",
+     "held": false
+    },
+    {
+     "i": 32,
+     "text": "wrong",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "anger",
+   "words": [
+    {
+     "i": 33,
+     "text": "with",
+     "held": false
+    },
+    {
+     "i": 34,
+     "text": "you",
+     "held": false
+    },
+    {
+     "i": 35,
+     "text": "guys",
+     "held": false
+    },
+    {
+     "i": 36,
+     "text": "bhai",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "anger",
+   "words": [
+    {
+     "i": 37,
+     "text": "tum",
+     "held": false
+    },
+    {
+     "i": 38,
+     "text": "logon",
+     "held": false
+    },
+    {
+     "i": 39,
+     "text": "se",
+     "held": false
+    },
+    {
+     "i": 40,
+     "text": "kaam",
+     "held": false
+    },
+    {
+     "i": 41,
+     "text": "kyon",
+     "held": false
+    }
+   ]
+  },
+  {
+   "tone": "anger",
+   "words": [
+    {
+     "i": 42,
+     "text": "nahi",
+     "held": false
+    },
+    {
+     "i": 43,
+     "text": "hota",
+     "held": false
+    },
+    {
+     "i": 44,
+     "text": "hai",
+     "held": false
+    },
+    {
+     "i": 45,
+     "text": "behenchod",
+     "held": false
+    }
+   ]
+  }
+ ]
+}

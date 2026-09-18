@@ -48,9 +48,16 @@ def normalize(text: str) -> list[str]:
     return text.split()
 
 
-def wer(truth: str, hyp: str) -> tuple[float, int]:
+def collapse(words: list[str]) -> list[str]:
+    """helloooo -> helo: makes the score blind to elongation, which we ADD on purpose."""
+    return [re.sub(r"(.)\1+", r"\1", w) for w in words]
+
+
+def wer(truth: str, hyp: str, *, elongation_blind: bool = False) -> tuple[float, int]:
     """Word error rate by Levenshtein distance over words."""
     r, h = normalize(truth), normalize(hyp)
+    if elongation_blind:
+        r, h = collapse(r), collapse(h)
     if not r:
         return float("nan"), 0
     prev = list(range(len(h) + 1))
@@ -124,11 +131,12 @@ def cmd_score(_args) -> None:
         truth_file = TRUTH / f"{data['clip']}.txt"
         truth = truth_file.read_text().strip() if truth_file.exists() else ""
         rate, n = (wer(truth, data["text"]) if truth else (float("nan"), 0))
+        rate_blind, _ = (wer(truth, data["text"], elongation_blind=True) if truth else (float("nan"), 0))
         words = data["words"]
         gaps = sum(1 for a, b in zip(words, words[1:]) if b["startMs"] < a["endMs"])
         rows.append({
             "engine": data["engine"], "clip": data["clip"],
-            "wer": rate, "truthWords": n, "words": len(words),
+            "wer": rate, "werBlind": rate_blind, "truthWords": n, "words": len(words),
             "script": "devanagari" if DEVANAGARI.search(data["text"]) else "roman",
             "overlaps": gaps,
             "elapsedS": data.get("elapsedS", 0) + data.get("romanizeS", 0),
@@ -137,16 +145,19 @@ def cmd_score(_args) -> None:
     if not rows:
         sys.exit("nothing in out/ yet — run some engines first")
 
-    print(f"\n{'engine':14} {'clip':10} {'WER':>7} {'script':11} {'words':>6} {'overlaps':>8} {'secs':>6}")
+    print(f"\n{'engine':14} {'clip':19} {'WER':>7} {'WER*':>7} {'script':11} {'words':>6} {'secs':>6}")
+    print(f"{'':14} {'':19} {'':>7} {'(elongation-blind)':>7}")
     for r in rows:
         w = "  n/a  " if r["wer"] != r["wer"] else f"{r['wer']*100:6.1f}%"
-        print(f"{r['engine']:14} {r['clip']:10} {w} {r['script']:11} {r['words']:6} {r['overlaps']:8} {r['elapsedS']:6.1f}")
+        b = "  n/a  " if r["werBlind"] != r["werBlind"] else f"{r['werBlind']*100:6.1f}%"
+        print(f"{r['engine']:14} {r['clip']:19} {w} {b} {r['script']:11} {r['words']:6} {r['elapsedS']:6.1f}")
 
     print("\nper engine (mean WER over clips with ground truth):")
     for engine in sorted({r["engine"] for r in rows}):
         got = [r["wer"] for r in rows if r["engine"] == engine and r["wer"] == r["wer"]]
+        blind = [r["werBlind"] for r in rows if r["engine"] == engine and r["werBlind"] == r["werBlind"]]
         if got:
-            print(f"  {engine:14} {sum(got)/len(got)*100:5.1f}%")
+            print(f"  {engine:16} {sum(got)/len(got)*100:5.1f}%   elongation-blind {sum(blind)/len(blind)*100:5.1f}%")
 
     print("\nStill to check by hand (the scores above cannot tell you):")
     print("  - do word start times land on the audio? spot-check ~5 words per clip")

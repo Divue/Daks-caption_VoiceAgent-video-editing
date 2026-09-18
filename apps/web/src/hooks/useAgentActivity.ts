@@ -3,27 +3,41 @@ import { useProject } from '@/state/project-context'
 import { PRESETS } from '@captions/shared'
 
 /**
- * Placeholder shape for local UI rendering only — not the real agent protocol.
- * Replace once P4 defines the actual agent event/response contract.
+ * How an entry reads. `pending` is a turn still running; the agent loops up to 6 tool
+ * iterations, so a turn is visible for seconds and must not look finished while it is not.
+ * `warn` is an honest "I cannot do that" (the agent's `unsupported`/`not_implemented`), which
+ * is NOT a success and must never render with a green check.
  */
+export type AgentEntryStatus = 'info' | 'pending' | 'ok' | 'warn' | 'error'
+
 export interface AgentLogEntry {
   id: string
   message: string
   timestamp: number
+  status: AgentEntryStatus
+  /** One line per change, already phrased for a human by lib/agent-summary.ts. */
+  lines?: string[]
+  /** The agent's own tool trace (its `log[]`), shown only when the user asks for it. */
+  trace?: string[]
+  /**
+   * How many UNDO dispatches take this turn back, so "Undo that" is exact. A turn that ended in
+   * a conflict refetch costs two (the optimistic commit plus the REPLACE_PRESENT that followed).
+   * Absent means the turn changed nothing and there is nothing to undo.
+   */
+  undoSteps?: number
 }
 
 /**
- * idle/listening are driven by real local interaction (the mic toggle).
- * processing/success/error exist only so P4 has states to drive later —
- * nothing in this app currently transitions into them.
+ * idle/listening are driven by real local interaction (the mic toggle). `processing` means a
+ * transcript is in flight to the agent; `denied` means the browser refused the microphone.
  */
-export type MicStatus = 'idle' | 'listening' | 'processing' | 'success' | 'error'
+export type MicStatus = 'idle' | 'listening' | 'processing' | 'success' | 'error' | 'denied'
 
 /**
- * Logs real, honest local activity — never a fabricated agent/AI action.
- * Entries are derived by observing actual state transitions that already
- * happen for real (project loaded, preset changed, video uploaded) plus
- * events callers report about their own real local interactions.
+ * The editor's activity log. Every entry describes something that really happened — a state
+ * transition this app observed, or a turn the agent really ran. Nothing here fabricates agent
+ * behaviour: a turn that failed says so, and a capability that does not exist renders as a
+ * refusal rather than a tick.
  */
 export function useAgentActivity() {
   const { project } = useProject()
@@ -31,9 +45,33 @@ export function useAgentActivity() {
   const previous = useRef<{ presetId: string; videoUrl: string } | null>(null)
   const hasLoadedInitial = useRef(false)
 
-  const addEntry = useCallback((message: string) => {
-    setEntries((current) => [...current, { id: crypto.randomUUID(), message, timestamp: Date.now() }])
+  const addEntry = useCallback((message: string, status: AgentEntryStatus = 'info') => {
+    const id = crypto.randomUUID()
+    setEntries((current) => [...current, { id, message, timestamp: Date.now(), status }])
+    return id
   }, [])
+
+  /** Replaces one entry in place — how a `pending` turn becomes its result. */
+  const updateEntry = useCallback((id: string, patch: Partial<Omit<AgentLogEntry, 'id'>>) => {
+    setEntries((current) =>
+      current.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
+    )
+  }, [])
+
+  /**
+   * Appends entries the backend produced, preserving their own id and timestamp — the agent's
+   * log is the real record of what it did, so it is not regenerated here.
+   */
+  const addBackendEntries = useCallback(
+    (backendEntries: { id: string; message: string; timestamp: number }[]) => {
+      if (backendEntries.length === 0) return
+      setEntries((current) => [
+        ...current,
+        ...backendEntries.map((entry) => ({ ...entry, status: 'info' as const })),
+      ])
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!hasLoadedInitial.current) {
@@ -53,5 +91,5 @@ export function useAgentActivity() {
     previous.current = { presetId: project.presetId, videoUrl: project.videoUrl }
   }, [project.presetId, project.videoUrl, addEntry])
 
-  return { entries, addEntry }
+  return { entries, addEntry, updateEntry, addBackendEntries }
 }

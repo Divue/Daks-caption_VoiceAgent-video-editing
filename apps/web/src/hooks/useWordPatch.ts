@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Project } from '@captions/shared'
-import type { Word } from '@captions/shared'
-import { getProject, isApiError, patchWord } from '@/lib/api'
-import type { ApiError, WordPatch } from '@/lib/api'
+import type { PresetId, Word } from '@captions/shared'
+import { getProject, isApiError, patchProject, patchWord, patchWordsBulk } from '@/lib/api'
+import type { ApiError, BulkWordPatch, WordPatch } from '@/lib/api'
+import type { AgentPatch } from '@/state/project-reducer'
 import type { StyleChange } from '@/lib/style-change'
 import { useProject } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
@@ -10,6 +11,19 @@ import { useSync } from '@/state/sync-context'
 export interface PatchState {
   saving: boolean
   error: string | null
+}
+
+/** What actually happened to one agent turn, so the activity log can be honest about it. */
+export interface AgentApplyResult {
+  /** Patches whose write reached the server. Less than `total` means a partial turn. */
+  applied: number
+  total: number
+  error: string | null
+  /**
+   * True when the write failed and the editor refetched. The refetch is itself a commit, so the
+   * turn then costs TWO undo steps, not one — "Undo that" has to know.
+   */
+  resynced: boolean
 }
 
 /**
@@ -34,6 +48,7 @@ export function useWordPatchState(): PatchState & {
   patch: (wordId: string, fields: Partial<Word>) => void
   patchWords: (wordIds: string[], fields: Partial<Word>) => void
   patchStyle: (wordIds: string[], change: StyleChange) => void
+  applyAgentPatches: (patches: AgentPatch[]) => Promise<AgentApplyResult>
   clearError: () => void
 } {
   const { dispatch } = useProject()
@@ -72,25 +87,34 @@ export function useWordPatchState(): PatchState & {
     setVersion(fresh)
   }, [projectId, dispatch, setVersion])
 
+  // Returns the tail of the queue so a caller can await ITS OWN job. The chain still never
+  // rejects — a failure is absorbed here and reported through `error` — so awaiting is safe and
+  // one failed write can never poison the writes queued behind it.
   const enqueue = useCallback(
-    (job: () => Promise<void>) => {
+    (job: () => Promise<void>): Promise<string | null> => {
       pendingRef.current += 1
       setSaving(true)
 
-      queueRef.current = queueRef.current
+      let failure: string | null = null
+      const chained = queueRef.current
         .then(job)
         .catch(async (cause) => {
           if (cause instanceof DOMException && cause.name === 'AbortError') return
-          setError(describe(cause))
+          failure = describe(cause)
+          setError(failure)
           // The optimistic state and the server have diverged; take the server's answer.
           await resync().catch(() => {
-            setError('Saved changes could not be verified — reload to sync.')
+            failure = 'Saved changes could not be verified — reload to sync.'
+            setError(failure)
           })
         })
         .finally(() => {
           pendingRef.current -= 1
           if (pendingRef.current === 0) setSaving(false)
         })
+
+      queueRef.current = chained
+      return chained.then(() => failure)
     },
     [resync],
   )
@@ -189,9 +213,108 @@ export function useWordPatchState(): PatchState & {
     [projectId, dispatch, setVersion, enqueue],
   )
 
+  /**
+   * A whole agent turn: ONE optimistic commit (so one utterance is one undo step) and ONE
+   * queued job that persists every change in order on the same version counter.
+   *
+   * This is deliberately NOT a loop of `patch()` calls. Each of those is its own commit and its
+   * own queue entry, which would make the user press Ctrl+Z once per word to take back one
+   * sentence they said, and would interleave with any manual edit already in flight.
+   *
+   * Word changes go out as ONE bulk PATCH: all-or-nothing server-side, one version bump. The
+   * per-word route would be N sequential round trips sharing one counter — fine for a click,
+   * fatal for a voice command that restyles a whole transcript.
+   */
+  const applyAgentPatches = useCallback(
+    async (patches: AgentPatch[]): Promise<AgentApplyResult> => {
+      if (patches.length === 0) return { applied: 0, total: 0, error: null, resynced: false }
+
+      dispatch({ type: 'APPLY_AGENT_PATCHES', patches })
+      setError(null)
+      if (!projectId) return { applied: patches.length, total: patches.length, error: null, resynced: false }
+
+      // Collapse repeated edits to the same word so the bulk body carries one entry per word,
+      // last write winning — the same result the folded optimistic commit produced.
+      const wordPatches = new Map<string, BulkWordPatch>()
+      let projectPatch: { presetId?: PresetId; settings?: Partial<Project['settings']> } = {}
+      let unpersistable = 0
+
+      for (const patch of patches) {
+        switch (patch.type) {
+          case 'UPDATE_WORD': {
+            const body = toWordPatch(patch.patch)
+            if (Object.keys(body).length === 0) break // local-only fields; nothing to send
+            const existing = wordPatches.get(patch.wordId)
+            wordPatches.set(patch.wordId, { ...(existing ?? { wordId: patch.wordId }), ...body })
+            break
+          }
+          case 'SET_PRESET':
+            projectPatch = { ...projectPatch, presetId: patch.presetId }
+            break
+          case 'SET_SETTINGS':
+            projectPatch = {
+              ...projectPatch,
+              settings: { ...(projectPatch.settings ?? {}), ...patch.settings },
+            }
+            break
+          case 'ADD_OVERLAY':
+            // No endpoint exists for overlays, so this cannot be saved. Counted and reported
+            // rather than silently dropped — see the honest-failure rule in CLAUDE.md.
+            unpersistable += 1
+            break
+        }
+      }
+
+      const writes = wordPatches.size + (Object.keys(projectPatch).length > 0 ? 1 : 0)
+      if (writes === 0) {
+        return {
+          applied: patches.length - unpersistable,
+          total: patches.length,
+          error: unpersistable > 0 ? 'Some changes cannot be saved yet.' : null,
+          resynced: false,
+        }
+      }
+
+      let landed = 0
+      const failure = await enqueue(async () => {
+        if (wordPatches.size > 0) {
+          const { version: next } = await patchWordsBulk(
+            projectId,
+            [...wordPatches.values()],
+            versionRef.current,
+            controllerRef.current?.signal,
+          )
+          versionRef.current = next
+          landed += wordPatches.size
+        }
+        if (Object.keys(projectPatch).length > 0) {
+          const { version: next } = await patchProject(
+            projectId,
+            projectPatch,
+            versionRef.current,
+            controllerRef.current?.signal,
+          )
+          versionRef.current = next
+          landed += 1
+        }
+        setVersion(versionRef.current)
+      })
+
+      return {
+        applied: failure ? landed : patches.length - unpersistable,
+        total: patches.length,
+        error:
+          failure ??
+          (unpersistable > 0 ? 'Some changes cannot be saved yet.' : null),
+        resynced: failure !== null,
+      }
+    },
+    [projectId, dispatch, setVersion, enqueue],
+  )
+
   const clearError = useCallback(() => setError(null), [])
 
-  return { saving, error, patch, patchWords, patchStyle, clearError }
+  return { saving, error, patch, patchWords, patchStyle, applyAgentPatches, clearError }
 }
 
 /**

@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "check:captions": "jiti scripts/check-caption-style.ts"
+    "check:captions": "jiti scripts/check-caption-style.ts",
+    "check:agent": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\"}\" jiti scripts/check-agent-apply.ts"
   },
   "dependencies": {
     "@captions/shared": "*",

@@ -112,7 +112,7 @@ async function rawRequest(path: string, options: RequestOptions = {}): Promise<{
   return { data, response }
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { data } = await rawRequest(path, options)
   return data as T
 }
@@ -270,6 +270,29 @@ export function patchWord(
   return request(`/projects/${projectId}/words/${wordId}`, {
     method: 'PATCH',
     body: version === undefined ? patch : { ...patch, version },
+    signal,
+  })
+}
+
+/** One word patch inside a bulk write. */
+export interface BulkWordPatch extends WordPatch {
+  wordId: string
+}
+
+/**
+ * All-or-nothing multi-word write: every patch applies, the Project validates once, and the
+ * version counter bumps ONCE. This is the endpoint that makes one agent turn one atomic write —
+ * the per-word route would be N sequential round trips sharing one counter.
+ */
+export function patchWordsBulk(
+  projectId: string,
+  words: BulkWordPatch[],
+  version: number | undefined,
+  signal?: AbortSignal,
+): Promise<{ words: Word[]; version: number }> {
+  return request(`/projects/${projectId}/words`, {
+    method: 'PATCH',
+    body: version === undefined ? { words } : { words, version },
     signal,
   })
 }

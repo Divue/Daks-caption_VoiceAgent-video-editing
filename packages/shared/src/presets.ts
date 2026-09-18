@@ -45,13 +45,17 @@ export interface StretchTuning {
 /**
  * How a caption block is arranged.
  *
- * `inline` is one wrapped line, words side by side — the conventional subtitle shape.
+ * `inline` is one wrapped line, words side by side — the conventional subtitle shape, and the
+ * default. Most presets want this.
  *
- * `stack` is the reference product's actual signature and the reason its templates read as
- * typography rather than as subtitles: every word gets its OWN line, the lines step sideways as
- * they descend so the block reads diagonally down-right, and the emphasised word is centred
- * because at 2-3x the base size it spans the frame anyway. Paired with `reveal: 'hidden'` the
- * block builds up a word at a time and the already-spoken words stay put.
+ * `stack` gives every word its OWN line, the lines stepping sideways as they descend so the block
+ * reads diagonally down-right, with the emphasised word centred because at 2-3x the base size it
+ * spans the frame anyway. Paired with `reveal: 'hidden'` the block builds up a word at a time and
+ * the already-spoken words stay put.
+ *
+ * Only `chamak` uses it. It is a strong, specific look — the point of having it is that ONE preset
+ * reads as typography while the rest read as captions; applying it to all four would make the set
+ * a single trick with four colourways.
  */
 export type CaptionLayout = 'inline' | 'stack'
 
@@ -120,12 +124,12 @@ export const PRESETS: Record<PresetId, Preset> = {
       weight: 400,
       letterSpacing: -0.046, // measured -2.05px at 45px
       lineHeight: 0.9,
-      ...stackTop,
+      ...center,
     },
     emphasis: { fontFamily: 'Anton', italic: false, weight: 400, color: '#E2452A', textCase: 'upper' },
     emphasisScale: 2.93, // 132px / 45px
     reveal: 'none',
-    layout: 'stack',
+    layout: 'inline',
     emotion: { angry: { style: { color: '#FF5C3A', shake: 3 } } },
     wordsPerLine: 3,
   },
@@ -170,7 +174,7 @@ export const PRESETS: Record<PresetId, Preset> = {
   nazm: {
     id: 'nazm',
     name: 'Nazm',
-    base: { fontFamily: 'Instrument Sans', fontSize: 72, color: '#FFFFFF', weight: 400, lineHeight: 1, ...stackTop },
+    base: { fontFamily: 'Instrument Sans', fontSize: 72, color: '#FFFFFF', weight: 400, lineHeight: 1, ...center },
     emphasis: {
       fontFamily: 'Instrument Serif',
       italic: true,
@@ -181,7 +185,7 @@ export const PRESETS: Record<PresetId, Preset> = {
     },
     emphasisScale: 1.5, // 108px / 72px
     reveal: 'hidden',
-    layout: 'stack',
+    layout: 'inline',
     emotion: { angry: { style: { color: '#FFD9D2', shake: 2 } } },
     wordsPerLine: 4,
   },
@@ -204,12 +208,12 @@ export const PRESETS: Record<PresetId, Preset> = {
       // Unlike chamak/nazm the halo is a template-wide effect here, not an emphasis-only one.
       glow: 108,
       glowColor: '#5E1130',
-      ...stackTop,
+      ...center,
     },
     emphasis: { fontFamily: 'Montserrat', weight: 800, color: '#FF4D8D', textCase: 'lower' },
     emphasisScale: 1.34, // 120.6px / 90px
     reveal: 'dim',
-    layout: 'stack',
+    layout: 'inline',
     emotion: { angry: { style: { color: '#FF2E6B', shake: 5 } } },
     wordsPerLine: 3,
   },

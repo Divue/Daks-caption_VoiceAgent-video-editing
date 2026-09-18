@@ -8,6 +8,7 @@ interface CaptionRibbonProps {
   emphasisIds: Set<string>
   pxPerMs: number
   durationMs: number
+  height: number
   activeBlockId: string | null
   selectedWordId: string | null
   onSelectWord: (wordId: string) => void
@@ -17,15 +18,12 @@ interface CaptionRibbonProps {
 /**
  * The whole video as one lane of caption blocks.
  *
- * This replaced a three-track stack with a Video 1 and an Audio 1 lane (audit 16 §1). We do not
- * cut, layer or mix anything — `CLAUDE.md` puts all of that out of scope — so those lanes were
- * empty bars that existed to make the app look like an NLE, and the track-header gutter beside
- * them was six controls of which four did nothing.
+ * The top lane of the timeline, and the only one the user edits from.
  *
- * What the strip owes the user instead is the one thing the caption list cannot show: the SHAPE
- * of the video. So tone is the segment's own tint rather than a badge, and the emphasised word is
- * legible inside the segment. Scanning it tells you where the video is angry, where it is
- * excited, and where the big words land — which is the product's actual pitch.
+ * What it owes them is the one thing the caption list cannot show: the SHAPE of the video. So tone
+ * is the segment's own tint rather than a badge, and the emphasised word is legible inside the
+ * segment. Scanning it tells you where the video is angry, where it is excited, and where the big
+ * words land — which is the product's actual pitch.
  */
 
 /** Tone as a surface, not a label. Kept low-saturation: 30 of these are on screen at once. */
@@ -48,6 +46,7 @@ export function CaptionRibbon({
   emphasisIds,
   pxPerMs,
   durationMs,
+  height,
   activeBlockId,
   selectedWordId,
   onSelectWord,
@@ -55,8 +54,8 @@ export function CaptionRibbon({
 }: CaptionRibbonProps) {
   return (
     <div
-      className="relative h-14"
-      style={{ width: durationMs * pxPerMs }}
+      className="relative border-b border-border/40"
+      style={{ width: durationMs * pxPerMs, height }}
       onPointerDown={(event) => {
         // Clicking empty ribbon seeks; clicks on a block are handled by the block itself.
         if (event.target !== event.currentTarget) return

@@ -76,10 +76,16 @@ Severity: **F** = delete or rebuild, **D** = bad, fix properly, **C** = mediocre
 
 ### 3.1 Replace the timeline with a **caption ribbon**
 
-Not a track stack. One strip, whose job is: *where are the captions in this video, what tone are
-they, and where is the playhead.*
+> **Revised after review.** The first cut of this deleted the video and audio lanes outright. That
+> over-read the brief: "that area looks ugly" meant fix it, not remove it, and an editor with no
+> lanes at all reads as missing rather than focused. The lanes are back. What stayed deleted is the
+> part that was actually ugly — the eight inert toolbar buttons and the mute/lock/visibility gutter
+> that squeezed the lane names down to "C." / "V." / "A.".
 
-- **One lane**, not three. The Video/Audio tracks, the track headers and the toolbar all go.
+One strip whose top lane does the real work: *where are the captions, what tone are they, and where
+is the playhead.* Below it, the video and audio the captions sit on.
+
+- **Three lanes**, named in full, with no inert per-track controls.
 - **Blocks as segments** positioned by time, showing their text, sized by duration.
 - **Tone is the segment's colour** — a muted tint, not a badge: neutral reads as plain surface,
   angry and excited get a low-saturation wash. Now the whole video's emotional shape is legible
@@ -118,7 +124,8 @@ a full-width two-up control at the very top, visually louder than anything below
 
 Tracked here so the next session can see what was taken and what was left.
 
-- [x] 3.1 caption ribbon replaces the track stack, toolbar and track headers
+- [x] 3.1 caption ribbon is the top lane; video/audio lanes kept but rebuilt; toolbar and the
+      mute/lock/visibility gutter deleted
 - [x] 3.2 stage framing reduced, frame grows
 - [x] 3.3 orange budget
 - [x] 3.4 style panel hierarchy + weight dropdown + scope switch

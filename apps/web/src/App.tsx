@@ -199,6 +199,8 @@ function App() {
 
           <Timeline
             durationMs={project.durationMs}
+            width={project.width}
+            height={project.height}
             blocks={blocks}
             wordsOf={wordsOf}
             emphasisIds={emphasis.ids}

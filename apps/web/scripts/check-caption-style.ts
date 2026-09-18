@@ -313,10 +313,10 @@ console.log('\nemphasis rhythm rule')
 // ---------------------------------------------------------------------------
 console.log('\nstack layout')
 // ---------------------------------------------------------------------------
-for (const id of ['rangmanch', 'chamak', 'nazm', 'dhamaka'] as PresetId[]) {
-  check(`${id}: uses the stacked cascade`, PRESETS[id].layout === 'stack')
-}
-for (const id of ['mrbeast', 'minimal', 'hinglish-bold'] as PresetId[]) {
+// Exactly one preset cascades. The look is strong and specific; the point of having it is that
+// one preset reads as typography while the rest read as captions.
+check('chamak is the only stacked preset', PRESETS.chamak.layout === 'stack')
+for (const id of ['rangmanch', 'nazm', 'dhamaka', 'mrbeast', 'minimal', 'hinglish-bold'] as PresetId[]) {
   check(`${id}: stays inline`, PRESETS[id].layout === 'inline')
 }
 // A promoted word must resolve to the emphasis face even though its own flag is false — this is

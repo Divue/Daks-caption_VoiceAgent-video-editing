@@ -27,7 +27,8 @@ export const Signals = z.object({
   loudnessZ: z.number(),
   pitchZ: z.number(),
   durationRatio: z.number(), // actual / expected duration for this speaker
-  extraMs: z.number(),       // how much longer than expected, in ms
+  // Defaults to 0 so a hand-authored Word parses; mirrors schema.py's `extraMs: float = 0.0`.
+  extraMs: z.number().default(0), // how much longer than expected, in ms
 })
 export type Signals = z.infer<typeof Signals>
 

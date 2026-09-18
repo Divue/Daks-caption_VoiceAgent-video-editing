@@ -17,7 +17,7 @@
       "signals": {
         "loudnessZ": 1.2,
         "pitchZ": 1.8,
-        "durationRatio": 2.6
+        "durationRatio": 2.6, "extraMs": 646
       }
     },
     {
@@ -31,7 +31,7 @@
       "signals": {
         "loudnessZ": 0.8,
         "pitchZ": 0.4,
-        "durationRatio": 1.0
+        "durationRatio": 1.0, "extraMs": 0
       }
     },
     {
@@ -45,7 +45,7 @@
       "signals": {
         "loudnessZ": 0.1,
         "pitchZ": 0.0,
-        "durationRatio": 0.9
+        "durationRatio": 0.9, "extraMs": 0
       }
     },
     {
@@ -59,7 +59,7 @@
       "signals": {
         "loudnessZ": 0.0,
         "pitchZ": 0.2,
-        "durationRatio": 1.0
+        "durationRatio": 1.0, "extraMs": 0
       }
     },
     {
@@ -73,7 +73,7 @@
       "signals": {
         "loudnessZ": -0.2,
         "pitchZ": 0.1,
-        "durationRatio": 1.1
+        "durationRatio": 1.1, "extraMs": 0
       }
     },
     {
@@ -87,7 +87,7 @@
       "signals": {
         "loudnessZ": 0.0,
         "pitchZ": -0.1,
-        "durationRatio": 1.0
+        "durationRatio": 1.0, "extraMs": 0
       }
     },
     {
@@ -101,7 +101,7 @@
       "signals": {
         "loudnessZ": -0.3,
         "pitchZ": -0.2,
-        "durationRatio": 0.9
+        "durationRatio": 0.9, "extraMs": 0
       }
     },
     {
@@ -115,7 +115,7 @@
       "signals": {
         "loudnessZ": 0.9,
         "pitchZ": 0.3,
-        "durationRatio": 1.0
+        "durationRatio": 1.0, "extraMs": 0
       }
     },
     {
@@ -129,7 +129,7 @@
       "signals": {
         "loudnessZ": 0.1,
         "pitchZ": 0.0,
-        "durationRatio": 1.0
+        "durationRatio": 1.0, "extraMs": 0
       }
     },
     {
@@ -143,7 +143,7 @@
       "signals": {
         "loudnessZ": 2.1,
         "pitchZ": 1.6,
-        "durationRatio": 1.1
+        "durationRatio": 1.1, "extraMs": 0
       }
     },
     {
@@ -157,7 +157,7 @@
       "signals": {
         "loudnessZ": 2.6,
         "pitchZ": 2.0,
-        "durationRatio": 1.2
+        "durationRatio": 1.2, "extraMs": 0
       },
       "emoji": "😒"
     },
@@ -172,7 +172,7 @@
       "signals": {
         "loudnessZ": 2.0,
         "pitchZ": 1.5,
-        "durationRatio": 1.0
+        "durationRatio": 1.0, "extraMs": 0
       }
     },
     {
@@ -186,7 +186,7 @@
       "signals": {
         "loudnessZ": 0.4,
         "pitchZ": 0.2,
-        "durationRatio": 1.3
+        "durationRatio": 1.3, "extraMs": 0
       }
     },
     {
@@ -200,7 +200,7 @@
       "signals": {
         "loudnessZ": 1.5,
         "pitchZ": 2.2,
-        "durationRatio": 2.2
+        "durationRatio": 2.2, "extraMs": 491
       },
       "emoji": "😳"
     },
@@ -215,7 +215,7 @@
       "signals": {
         "loudnessZ": 0.7,
         "pitchZ": 0.5,
-        "durationRatio": 1.0
+        "durationRatio": 1.0, "extraMs": 0
       },
       "emoji": "🙏"
     },
@@ -230,7 +230,7 @@
       "signals": {
         "loudnessZ": 0.2,
         "pitchZ": 0.1,
-        "durationRatio": 1.0
+        "durationRatio": 1.0, "extraMs": 0
       }
     }
   ],

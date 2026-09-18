@@ -76,3 +76,41 @@ Read `INDEX.md` first, then only the audit relevant to your task.
 
 ## Branches
 `p1-pipeline`, `p2-renderer`, `p3-editor`, `p4-agent`. Lead merges to `main` at 1pm and 9pm.
+
+## Audit & verification rule (binding — every implementation task, every session)
+This is a permanent project rule, not a one-off request. It applies to all future work:
+AI agent, backend, frontend, LiveKit, AWS, APIs, tools, infra, tests, everything.
+
+**Before changing anything:**
+- Read this file, the relevant `.claude/audits/` history for the area you're touching, and
+  the actual current source — not a prior session's summary of it.
+- Identify ownership boundaries (table above) and which files you must not touch.
+- For anything non-trivial, state the implementation plan before executing.
+- Verify existing contracts/interfaces from the real source, not memory.
+
+**While implementing:**
+- Stay inside the approved scope. Flag anything that needs to expand it — don't silently
+  expand it yourself.
+- Never touch another owner's folder without explicitly flagging it first.
+- Reuse an existing interface instead of duplicating it.
+- Never guess an API, package interface, schema, env var, or framework behavior that can
+  be verified against the installed package or source — check it for real.
+- Never hardcode secrets, credentials, API keys, or tokens.
+
+**After every implementation phase / significant change:**
+- Review the real `git status`/`git diff` — not what you remember changing.
+- Confirm: no unrelated files, ownership boundaries respected, no accidentally broken
+  contracts.
+- Run the relevant test suite, typecheck, lint/build.
+- Verify security-sensitive changes separately.
+- Say plainly what's verified vs. mocked vs. structurally-checked vs. blocked vs.
+  intentionally out of scope. Never claim something "works end-to-end" if an external
+  dependency was only mocked, and never say "tested" when it was only inspected.
+- Write (or update) an audit doc under `.claude/audits/<area>/` — see
+  `.claude/audits/TEMPLATE.md` for the required sections. One audit per phase/milestone;
+  don't destroy prior implementation history.
+- A PR containing implementation code includes its audit doc unless the repo owner says
+  otherwise. Never merge a PR unless explicitly instructed to.
+
+Before reporting any implementation task as done, stop and perform this audit — "done"
+isn't a valid final answer on its own.

@@ -31,12 +31,19 @@ from .contracts import (
     AgentLogEntry,
     AgentVoiceCommandRequest,
 )
+from .livekit_token import livekit_router
 from .planner import run_agent_command
 from .voice import run_agent_voice_command
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agent", tags=["agent"])
+
+# LiveKit voice-transport plumbing (see livekit_token.py's module docstring):
+# mounted on the same router/prefix as /command and /voice-command so it's
+# reachable at POST /agent/livekit-token once this router itself is mounted
+# on the real app (still app/main.py's job, unchanged by this addition).
+router.include_router(livekit_router)
 
 
 def _default_bedrock_client() -> BedrockConverseClient | None:

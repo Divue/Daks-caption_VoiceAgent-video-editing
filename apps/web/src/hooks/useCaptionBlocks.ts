@@ -26,14 +26,17 @@ export function useCaptionBlocks(mergeShort: boolean): CaptionBlocks {
 
   return useMemo(() => {
     const wordById = new Map(project.words.map((word) => [word.id, word]))
+    // `wordsPerLine` is a PRESET field, but a stored override beats it: "fewer words per
+    // line" is one of the most common short-form caption requests and it has to survive a
+    // reload, so it lives on the Project (see PresetOverride in packages/shared).
     const blocks = deriveBlocks(project.words, {
-      maxWords: PRESETS[project.presetId].wordsPerLine,
+      maxWords: project.presetOverride?.wordsPerLine ?? PRESETS[project.presetId].wordsPerLine,
       mergeShorterThanMs: mergeShort ? MIN_BLOCK_MS : 0,
     })
     const wordsOf = (block: CaptionBlock) =>
       block.wordIds.map((id) => wordById.get(id)).filter((word): word is Word => word !== undefined)
     return { blocks, wordById, wordsOf }
-  }, [project.words, project.presetId, mergeShort])
+  }, [project.words, project.presetId, project.presetOverride?.wordsPerLine, mergeShort])
 }
 
 /**

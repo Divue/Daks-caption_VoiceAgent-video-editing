@@ -126,6 +126,41 @@ console.log('\nagent apply — the pure fold matches the reducer')
   check('applyAgentPatch and the reducer agree', JSON.stringify(folded) === JSON.stringify(viaReducer))
 }
 
+console.log('\nagent apply — preset overrides')
+{
+  const set = projectReducer(fresh(), {
+    type: 'APPLY_AGENT_PATCHES',
+    patches: [{ type: 'SET_PRESET_OVERRIDE', override: { wordsPerLine: 3 } }],
+  })
+  check('a preset override is stored on the project', set.present.presetOverride?.wordsPerLine === 3)
+  check('it is one undo step', set.past.length === 1)
+
+  const merged = projectReducer(set, {
+    type: 'APPLY_AGENT_PATCHES',
+    patches: [{ type: 'SET_PRESET_OVERRIDE', override: { emphasisScale: 1.4 } }],
+  })
+  check(
+    'a second override MERGES key by key rather than replacing',
+    merged.present.presetOverride?.wordsPerLine === 3 && merged.present.presetOverride?.emphasisScale === 1.4,
+  )
+
+  // An explicit null is how a key is removed — `undefined` is dropped by JSON.stringify and the
+  // removal would never leave the browser (the bug audit 15 §4 records for style overrides).
+  const cleared = projectReducer(merged, {
+    type: 'APPLY_AGENT_PATCHES',
+    patches: [{ type: 'SET_PRESET_OVERRIDE', override: { wordsPerLine: null } as never }],
+  })
+  check('an explicit null removes just that key', cleared.present.presetOverride?.wordsPerLine === undefined)
+  check('the other keys survive', cleared.present.presetOverride?.emphasisScale === 1.4)
+
+  const all = projectReducer(cleared, {
+    type: 'APPLY_AGENT_PATCHES',
+    patches: [{ type: 'SET_PRESET_OVERRIDE', override: null }],
+  })
+  check('a whole-object null clears every override', all.present.presetOverride === undefined)
+  check('the project still validates with no override key at all', Project.safeParse(all.present).success)
+}
+
 console.log('\nagent summary — a change, not JSON')
 {
   const patches: AgentPatch[] = ids.map((wordId) => ({
@@ -151,6 +186,9 @@ console.log('\nagent summary — a change, not JSON')
 
   const settings = summarisePatches([{ type: 'SET_SETTINGS', settings: { emotionLayer: false } }], fixture)
   check('settings render in plain words', settings[0] === 'Emotion colours → off', settings[0])
+
+  const override = summarisePatches([{ type: 'SET_PRESET_OVERRIDE', override: { wordsPerLine: 3 } }], fixture)
+  check('a preset override reads as words per line', override[0] === '3 words per line', override[0])
 
   const cleared = summarisePatches(
     [{ type: 'UPDATE_WORD', wordId: ids[0], patch: { style: { color: null } as never } }],

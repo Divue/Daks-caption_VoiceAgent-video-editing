@@ -3,30 +3,47 @@ import type { ReactNode } from 'react'
 import { PRESETS } from '@captions/shared'
 import type { Preset, PresetId } from '@captions/shared'
 import { useProject } from '@/state/project-context'
+import { useWordPatch } from '@/state/word-patch-context'
 
 /**
- * Session-level tweaks to the ACTIVE preset.
+ * Tweaks to the ACTIVE preset — some now stored, some still session-only.
  *
- * Why this exists, and why it is deliberately not persisted:
+ * `Preset` is not part of the stored Project; only `presetId` is. Every field here is a
+ * CONDITIONAL layer: `emphasis` applies only to emphasised words, `emotion` only to a tone run,
+ * `reveal` only to words ahead of the playhead, `stretch` only to held words. None has a per-word
+ * home in `Style`, so unlike the base look they cannot be written onto words.
  *
- * `Preset` is not part of the stored Project — only `presetId` is. The fields below are all
- * CONDITIONAL layers: `emphasis` applies only to emphasised words, `emotion` only to a tone run,
- * `reveal` only to words ahead of the playhead, `stretch` only to held words. None of them has a
- * per-word home in `Style`, so unlike the base look they cannot be written onto the words and
- * saved. Storing them would mean a new stored field on `Project`, which is a schema change this
- * task does not carry.
+ * Four of them now have a home on the Project (`Project.presetOverride`, added with schema.py in
+ * the same change): `wordsPerLine`, `emphasis`, `emphasisScale`, `reveal` and `emotion`. Those
+ * PERSIST — "fewer words per line" and "make the emphasised words bigger" survive a reload and
+ * are what the agent's set_preset_override tool writes.
  *
- * So they tune the live preview for this session and the panel says so, in the UI, on every
- * section that uses them. That is the honest version; silently pretending they save is not.
+ * The rest (`glowLayers`, `stretch`, `align`) still have nowhere to be stored. They tune the live
+ * preview for this session and the panel says so, on every section that uses them. That is the
+ * honest version; silently pretending they save is not.
+ *
  * Unconditional look changes (family, size, colour, spacing, effects, position) do NOT come
  * through here — they are written onto every word via `patchStyle` and genuinely persist.
  */
 export type PresetOverride = Partial<
   Pick<Preset, 'emphasis' | 'emphasisScale' | 'reveal' | 'glowLayers' | 'emotion' | 'stretch' | 'align'>
->
+> & { wordsPerLine?: number }
+
+/** The keys that have a home on the Project. Everything else stays session-only. */
+const STORED_KEYS = ['wordsPerLine', 'emphasis', 'emphasisScale', 'reveal', 'emotion'] as const
+
+function splitOverride(patch: PresetOverride): { stored: PresetOverride; session: PresetOverride } {
+  const stored: Record<string, unknown> = {}
+  const session: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(patch)) {
+    if ((STORED_KEYS as readonly string[]).includes(key)) stored[key] = value
+    else session[key] = value
+  }
+  return { stored: stored as PresetOverride, session: session as PresetOverride }
+}
 
 interface PresetOverrideValue {
-  /** The stored preset with this session's overrides merged over it. Render from this. */
+  /** The preset with the project's stored overrides AND this session's merged over it. */
   preset: Preset
   /** The unmodified preset, for "reset" and for showing what a control is departing from. */
   basePreset: Preset
@@ -34,6 +51,8 @@ interface PresetOverrideValue {
   setOverride: (patch: PresetOverride) => void
   reset: () => void
   isOverridden: boolean
+  /** True for a key that genuinely saves, so the panel can stop badging it "session only". */
+  isStoredKey: (key: keyof PresetOverride) => boolean
 }
 
 const PresetOverrideContext = createContext<PresetOverrideValue | null>(null)
@@ -43,8 +62,10 @@ const NO_OVERRIDE: PresetOverride = Object.freeze({})
 
 export function PresetOverrideProvider({ children }: { children: ReactNode }) {
   const { project } = useProject()
+  const { patchProjectFields } = useWordPatch()
   const presetId = project.presetId
   const basePreset = PRESETS[presetId]
+  const storedOverride = project.presetOverride as PresetOverride | undefined
 
   // The tweaks are stamped with the preset they were made against. Switching preset therefore
   // drops them DURING RENDER rather than in an effect — an effect would paint one frame of, say,
@@ -58,38 +79,64 @@ export function PresetOverrideProvider({ children }: { children: ReactNode }) {
 
   const setOverride = useCallback(
     (patch: PresetOverride) => {
-      setState((current) => ({
-        presetId,
-        override: current.presetId === presetId ? { ...current.override, ...patch } : patch,
-      }))
+      const { stored, session } = splitOverride(patch)
+
+      // Storable keys go to the Project, through the editor's ONE write queue, so an agent turn
+      // and a drag of this panel's slider cannot race each other on the version counter.
+      if (Object.keys(stored).length > 0) {
+        void patchProjectFields({ presetOverride: stored })
+      }
+      if (Object.keys(session).length > 0) {
+        setState((current) => ({
+          presetId,
+          override: current.presetId === presetId ? { ...current.override, ...session } : session,
+        }))
+      }
     },
-    [presetId],
+    [presetId, patchProjectFields],
   )
 
-  const reset = useCallback(() => setState({ presetId, override: NO_OVERRIDE }), [presetId])
+  const reset = useCallback(() => {
+    setState({ presetId, override: NO_OVERRIDE })
+    if (storedOverride) void patchProjectFields({ presetOverride: null })
+  }, [presetId, storedOverride, patchProjectFields])
+
+  // Stored first, then this session's on top: a slider you are dragging right now should win
+  // over what was saved, and switching preset drops only the session half (the stored half is
+  // the user's explicit, persisted choice).
+  const merged = useMemo<PresetOverride>(
+    () => ({ ...(storedOverride ?? {}), ...override }),
+    [storedOverride, override],
+  )
 
   const preset = useMemo<Preset>(
     () => ({
       ...basePreset,
-      ...override,
+      ...merged,
       // `emphasis` is a Partial<Style>, so a shallow spread of the override would replace the
       // whole face instead of changing one of its keys.
-      emphasis: { ...basePreset.emphasis, ...override.emphasis },
-      emotion: override.emotion ?? basePreset.emotion,
+      emphasis: { ...basePreset.emphasis, ...merged.emphasis },
+      emotion: merged.emotion ?? basePreset.emotion,
     }),
-    [basePreset, override],
+    [basePreset, merged],
+  )
+
+  const isStoredKey = useCallback(
+    (key: keyof PresetOverride) => (STORED_KEYS as readonly string[]).includes(key as string),
+    [],
   )
 
   const value = useMemo<PresetOverrideValue>(
     () => ({
       preset,
       basePreset,
-      override,
+      override: merged,
       setOverride,
       reset,
-      isOverridden: Object.keys(override).length > 0,
+      isOverridden: Object.keys(merged).length > 0,
+      isStoredKey,
     }),
-    [preset, basePreset, override, setOverride, reset],
+    [preset, basePreset, merged, setOverride, reset, isStoredKey],
   )
 
   return <PresetOverrideContext.Provider value={value}>{children}</PresetOverrideContext.Provider>

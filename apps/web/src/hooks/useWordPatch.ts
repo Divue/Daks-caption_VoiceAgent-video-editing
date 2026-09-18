@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Project } from '@captions/shared'
-import type { PresetId, Word } from '@captions/shared'
+import type { PresetId, PresetOverride, Word } from '@captions/shared'
 import { getProject, isApiError, patchProject, patchWord, patchWordsBulk } from '@/lib/api'
 import type { ApiError, BulkWordPatch, WordPatch } from '@/lib/api'
 import type { AgentPatch } from '@/state/project-reducer'
@@ -11,6 +11,14 @@ import { useSync } from '@/state/sync-context'
 export interface PatchState {
   saving: boolean
   error: string | null
+}
+
+/** The project-level fields the API accepts on PATCH /projects/{id}. */
+export interface ProjectFieldPatch {
+  presetId?: PresetId
+  settings?: Partial<Project['settings']>
+  /** Merges per key; an explicit null on a key removes that one override. */
+  presetOverride?: Partial<PresetOverride> | null
 }
 
 /** What actually happened to one agent turn, so the activity log can be honest about it. */
@@ -49,6 +57,7 @@ export function useWordPatchState(): PatchState & {
   patchWords: (wordIds: string[], fields: Partial<Word>) => void
   patchStyle: (wordIds: string[], change: StyleChange) => void
   applyAgentPatches: (patches: AgentPatch[]) => Promise<AgentApplyResult>
+  patchProjectFields: (patch: ProjectFieldPatch) => Promise<string | null>
   clearError: () => void
 } {
   const { dispatch } = useProject()
@@ -312,9 +321,41 @@ export function useWordPatchState(): PatchState & {
     [projectId, dispatch, setVersion, enqueue],
   )
 
+  /**
+   * Project-level fields (preset, settings) on the SAME queue as word writes.
+   *
+   * These used to be written by PresetPicker with its own `patchProject` call, which is a second
+   * writer against one version counter — exactly the race the queue exists to prevent, and now
+   * reachable for real because the agent can change the preset while a word write is in flight.
+   * Routing them here also drops the picker's REPLACE_PRESENT-on-response, which was costing a
+   * second undo step for one click.
+   */
+  const patchProjectFields = useCallback(
+    (patch: ProjectFieldPatch): Promise<string | null> => {
+      if (patch.presetId !== undefined) dispatch({ type: 'SET_PRESET', presetId: patch.presetId })
+      if (patch.settings !== undefined) dispatch({ type: 'SET_SETTINGS', settings: patch.settings })
+      if (patch.presetOverride !== undefined)
+        dispatch({ type: 'SET_PRESET_OVERRIDE', override: patch.presetOverride })
+      setError(null)
+      if (!projectId) return Promise.resolve(null)
+
+      return enqueue(async () => {
+        const { version: next } = await patchProject(
+          projectId,
+          patch,
+          versionRef.current,
+          controllerRef.current?.signal,
+        )
+        versionRef.current = next
+        setVersion(next)
+      })
+    },
+    [projectId, dispatch, setVersion, enqueue],
+  )
+
   const clearError = useCallback(() => setError(null), [])
 
-  return { saving, error, patch, patchWords, patchStyle, applyAgentPatches, clearError }
+  return { saving, error, patch, patchWords, patchStyle, applyAgentPatches, patchProjectFields, clearError }
 }
 
 /**

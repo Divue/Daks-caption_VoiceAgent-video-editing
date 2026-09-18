@@ -1,5 +1,5 @@
 import { Project } from '@captions/shared'
-import type { Overlay, PresetId, Word } from '@captions/shared'
+import type { Overlay, PresetId, PresetOverride, Word } from '@captions/shared'
 import { applyStyleChange } from '@/lib/style-change'
 import type { StyleChange } from '@/lib/style-change'
 
@@ -17,6 +17,7 @@ export type ProjectAction =
   | { type: 'PATCH_WORDS_STYLE'; wordIds: string[]; change: StyleChange }
   | { type: 'SET_PRESET'; presetId: PresetId }
   | { type: 'SET_SETTINGS'; settings: Partial<Project['settings']> }
+  | { type: 'SET_PRESET_OVERRIDE'; override: Partial<PresetOverride> | null }
   | { type: 'ADD_OVERLAY'; overlay: Overlay }
   | { type: 'APPLY_AGENT_PATCHES'; patches: AgentPatch[] }
   | { type: 'UNDO' }
@@ -30,7 +31,7 @@ export type ProjectAction =
  */
 export type AgentPatch = Extract<
   ProjectAction,
-  { type: 'UPDATE_WORD' | 'SET_PRESET' | 'SET_SETTINGS' | 'ADD_OVERLAY' }
+  { type: 'UPDATE_WORD' | 'SET_PRESET' | 'SET_SETTINGS' | 'SET_PRESET_OVERRIDE' | 'ADD_OVERLAY' }
 >
 
 export function createInitialState(project: Project): ProjectHistoryState {
@@ -53,6 +54,26 @@ function commit(state: ProjectHistoryState, candidate: Project): ProjectHistoryS
   return { past: [...state.past, state.present], present: validated, future: [] }
 }
 
+
+/**
+ * Preset overrides merge KEY BY KEY, and an explicit null on a key removes that one override —
+ * the same contract style overrides use, and for the same reason: `undefined` is dropped by
+ * JSON.stringify, so a removal expressed that way would never reach the server. A whole-object
+ * null clears every override ("put it back to the preset").
+ */
+function mergePresetOverride(
+  current: PresetOverride | undefined,
+  change: Partial<PresetOverride> | null,
+): PresetOverride | undefined {
+  if (change === null) return undefined
+  const merged: Record<string, unknown> = { ...(current ?? {}) }
+  for (const [key, value] of Object.entries(change)) {
+    if (value === null || value === undefined) delete merged[key]
+    else merged[key] = value
+  }
+  return Object.keys(merged).length > 0 ? (merged as PresetOverride) : undefined
+}
+
 function updateWord(project: Project, wordId: string, patch: Partial<Word>): Project {
   return {
     ...project,
@@ -72,6 +93,14 @@ export function applyAgentPatch(project: Project, patch: AgentPatch): Project {
       return { ...project, presetId: patch.presetId }
     case 'SET_SETTINGS':
       return { ...project, settings: { ...project.settings, ...patch.settings } }
+    case 'SET_PRESET_OVERRIDE': {
+      const presetOverride = mergePresetOverride(project.presetOverride, patch.override)
+      if (presetOverride === undefined) {
+        const { presetOverride: _dropped, ...rest } = project
+        return rest as Project
+      }
+      return { ...project, presetOverride }
+    }
     case 'ADD_OVERLAY':
       return { ...project, overlays: [...project.overlays, patch.overlay] }
   }
@@ -146,6 +175,10 @@ export function projectReducer(state: ProjectHistoryState, action: ProjectAction
         ...state.present,
         overlays: [...state.present.overlays, action.overlay],
       })
+    }
+
+    case 'SET_PRESET_OVERRIDE': {
+      return commit(state, applyAgentPatch(state.present, action))
     }
 
     // One utterance is one undo step. The agent returns a list of patches that are ONE user

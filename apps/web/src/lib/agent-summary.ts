@@ -6,6 +6,15 @@ import { PRESETS } from '@captions/shared'
 import type { Project, Word } from '@captions/shared'
 import type { AgentPatch } from '@/state/project-reducer'
 
+/** Preset-override keys, named the way the panel names them. */
+const OVERRIDE_LABELS: Record<string, string> = {
+  wordsPerLine: 'Words per line',
+  emphasis: 'Emphasised words',
+  emphasisScale: 'Emphasis size',
+  reveal: 'Reveal',
+  emotion: 'Emotion styling',
+}
+
 /** Style keys rendered with a value, in the order a human would say them. */
 const STYLE_LABELS: Record<string, (value: unknown) => string> = {
   color: (v) => `colour ${String(v)}`,
@@ -86,6 +95,25 @@ export function summarisePatches(patches: AgentPatch[], project: Project): strin
         for (const [key, value] of Object.entries(patch.settings)) {
           const name = key === 'emojis' ? 'Emojis' : key === 'emotionLayer' ? 'Emotion colours' : key
           lines.push(`${name} → ${value ? 'on' : 'off'}`)
+        }
+        break
+      }
+      case 'SET_PRESET_OVERRIDE': {
+        if (patch.override === null) {
+          lines.push('Caption rules → back to the preset')
+          break
+        }
+        for (const [key, value] of Object.entries(patch.override)) {
+          const name = OVERRIDE_LABELS[key] ?? key
+          if (value === null) {
+            lines.push(`${name} → back to the preset`)
+          } else if (key === 'wordsPerLine') {
+            lines.push(`${value} words per line`)
+          } else if (key === 'emphasis' || key === 'emotion') {
+            lines.push(`${name} → ${describeWordPatch({ style: value } as Record<string, unknown>).join(', ') || 'changed'}`)
+          } else {
+            lines.push(`${name} → ${String(value)}`)
+          }
         }
         break
       }

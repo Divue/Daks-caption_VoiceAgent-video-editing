@@ -16,6 +16,7 @@
 > | §6 env/secrets | `config.py`, `.env.example`, `~/.aws` mount built. Sarvam optional (D7). App Runner role / Secrets Manager **not done** |
 > | §7 `CLAUDE.md` edit | **proposed, not applied** (lead). Drop the `DYNAMO_COST_TABLE` line from it |
 > | §8.1 `stretch_text` | done as written in §8.1 |
+> | *(not in this plan)* | **`tag.py` rewritten**: line-level tone from the new `app/pipeline/semantics.py` replaces `_angry_words`; emphasis is now the harness's top-15% budget. Lead-approved mid-build; see audit 12 §8 |
 > | §10 build order | followed; audio stage per D4 |
 > | §11 verification | done except: targets corrected (D1); kill test was during `audio`, not Transcribe |
 > | §13 weak points | 1 real (documented in `/process` 409); 2 deferred; 3 worse than stated, fixed (D4); 4 fixed (clients); 5 fixed (D3); 6 moved to audio stage; 7, 8 accepted |

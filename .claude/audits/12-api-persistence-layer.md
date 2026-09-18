@@ -3,7 +3,7 @@
 **Area:** `services/api/app/{config,s3,media,jobctx,pricing,costs}.py`, `app/store/`, `app/jobs/`,
 `app/routers/`, `scripts/{setup_aws,seed_fixture,e2e_clip,eval_project}.py`, `tests/`, plus small
 instrumentation edits in `app/pipeline/{run,stt,tag,prosody}.py`.
-**Status:** built, tested (46 unit tests on moto) and run end-to-end on all 4 clips against the real
+**Status:** built, tested (53 unit tests on moto) and run end-to-end on all 4 clips against the real
 shared account (`ap-south-1`, `DEV_PREFIX=p1`). **Not deployed to App Runner. Not called by `apps/web`.**
 **Branch:** `p1-pipeline` (from `master`). **Date:** 2026-09-18.
 **Plan:** `.claude/plans/api-persistence-layer.md` — audited first, 8 deviations signed off (D1–D8 below).
@@ -72,7 +72,10 @@ Endpoints: see `services/api/README.md` (single source; not repeated here).
 | presigned POST from host with `curl -F` (real) | 204; S3 CORS preflight from `Origin: http://localhost:5173` → 200 |
 | clip > 60 s (moto) | rejected in the `audio` stage before any paid call |
 
-## 3. Pipeline quality seen through the API (measured, n=1 — for `tag.py` tuning, not this layer)
+## 3. Pipeline quality seen through the API, BEFORE the §8 change (measured, n=1)
+
+*Superseded by §8, which replaced word-level anger and the emphasis rule. Kept because it is the
+evidence that motivated that change.*
 
 - **Word-level anger (`tag._angry_words`) has poor precision and recall on this run.** Angry: 4 words tagged
   (`fed up What the`), none of the 4 annotated words (`fuckkk`, `shit`, `happening`, `hota`). Normal (calm):
@@ -154,16 +157,71 @@ flat error bodies everywhere; `.env` may carry AWS keys (user request) — `.env
 - Nothing renders `stretch` as repeated letters yet — held words now look plain until P2 does.
 - No App Runner deployment.
 
-## 8. Open decisions for the next session
+## 8. Tone + emphasis budget (second pass, same session — lead-approved)
 
-1. **`tag.py` anger** — measured precision is poor (§3). Tune with `caption_eval/`, or adopt the harness's
-   line-level tone, which needs audit 11 §6's `lines[]` (lead).
-2. **Stretch false positives** on the calm clip (7). Same harness.
-3. **Model choice.** `opus-5`/`fable-5-1` are in the account's inference profiles and cost is not a constraint
+§3's measurements were shown to the lead, who confirmed the caption preview everyone liked
+(<https://claude.ai/artifact/23hchhqA1NXvyizLTGmqLz>) is rendering the **harness's** output —
+verified: the artifact carries 8 anger / 3 hype / 37 neutral lines, exactly
+`caption_eval`'s `08_project.json`. Approved change, shipped as one unit because line tone with the
+old emphasis rule would shake a third of the frame at once:
+
+- **New `app/pipeline/semantics.py`** — one Bedrock Converse call with a forced `toolConfig` tool.
+  It receives the FINAL aligned words (index, text, durMs, gapBeforeMs, loudZ, pitchZ) and returns
+  only **index ranges + tone + advisory held indices**; it never re-emits text, so it cannot drop or
+  shift a word the way audit 11 measured. Out-of-range, overlapping, unknown-tone or uncovered
+  indices are repaired to `neutral`. Any failure (including bad credentials) → all-neutral, run continues.
+- **Tone → `Word.emotion`** (`anger`→`angry`, `hype`→`excited`) for every word in the line. **No schema
+  change**; when the lead lands `lines[]` (audit 11 §6) the lines can be stored directly instead.
+- **Emphasis is now a budget**, ported from the harness's `s7_score`: percentile ranks of loudness (0.5),
+  pitch (0.35) and gap-before/400 ms (0.15), times 0.55 for function words, emphasise the top 15%.
+- **`tag._angry_words` and `_as_phrases` deleted** (word-level anger + the `loudnessZ >= 0` veto).
+- **Stretch deliberately unchanged** — still the two-part numeric test. Per the lead, measured on the
+  previous session's saved outputs: the LLM held flag alone gave **0 true positives** and was unstable
+  across prompt versions (nearly everything, then nothing). The flag is logged next to the numeric
+  verdict (`tagging {...}` JSON line per clip) so the two can be compared without another paid run.
+
+### Measured after the change (real AWS, n=1 per clip)
+
+| clip | emphasis % (was) | tones | anger words (was) | Bedrock $ (was) | total $ | process→done |
+|---|---|---|---|---|---|---|
+| Angry | **13.0** (28.3) | 9 lines, all anger | 46 (4) | 0.0137 (0.0062) | 0.0198 | 17.9 s |
+| Normal | **13.7** (19.6) | all neutral | **0** (6) | 0.0160 (0.0063) | 0.0269 | 25.2 s |
+| Excited | **13.3** (26.7) | 1 hype line | 0 (0) | 0.0078 (0.0008) | 0.0138 | 17.5 s |
+| Real_reel | **14.9** (25.5) | 12 hype, 10 anger | 10 (4) | 0.0248 (0.0097) | 0.0342 | 21.5 s |
+
+- Emphasis now matches the harness's measured 13–15% on every clip, and lands on content words
+  (Angry: `fuck fed up logon kaam kyon`).
+- **Angry:** every line anger. The harness left 2 of 10 lines neutral. Both are defensible for a
+  clip that rants throughout; the prompt says to label every such line.
+- **Normal:** the 6 false-positive angry words are gone. The harness's one `hype` line
+  ("Hello guys this is Shubh…") is now neutral — a miss in the conservative direction.
+- **Real_reel:** 10 anger words (`Mera saal ka sabse ghatiya din…` — "worst day of my year") and 12 hype.
+  The harness called this clip 21 neutral / 1 hype. **There is no ground truth**: `truth/Real_reel.emotions.txt`
+  is empty. Recorded as a disagreement, not an error.
+- content-WER and word count are **unchanged on all 4 clips** (0.116 / 0.286 / 0.308 / 0.161) — text is
+  never touched by this stage, as intended.
+- **Cost roughly doubled**, all of it Bedrock: the call now carries per-word acoustics and returns
+  lines. $0.014–0.025 per clip vs $0.001–0.010. Still far under audit 11 §8's ~$0.05.
+- Stretch verdicts are byte-identical to before. LLM-vs-numeric agreement, logged: Angry 2/2 of the
+  numeric set (LLM also flagged `happening`), Excited 1/2, Normal 3/8, Real_reel 2/2.
+
+Bug found while testing this (moto): the Bedrock **client was created outside the try/except**, so bad
+credentials would have failed the whole run instead of falling back to neutral. A test pins it.
+*Lesson: the fallback has to cover client construction, not just the call.*
+
+## 9. Open decisions for the next session
+
+1. **Line tone is coarse on a whole-clip rant** (Angry: 9/9 lines anger vs the harness's 8/10). If that
+   reads as too much on screen, gate `anger` lines on acoustics or cap the fraction of anger lines.
+2. **Real_reel tone disagreement** (above) needs a human call, and `truth/Real_reel.emotions.txt` needs filling.
+3. **Stretch is still the weak feature** — 4 plausible true positives vs 10 unannotated across 4 clips,
+   unchanged by this pass. The harness's extra eligibility gate (skip function words and words under 3
+   letters) would drop `So`/`uh` and is not yet ported. Re-measure with the logged LLM flags before changing.
+4. **Model choice.** `opus-5`/`fable-5-1` are in the account's inference profiles and cost is not a constraint
    (user memory); every measurement is Sonnet 4.6. Cost rows now make an A/B measurable.
-4. **Agent patch paths (P4):** `/words/N` is an array index; `w12` is index 11. Resolve ids server-side.
-5. **Fixture vs invariant (lead):** `demo-project.json` has `"text": "Hellooooo"`, contradicting INDEX.md.
-6. **P2:** draw repeats from `signals.extraMs` (`clamp(round(extraMs/120),1,5)`, cap at 14 chars), not `stretch`.
-7. **Deploy** (IAM policy, Secrets Manager or SSM for the Sarvam key, min=max=1) and check background-task CPU.
-8. **`CLAUDE.md`** says the lead merges to `main`; the repo's default branch is `master`. Proposed edit in plan §7.
-9. Map AWS connectivity errors to `503` so the editor can retry instead of treating it as a bug.
+6. **Agent patch paths (P4):** `/words/N` is an array index; `w12` is index 11. Resolve ids server-side.
+7. **Fixture vs invariant (lead):** `demo-project.json` has `"text": "Hellooooo"`, contradicting INDEX.md.
+8. **P2:** draw repeats from `signals.extraMs` (`clamp(round(extraMs/120),1,5)`, cap at 14 chars), not `stretch`.
+9. **Deploy** (IAM policy, Secrets Manager or SSM for the Sarvam key, min=max=1) and check background-task CPU.
+10. **`CLAUDE.md`** says the lead merges to `main`; the repo's default branch is `master`. Proposed edit in plan §7.
+11. Map AWS connectivity errors to `503` so the editor can retry instead of treating it as a bug.

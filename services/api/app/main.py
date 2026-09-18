@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
+from .routers import projects
 
 settings = get_settings()  # fail fast at startup, listing every missing variable
 
@@ -20,3 +21,6 @@ app.add_middleware(
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+app.include_router(projects.router)

@@ -13,11 +13,13 @@ import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { resolveEmphasis } from '@captions/shared'
 import type { CaptionBlock, Emotion, Word } from '@captions/shared'
-import type { MicStatus } from '@/hooks/useAgentActivity'
 import { useAgentActivity } from '@/hooks/useAgentActivity'
+import { useAgentCommand } from '@/hooks/useAgentCommand'
+import { useVoiceInput } from '@/hooks/useVoiceInput'
 import { findBlockIndexAt, useCaptionBlocks } from '@/hooks/useCaptionBlocks'
 import { useSelection } from '@/hooks/useSelection'
 import { useUndoRedoShortcuts } from '@/hooks/useUndoRedoShortcuts'
+import type { SelectionContext } from '@/lib/agent-api'
 import { usePlayback } from '@/state/playback-context'
 import { usePresetOverride } from '@/state/preset-override-context'
 import { useProject } from '@/state/project-context'
@@ -25,14 +27,14 @@ import { useSync } from '@/state/sync-context'
 import { useWordPatch } from '@/state/word-patch-context'
 
 function App() {
-  const { project } = useProject()
+  const { project, dispatch } = useProject()
   const { localPreviewUrl } = useSync()
   const { timeMs, isPlaying, seek } = usePlayback()
   const { selectedWordId, select } = useSelection()
-  const { entries, addEntry } = useAgentActivity()
+  const activity = useAgentActivity()
+  const { entries, addEntry } = activity
   const { patch: patchWord, patchWords } = useWordPatch()
   const { preset } = usePresetOverride()
-  const [micStatus, setMicStatus] = useState<MicStatus>('idle')
 
   // A view preference, not project data: local state, never Project.settings (a schema
   // change) and never the reducer (it would land in the undo history).
@@ -54,17 +56,67 @@ function App() {
 
   useUndoRedoShortcuts()
 
+  const agent = useAgentCommand(activity)
+
+  /**
+   * Everything the editor knows about what the user is pointing at, resolved at send time.
+   *
+   * The active block is resolved to WORD IDS here rather than sent as an index: blocks are
+   * derived from word timings and their indices shift as you edit, so an index would be stale by
+   * the time the model used it (audit 17 §2). Word ids are the only stable handle.
+   */
+  const buildSelection = useCallback(
+    (): SelectionContext => ({
+      selectedWordId,
+      selectedWordIds: selectedWordId ? [selectedWordId] : null,
+      playheadMs: Math.max(0, Math.round(timeMs)),
+      activeBlockId,
+      activeBlockWordIds: activeBlockIndex === -1 ? null : blocks[activeBlockIndex].wordIds,
+    }),
+    [selectedWordId, timeMs, activeBlockId, activeBlockIndex, blocks],
+  )
+
+  const handleVoiceTranscript = useCallback(
+    (transcript: string) => {
+      void agent.run(transcript, buildSelection(), 'voice')
+    },
+    [agent, buildSelection],
+  )
+
+  const voice = useVoiceInput(handleVoiceTranscript)
+
+  // A transcript in flight to the agent keeps the mic control showing "working", so the two
+  // halves of one voice turn read as one thing rather than as a mic that went quiet.
+  const micStatus = agent.busy && voice.status === 'listening' ? 'processing' : voice.status
+
   function handleToggleMic() {
-    setMicStatus((current) => {
-      const next: MicStatus = current === 'listening' ? 'idle' : 'listening'
-      addEntry(next === 'listening' ? 'Voice input started' : 'Voice input stopped')
-      return next
+    if (voice.status === 'listening' || voice.status === 'processing') {
+      voice.stop()
+      addEntry('Voice input stopped')
+      return
+    }
+    // Which transport actually started is logged, not assumed: LiveKit falls back to the
+    // browser's own recognition when it is not configured, and the log must not imply we are
+    // running a service we are not.
+    void voice.start().then((result) => {
+      if (result === 'livekit') addEntry('Listening (LiveKit)')
+      else if (result === 'browser') addEntry('Listening (browser speech recognition)')
+      else if (result === 'denied') addEntry('Microphone blocked by the browser', 'error')
+      else addEntry('No microphone transport available', 'error')
     })
   }
 
   function handleSubmitCommand(command: string) {
-    addEntry(`Command submitted: "${command}" (agent not connected yet)`)
+    void agent.run(command, buildSelection(), 'text')
   }
+
+  /** Dispatches the same UNDO the toolbar and Ctrl+Z use — one history, one mechanism. */
+  const handleUndoTurn = useCallback(
+    (steps: number) => {
+      for (let i = 0; i < steps; i += 1) dispatch({ type: 'UNDO' })
+    },
+    [dispatch],
+  )
 
   // Emotion is stored per WORD; a "line emotion" is just the same value written onto every
   // word of that line. There is no lines[] in the schema (blocks are derived), so this is the
@@ -191,7 +243,12 @@ function App() {
                   <PresetPicker />
                 </TabsContent>
                 <TabsContent value="agent" className="min-h-0 flex-1 overflow-y-auto">
-                  <AgentActivityPanel entries={entries} />
+                  <AgentActivityPanel
+                    entries={entries}
+                    busy={agent.busy}
+                    micStatus={micStatus}
+                    onUndoTurn={handleUndoTurn}
+                  />
                 </TabsContent>
               </Tabs>
             </CollapsiblePanel>
@@ -211,7 +268,15 @@ function App() {
           />
         </main>
 
-        <AgentCommandBar micStatus={micStatus} onToggleMic={handleToggleMic} onSubmitCommand={handleSubmitCommand} />
+        <AgentCommandBar
+          micStatus={micStatus}
+          busy={agent.busy}
+          pendingCommand={agent.pendingCommand}
+          interimTranscript={voice.interim}
+          onToggleMic={handleToggleMic}
+          onSubmitCommand={handleSubmitCommand}
+          onCancel={agent.cancel}
+        />
       </div>
     </div>
   )

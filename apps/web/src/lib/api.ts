@@ -5,7 +5,7 @@
 //   { detail: [ {...} ] }         FastAPI 422 request validation
 //   { detail: "Not Found" }       unknown route
 // A thrown TypeError (server down, CORS, DNS) becomes code 'network'.
-import type { Emotion, PresetId, Project, Style, Word } from '@captions/shared'
+import type { Emotion, PresetId, PresetOverride, Project, Style, Word } from '@captions/shared'
 
 // The repo-root .env supplies this via vite.config.ts `envDir`. The fallback keeps a
 // missed envDir degrading to "works on the dev machine" rather than fetching undefined/projects.
@@ -112,7 +112,7 @@ async function rawRequest(path: string, options: RequestOptions = {}): Promise<{
   return { data, response }
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { data } = await rawRequest(path, options)
   return data as T
 }
@@ -274,10 +274,38 @@ export function patchWord(
   })
 }
 
+/** One word patch inside a bulk write. */
+export interface BulkWordPatch extends WordPatch {
+  wordId: string
+}
+
+/**
+ * All-or-nothing multi-word write: every patch applies, the Project validates once, and the
+ * version counter bumps ONCE. This is the endpoint that makes one agent turn one atomic write —
+ * the per-word route would be N sequential round trips sharing one counter.
+ */
+export function patchWordsBulk(
+  projectId: string,
+  words: BulkWordPatch[],
+  version: number | undefined,
+  signal?: AbortSignal,
+): Promise<{ words: Word[]; version: number }> {
+  return request(`/projects/${projectId}/words`, {
+    method: 'PATCH',
+    body: version === undefined ? { words } : { words, version },
+    signal,
+  })
+}
+
 /** Returns the WHOLE project, with a freshly signed videoUrl. `settings` merges per key. */
 export function patchProject(
   projectId: string,
-  patch: { presetId?: PresetId; settings?: Partial<Project['settings']> },
+  patch: {
+    presetId?: PresetId
+    settings?: Partial<Project['settings']>
+    /** Merges per key; an explicit null on a key removes that one override. */
+    presetOverride?: Partial<PresetOverride> | null
+  },
   version: number | undefined,
   signal?: AbortSignal,
 ): Promise<{ project: Project; version: number }> {

@@ -15,7 +15,14 @@ from pydantic import ValidationError
 
 from app.schema import Project
 
-from .contracts import AddOverlayAction, AgentPatch, SetPresetAction, UpdateWordAction
+from .contracts import (
+    AddOverlayAction,
+    AgentPatch,
+    SetPresetAction,
+    SetPresetOverrideAction,
+    SetSettingsAction,
+    UpdateWordAction,
+)
 
 
 class PatchError(Exception):
@@ -36,6 +43,8 @@ def apply_patch(project: Project, patch: AgentPatch) -> Project:
 
     Raises PatchError, and touches nothing, if:
     - an UPDATE_WORD patch names a wordId that doesn't exist
+    - a SET_SETTINGS patch names no settings at all
+    - a SET_PRESET_OVERRIDE patch leaves an invalid override
     - the resulting document fails schema validation for any reason
       (out-of-range values, wrong types, a combination that class-level
       field validators alone wouldn't catch)
@@ -51,6 +60,33 @@ def apply_patch(project: Project, patch: AgentPatch) -> Project:
 
     elif isinstance(patch, SetPresetAction):
         data["presetId"] = patch.presetId
+
+    elif isinstance(patch, SetSettingsAction):
+        # Merge per key, exactly like the frontend reducer's SET_SETTINGS
+        # case (`{ ...project.settings, ...patch.settings }`): a patch
+        # carrying only `emojis` must leave `emotionLayer` alone.
+        settings_patch = patch.settings.model_dump(mode="json", exclude_none=True)
+        if not settings_patch:
+            raise PatchError("SET_SETTINGS carries no settings to change")
+        data["settings"] = {**data["settings"], **settings_patch}
+
+    elif isinstance(patch, SetPresetOverrideAction):
+        # Merge per key, and treat an explicit null as a REMOVAL — the same
+        # contract style overrides use, and the same one the frontend
+        # reducer's SET_PRESET_OVERRIDE case implements. An override emptied
+        # of every key is dropped rather than stored as `{}`, so the document
+        # never carries a meaningless object.
+        override_patch = patch.override.model_dump(mode="json")
+        merged = {**(data.get("presetOverride") or {})}
+        for key, value in override_patch.items():
+            if value is None:
+                merged.pop(key, None)
+            else:
+                merged[key] = value
+        if merged:
+            data["presetOverride"] = merged
+        else:
+            data.pop("presetOverride", None)
 
     elif isinstance(patch, AddOverlayAction):
         data["overlays"].append(patch.overlay.model_dump(mode="json"))

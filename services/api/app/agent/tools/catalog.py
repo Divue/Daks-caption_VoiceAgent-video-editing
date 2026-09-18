@@ -13,6 +13,13 @@ handler — the mechanism it exercises (register a PLANNED spec here, remove
 it once its own module implements and registers it AVAILABLE) is unchanged
 even though nothing currently uses it.
 
+"Has a real handler" is not the same as "is offered to the model": a
+`ToolStatus.DISABLED` tool (today: `add_overlay`, in project_tools.py) has a
+real, tested handler and is deliberately kept out of Bedrock's toolConfig,
+because nothing renders or persists its effect. That is a third state this
+file does not manage — a DISABLED tool registers from its own module like
+any other, it is simply filtered out in tool_config.py.
+
 "Has a real handler" is not the same as "is currently usable" —
 `analyze_frame` (vision_tools.py) is AVAILABLE but fails honestly with
 ToolExecutionError against every Project in this repo today, since none has
@@ -29,6 +36,10 @@ truth for "what we're building"):
   - set_caption_effect, set_caption_gradient: recommended against as
     separate tools — glow/shake/gradient are already fields on Style and
     fold into update_caption_style instead of needing dedicated tools.
+  - move_caption, scale_caption: BUILT and later removed, for the same
+    reason — both only narrowed update_caption_style's StylePatch to one
+    key, and a smaller set of well-described tools selects better. See
+    style_tools.py's docstring.
 """
 from __future__ import annotations
 

@@ -22,12 +22,26 @@ from app.schema import Project
 
 
 class ToolStatus(str, Enum):
-    """AVAILABLE = has a real handler and can be executed.
+    """AVAILABLE = has a real handler, is executable, and IS offered to the
+    model (tool_config.py builds Bedrock's toolConfig from exactly this set).
+
     PLANNED = documented in the catalog for a future phase; no handler yet,
-    and none may be attached until that phase implements it for real."""
+    and none may be attached until that phase implements it for real.
+
+    DISABLED = has a real, tested handler, but is deliberately NOT offered
+    to the model and may not be executed by the planner. This is for a tool
+    whose effect cannot actually land anywhere today, where offering it
+    would make the agent claim a capability the product does not have; the
+    honest answer for such a request is "UNSUPPORTED", which the model can
+    only give if the tool is absent from its toolConfig. Kept registered
+    (rather than deleted) so the spec, the handler and its tests stay real
+    and re-enabling it is a one-word change — see tools/project_tools.py's
+    `add_overlay`.
+    """
 
     AVAILABLE = "available"
     PLANNED = "planned"
+    DISABLED = "disabled"
 
 
 # A handler takes the tool's validated arguments plus the current Project
@@ -99,14 +113,16 @@ class ToolRegistry:
         self._handlers: dict[str, ToolHandler] = {}
 
     def register(self, spec: ToolSpec, handler: ToolHandler | None = None) -> None:
-        """Register `spec`, with `handler` required iff `spec.status` is
-        AVAILABLE. Raises `ToolAlreadyRegisteredError` on a duplicate name —
-        registration never silently overwrites an existing tool."""
+        """Register `spec`, with `handler` required unless `spec.status` is
+        PLANNED (AVAILABLE and DISABLED both describe a real, callable
+        implementation; only PLANNED means "not built"). Raises
+        `ToolAlreadyRegisteredError` on a duplicate name — registration
+        never silently overwrites an existing tool."""
         if spec.name in self._specs:
             raise ToolAlreadyRegisteredError(spec.name)
 
-        if spec.status is ToolStatus.AVAILABLE and handler is None:
-            raise ValueError(f"tool {spec.name!r} is marked AVAILABLE but no handler was given")
+        if spec.status is not ToolStatus.PLANNED and handler is None:
+            raise ValueError(f"tool {spec.name!r} is marked {spec.status.value.upper()} but no handler was given")
         if spec.status is ToolStatus.PLANNED and handler is not None:
             raise ValueError(
                 f"tool {spec.name!r} is marked PLANNED but a handler was given — "

@@ -1,9 +1,9 @@
-import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { useProject } from '@/state/project-context'
-import { useSync } from '@/state/sync-context'
-import { isApiError, patchProject } from '@/lib/api'
-import { Project, PRESETS } from '@captions/shared'
+import { useWordPatch } from '@/state/word-patch-context'
+import { PRESETS } from '@captions/shared'
 import type { Preset, PresetId, Word } from '@captions/shared'
 import { glowWrapperCss, resolveWordStyle, styleToCss } from '@/lib/caption-style'
 
@@ -24,33 +24,15 @@ function sampleWord(id: string, text: string, emphasis: boolean): Word {
 const SAMPLE_WORDS = [sampleWord('a', 'suno', false), sampleWord('b', 'bhai', true)]
 
 export function PresetPicker() {
-  const { project, dispatch } = useProject()
-  const { projectId, version, setVersion } = useSync()
-  const [error, setError] = useState<string | null>(null)
+  const { project } = useProject()
+  // Preset and settings writes share the editor's ONE queue and version counter. They used to go
+  // out on their own `patchProject` call, which is a second writer against the same counter — and
+  // now that the agent can change the preset mid-turn, that race is reachable for real.
+  const { patchProjectFields, error } = useWordPatch()
 
   function handleSelect(presetId: PresetId) {
     if (presetId === project.presetId) return
-
-    dispatch({ type: 'SET_PRESET', presetId })
-    setError(null)
-
-    if (!projectId) return
-
-    patchProject(projectId, { presetId }, version)
-      .then(({ project: updated, version: newVersion }) => {
-        const parsed = Project.safeParse(updated)
-        if (parsed.success) {
-          dispatch({ type: 'REPLACE_PRESENT', project: parsed.data })
-        }
-        setVersion(newVersion)
-      })
-      .catch((cause) => {
-        if (isApiError(cause) && cause.status === 409) {
-          setError('Conflict — someone else changed the project. Reload to sync.')
-        } else {
-          setError(isApiError(cause) ? (cause.detail ?? cause.code) : String(cause))
-        }
-      })
+    void patchProjectFields({ presetId })
   }
 
   return (
@@ -60,6 +42,35 @@ export function PresetPicker() {
           {error}
         </div>
       )}
+
+      {/*
+        The two stored render switches. They existed in the schema and on the API from the start
+        but had no control anywhere, so "stop making things red" was unanswerable — and an agent
+        tool that flips a setting the user cannot see or reverse by hand is worse than no tool.
+      */}
+      <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card p-3">
+        <p className="eyebrow text-muted-foreground/70">Layers</p>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="settings-emojis" className="text-sm font-normal text-card-foreground">
+            Emojis
+          </Label>
+          <Switch
+            id="settings-emojis"
+            checked={project.settings.emojis}
+            onCheckedChange={(emojis) => void patchProjectFields({ settings: { emojis } })}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <Label htmlFor="settings-emotion" className="text-sm font-normal text-card-foreground">
+            Emotion colours
+          </Label>
+          <Switch
+            id="settings-emotion"
+            checked={project.settings.emotionLayer}
+            onCheckedChange={(emotionLayer) => void patchProjectFields({ settings: { emotionLayer } })}
+          />
+        </div>
+      </div>
       {Object.values(PRESETS).map((preset) => {
         const selected = preset.id === project.presetId
         return (

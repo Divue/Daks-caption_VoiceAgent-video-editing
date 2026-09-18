@@ -35,7 +35,9 @@ from app.agent.contracts import (  # noqa: E402
 from app.agent.validation import PatchError, apply_patch, apply_patches  # noqa: E402
 from app.schema import Overlay, Project  # noqa: E402
 
-FIXTURES = Path(__file__).resolve().parents[5] / "packages" / "shared" / "fixtures"
+from app.agent.tests._fixtures import fixtures_dir  # noqa: E402
+
+FIXTURES = fixtures_dir()
 DEMO_PROJECT = FIXTURES / "demo-project.json"
 
 FAILURES: list[str] = []

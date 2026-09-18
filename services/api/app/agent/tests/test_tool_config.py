@@ -45,7 +45,14 @@ def _dummy_handler(args: _Args, project) -> _Result:
 def test_default_registry_produces_all_nine_tools() -> None:
     config = build_tool_config()
     names = {tool["toolSpec"]["name"] for tool in config["tools"]}
-    check("build_tool_config() includes all 9 implemented tools", len(names) == 9)
+    # Derived from the registry rather than hardcoded: the tool set changes as the
+    # editor grows, and a hardcoded count turns every new tool into a test failure
+    # that says nothing. What matters is that the toolConfig offers exactly the
+    # AVAILABLE tools and nothing else.
+    available = {spec.name for spec in default_registry.list_specs(status=ToolStatus.AVAILABLE)}
+    check("build_tool_config() offers exactly the AVAILABLE tools", names == available)
+    check("add_overlay is never offered (DISABLED: nothing renders an overlay)",
+          "add_overlay" not in names)
     check("get_project_context is present", "get_project_context" in names)
     check("analyze_frame is present", "analyze_frame" in names)
 
@@ -95,13 +102,13 @@ def test_input_schema_reflects_the_real_pydantic_model() -> None:
     """Spot-check one tool: the JSON schema sent to the model must actually
     describe the fields its Args model requires — proving there's no
     separate, hand-maintained schema that could drift from the real one."""
-    spec = default_registry.get_spec("move_caption")
+    spec = default_registry.get_spec("set_emotion")
     config = build_tool_config()
-    move_caption_entry = next(t for t in config["tools"] if t["toolSpec"]["name"] == "move_caption")
-    schema = move_caption_entry["toolSpec"]["inputSchema"]["json"]
+    entry = next(t for t in config["tools"] if t["toolSpec"]["name"] == "set_emotion")
+    schema = entry["toolSpec"]["inputSchema"]["json"]
     check(
-        "move_caption's schema requires wordId, x, and y (from the real MoveCaptionArgs model)",
-        set(schema.get("required", [])) == set(spec.input_model.model_json_schema().get("required", [])) == {"wordId", "x", "y"},
+        "set_emotion's schema requires wordIds and emotion (from the real SetEmotionArgs model)",
+        set(schema.get("required", [])) == set(spec.input_model.model_json_schema().get("required", [])) == {"wordIds", "emotion"},
     )
 
 

@@ -39,6 +39,8 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | 13 | `audits/13-caption-emotion-and-single.md` | `Word.single` + editable line/word emotion (P3, schema change) | Caption grouping, `deriveBlocks`, emotion editing, or anything that writes words to the API |
 | 14 | `audits/14-kalakar-reference-audit.md` | Kalakar competitor teardown: measured template/font/effect values | Caption *visual* work — presets, fonts, glow/gradient/stroke, reveal behaviour, or picking what to build next |
 | 17 | `audits/17-agent-capability-surface.md` | **Everything the editor can do, as agent tools** (P3 → P4) | Building the voice agent, or adding an editor feature the agent should reach. Lists what is addressable, what persists, what cannot be persisted at all, and the write contract. |
+| — | `talk-and-edit/phase-01-agent-editing-mvp.md` | The agent MVP: turns become saved changes, the tool surface, preset overrides (P3+P4+P1) |
+| — | `talk-and-edit/phase-02-live-voice-and-demo.md` | LiveKit running locally with no account; voice verified speech→transcript→patches; demo prompts in the UI |
 | 16 | `audits/16-editor-ui-critique.md` | Editor UI critique + the redesign it drove (P3) | Any editor chrome/layout/colour work. Read §1 first: the timeline was a picture of a video editor we are not building, and most of the ugliness was downstream of that. |
 | 15 | `audits/15-caption-style-panel-and-editor-ui.md` | Caption style panel, the 4 measured presets, **schema v2**, editor UI/theme (P3) | Anything touching `Style`, `Preset`, the style resolver, the inspector panel, style writes, or the editor's look. **Read before any `Style`/`PresetId` change** — v2 renamed two fields and one preset id. |
 
@@ -117,10 +119,17 @@ Things Claude must preserve when working in `apps/web`:
   committing; an invalid patch is dropped, not partially applied.
 - `PRESETS` (`packages/shared/src/presets.ts`) is the single source of truth
   for preset visuals. Components read from it; they do not hardcode preset
-  styling. `Preset` is NOT stored — only `presetId` is — so it can grow in
-  TypeScript freely, with no `schema.py` mirror and no migration. `Style` and
-  `PresetId` are the opposite and cost both. Put new visual properties in
-  `Preset` unless they must be overridable per word (audit 15 §2).
+  styling. `Preset` itself is still NOT stored — only `presetId` is — so it can
+  grow in TypeScript freely, with no `schema.py` mirror and no migration.
+  `Style` and `PresetId` are the opposite and cost both. Put new visual
+  properties in `Preset` unless they must be overridable per word (audit 15 §2).
+  EXCEPTION, added with the agent MVP: five conditional layers now have a stored
+  home in `Project.presetOverride` (`wordsPerLine`, `emphasis`, `emphasisScale`,
+  `reveal`, `emotion`) because "fewer words per line" and "make the emphasised
+  words bigger" were otherwise impossible to express at all. That object is
+  enumerated explicitly and mirrored in `schema.py`; it is NOT `Partial<Preset>`,
+  precisely so the rest of `Preset` keeps its freedom. `glowLayers`, `stretch`
+  and `align` remain session-only and are badged as such in the UI.
 - `lib/caption-style.ts` is PURE — no React, no DOM, no context. P2 takes it
   into the Remotion composition unchanged. `CaptionRenderer` is props-only for
   the same reason; it receives its `Preset` rather than reading `PRESETS`.
@@ -149,10 +158,15 @@ Things Claude must preserve when working in `apps/web`:
   `text` corrupts real spellings — see `audits/11-stt-prosody-pipeline.md` §5.
 - Branch ownership: `apps/web` work happens on `p3-editor`/`aman/*` branches;
   the lead merges to `main`.
-- No fake backend/AI behavior: `useAgentActivity.ts` and `AgentCommandBar.tsx`
-  are explicitly commented as logging "real, honest local activity" and
-  stating the agent is "not connected yet" — this pattern must be preserved
-  until P4's real agent is wired in. Do not simulate agent responses.
+- No fake backend/AI behavior. The agent IS connected now (`/agent/command` is
+  mounted and the editor applies its patches), so the "not connected yet" copy
+  is gone — but the rule that replaced it is stricter, not looser: a turn shows
+  what really happened. `unsupported`/`not_implemented` render as a refusal and
+  never as a green tick; a turn that failed says how many patches landed; the
+  voice log names the transport that actually started rather than implying
+  LiveKit when the browser fallback is running. Do not simulate agent
+  responses, and do not offer a tool for a capability nothing renders — that is
+  why `add_overlay` is registered DISABLED.
 - No unnecessary dependencies: routing (`router.tsx`) and history are
   hand-rolled rather than using `react-router-dom`, because only two routes
   exist. Do not add a routing library without cause.

@@ -15,14 +15,19 @@ def _seed(demo_doc):
     projects.put_project(project.id, project, expected_version=None, manual_edit=False, seed=True)
 
 
-def test_agent_seam_validates_then_501(aws, demo_doc):
-    _seed(demo_doc)
-    c = client()
-    r = c.post("/projects/demo-project/agent", json={"utterance": "make it red", "selection": ["w2"]})
-    assert r.status_code == 501 and r.json()["owner"] == "P4" and "patch" in r.json()["responseContract"]
-    assert c.post("/projects/demo-project/agent", json={"utterance": "x", "selection": ["w999"]}).status_code == 422
-    assert c.post("/projects/nope/agent", json={"utterance": "x"}).status_code == 404
-    assert c.post("/projects/demo-project/agent", json={"utterance": ""}).status_code == 422
+def test_real_agent_router_is_mounted(aws):
+    """The 501 stub at POST /projects/{id}/agent is GONE; app/agent/router.py is mounted instead.
+
+    Only the wiring is asserted here: that the routes exist, that the app imports with no
+    LIVEKIT_* variable set, and that a malformed body is rejected by the agent's own contracts.
+    The agent's behaviour is P4's, tested in their own suite.
+    """
+    from app.main import app
+    paths = app.openapi()["paths"]
+    assert {"/agent/command", "/agent/voice-command", "/agent/livekit-token"} <= set(paths)
+    assert "post" in paths["/agent/command"]
+    assert "/projects/{project_id}/agent" not in paths
+    assert client().post("/agent/command", json={}).status_code == 422
 
 
 def test_render_seam_501(aws, demo_doc):

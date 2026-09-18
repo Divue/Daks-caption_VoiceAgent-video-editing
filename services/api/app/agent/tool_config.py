@@ -8,6 +8,12 @@ there is no other code path in the planner that adds a tool name to what's
 sent to Bedrock. This is the concrete mechanism behind "do not allow the
 model to register or invent tools" / "only allow calls to tools present in
 the server-side ToolRegistry".
+
+It is also the mechanism behind `ToolStatus.DISABLED` (registry.py): a
+DISABLED tool has a real handler but is filtered out here, so the model is
+never told it exists and answers UNSUPPORTED for it instead of claiming a
+change that cannot land. The planner refuses to execute a non-AVAILABLE
+tool as well, so the filter is defence in depth rather than the only gate.
 """
 from __future__ import annotations
 

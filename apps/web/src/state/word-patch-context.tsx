@@ -1,9 +1,10 @@
 import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 import { useWordPatchState } from '@/hooks/useWordPatch'
-import type { PatchState } from '@/hooks/useWordPatch'
+import type { AgentApplyResult, PatchState, ProjectFieldPatch } from '@/hooks/useWordPatch'
 import type { Word } from '@captions/shared'
 import type { StyleChange } from '@/lib/style-change'
+import type { AgentPatch } from '@/state/project-reducer'
 
 /**
  * One writer for the whole editor.
@@ -22,6 +23,14 @@ interface WordPatchValue extends PatchState {
   patchWords: (wordIds: string[], fields: Partial<Word>) => void
   /** Per-key style override edit; an explicit null in `change` removes that key. */
   patchStyle: (wordIds: string[], change: StyleChange) => void
+  /**
+   * A whole agent turn: one optimistic commit (one undo step) and one queued write. It shares
+   * this same queue and version counter, which is the entire reason the agent goes through here
+   * rather than dispatching to the reducer itself — a reducer dispatch renders but never saves.
+   */
+  applyAgentPatches: (patches: AgentPatch[]) => Promise<AgentApplyResult>
+  /** Preset and settings writes, on the same queue and version counter as word writes. */
+  patchProjectFields: (patch: ProjectFieldPatch) => Promise<string | null>
   clearError: () => void
 }
 

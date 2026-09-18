@@ -58,10 +58,13 @@ Errors are always flat: `{"error": "<code>", ...}`.
 | GET | `/projects/{id}` | the `Project` (packages/shared) with `videoUrl` = fresh presigned GET (1 h). Headers `X-Project-Version`, `X-Schema-Version`. `409 not_ready` before the first successful run |
 | GET | `/projects` | list (your prefix) |
 | PATCH | `/projects/{id}/words/{wordId}` | any of `text startMs endMs emphasis emotion stretch single emoji style signals` + optional `version`. `style` merges per key (null removes); any other field set to null removes it. `single: true` makes the word its own caption block (grouping, see `packages/shared/src/blocks.ts` rule 4). Whole Project re-validated → `422 invalid_project`; stale `version` → `409 stale_version {currentVersion}`; no `version` = last write wins |
-| PATCH | `/projects/{id}` | `{presetId?, settings?, version?}` → `{project, version}` |
+| PATCH | `/projects/{id}/words` | **bulk, all-or-nothing.** `{words: [{wordId, ...same fields as the single-word route}], version?}` → `{words, version}`. Every id is resolved before anything is written, the whole Project is validated once and the version bumps **once** — so one agent turn is one atomic write instead of N round trips on one counter. Unknown id → `404 word_not_found`, nothing written |
+| PATCH | `/projects/{id}` | `{presetId?, settings?, presetOverride?, version?}` → `{project, version}`. `settings` and `presetOverride` merge per key; a null key removes that one override, and `presetOverride: null` clears them all |
 | GET | `/projects/{id}/cost` | `{totalUsd, byService, byStage, unverifiedRates, usdPerMinute, events[]}` |
 | GET | `/costs?from=YYYY-MM-DD&to=YYYY-MM-DD` | UTC days, ≤ 31; adds `projectCount`, `meanUsdPerProject`, `byProject` |
-| POST | `/projects/{id}/agent` | **P4 seam.** Validates `{utterance, selection[], version?}` against the project, then `501` with `responseContract` |
+| POST | `/agent/command` | the agent. `{command, project, selection?}` → `{status: ok\|unsupported\|error\|not_implemented, patches[], log[]}`. Patches are reducer actions the EDITOR applies and persists; the agent saves nothing. `selection` carries `selectedWordId(s)`, `playheadMs`, `activeBlockId`, `activeBlockWordIds` — that is what "this word" and "that line" resolve to |
+| POST | `/agent/voice-command` | same planner, same response; takes `transcript` (text, never audio) instead of `command` |
+| POST | `/agent/livekit-token` | mints a LiveKit room-join token. `503 livekit_not_configured` when the `LIVEKIT_*` vars are unset, which the editor treats as "fall back to browser speech recognition" |
 | POST / GET | `/projects/{id}/render`, `/projects/{id}/render/{renderId}` | **P2 seam.** `501` with `responseContract` |
 
 ## Layout
@@ -72,7 +75,8 @@ app/jobctx.py        ambient job context (project id + stage reporting across th
 app/pricing.py       rate table (+ verified flags) app/costs.py      cost_event(), queries, rollups
 app/media.py         ffprobe / ffmpeg              app/jobs/runner.py background pipeline job
 app/store/           dynamo.py (client, table spec) projects.py (blob + versions) jobs.py (runId, heartbeat)
-app/routers/         projects, costs, agent (P4 seam), render (P2 seam)
+app/routers/         projects, costs, render (P2 seam)
+app/agent/           the agent: contracts, validation, tools/, planner, voice, router
 app/pipeline/        the STT/prosody pipeline (audit 11)
 ```
 `requirements.txt` ships to production; test deps are in `requirements-dev.txt` (installed only when

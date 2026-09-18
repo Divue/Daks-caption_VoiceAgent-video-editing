@@ -6,7 +6,9 @@ Importing this package populates `default_registry` with:
   (as of Phase 5: empty — see catalog.py)
 - the real, available context tools (context_tools.py) — Phase 3
 - the real, available style mutation tools (style_tools.py) — Phase 4
-- the real, available project mutation tools (project_tools.py) — Phase 4
+- the real, available per-word content tools (word_tools.py)
+- the real project-level tools (project_tools.py) — Phase 4, plus the
+  DISABLED `add_overlay` (registered, never offered to the model)
 - the real, available vision tool (vision_tools.py) — Phase 5
 
 Nothing here calls Bedrock, boto3, ffmpeg, or any tool handler; import-time
@@ -19,6 +21,7 @@ from . import context_tools  # noqa: F401  (import triggers Phase 3 tool registr
 from . import project_tools  # noqa: F401  (import triggers Phase 4 tool registration)
 from . import style_tools  # noqa: F401  (import triggers Phase 4 tool registration)
 from . import vision_tools  # noqa: F401  (import triggers Phase 5 tool registration)
+from . import word_tools  # noqa: F401  (import triggers per-word content tool registration)
 from .registry import (
     ToolAlreadyRegisteredError,
     ToolHandler,

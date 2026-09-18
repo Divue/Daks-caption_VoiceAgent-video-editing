@@ -96,6 +96,39 @@ export const Overlay = z.object({
 })
 export type Overlay = z.infer<typeof Overlay>
 
+/**
+ * Persisted tweaks to the ACTIVE preset's CONDITIONAL layers.
+ *
+ * `Preset` itself is deliberately NOT stored (see presets.ts's header and INDEX.md): only
+ * `presetId` is, so `Preset` can grow in TypeScript with no schema.py mirror and no migration.
+ * This is therefore NOT `Partial<Preset>` — it is a short, explicitly enumerated allow-list of
+ * the handful of preset properties a user or the agent must be able to SAVE. Everything here
+ * applies only when a condition holds (the word is emphasised, the tone run is angry, the
+ * playhead has not arrived, the line is being packed), which is exactly why it has no per-word
+ * home in `Style` and could not be persisted at all before (audit 15 §5).
+ *
+ * Adding a property here costs a schema.py mirror. Adding one to `Preset` costs nothing. Only
+ * promote a property once a command like "fewer words per line" or "make emphasised words
+ * bigger" has to survive a reload.
+ *
+ * `emotion` is a PARTIAL record on purpose: zod v4's `z.record(enum, …)` is EXHAUSTIVE and would
+ * demand all three emotions be present, which neither the UI nor the Python mirror
+ * (`dict[Emotion, …]`) means. `z.partialRecord` is the partial one.
+ */
+export const PresetOverride = z.object({
+  wordsPerLine: z.number().int().min(1).max(8).optional(),
+  /** Layered onto emphasised words only — a full face, not a weight bump (see Preset.emphasis). */
+  emphasis: Style.partial().optional(),
+  /** Multiplier on the resolved base size, never an absolute px. */
+  emphasisScale: z.number().positive().optional(),
+  /** How words the playhead has not reached yet are drawn. Mirrors presets.ts's RevealMode. */
+  reveal: z.enum(['none', 'dim', 'hidden']).optional(),
+  emotion: z
+    .partialRecord(Emotion, z.object({ style: Style.partial(), scale: z.number().positive().optional() }))
+    .optional(),
+})
+export type PresetOverride = z.infer<typeof PresetOverride>
+
 export const Project = z.object({
   id: z.string(),
   videoUrl: z.string(),
@@ -103,6 +136,9 @@ export const Project = z.object({
   width: z.number().int().positive(),
   height: z.number().int().positive(),
   presetId: PresetId,
+  // Optional and additive: every stored v2 document parses unchanged, so this needs no migration
+  // and no SCHEMA_VERSION bump (see services/api/app/store/projects.py MIGRATIONS).
+  presetOverride: PresetOverride.optional(),
   words: z.array(Word),
   overlays: z.array(Overlay),
   settings: z.object({

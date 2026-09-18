@@ -1,5 +1,5 @@
 import { Project } from '@captions/shared'
-import type { Overlay, PresetId, Word } from '@captions/shared'
+import type { Overlay, PresetId, PresetOverride, Word } from '@captions/shared'
 import { applyStyleChange } from '@/lib/style-change'
 import type { StyleChange } from '@/lib/style-change'
 
@@ -16,9 +16,23 @@ export type ProjectAction =
   | { type: 'UPDATE_WORDS'; wordIds: string[]; patch: Partial<Word> }
   | { type: 'PATCH_WORDS_STYLE'; wordIds: string[]; change: StyleChange }
   | { type: 'SET_PRESET'; presetId: PresetId }
+  | { type: 'SET_SETTINGS'; settings: Partial<Project['settings']> }
+  | { type: 'SET_PRESET_OVERRIDE'; override: Partial<PresetOverride> | null }
   | { type: 'ADD_OVERLAY'; overlay: Overlay }
+  | { type: 'APPLY_AGENT_PATCHES'; patches: AgentPatch[] }
   | { type: 'UNDO' }
   | { type: 'REDO' }
+
+/**
+ * The subset of actions the agent is allowed to emit. It mirrors
+ * services/api/app/agent/contracts.py's `AgentPatch` union field-for-field, which is why a
+ * response's `patches` can be applied with no remapping. The agent can never dispatch UNDO,
+ * REPLACE_PRESENT or SET_PROJECT — history and server sync belong to the editor.
+ */
+export type AgentPatch = Extract<
+  ProjectAction,
+  { type: 'UPDATE_WORD' | 'SET_PRESET' | 'SET_SETTINGS' | 'SET_PRESET_OVERRIDE' | 'ADD_OVERLAY' }
+>
 
 export function createInitialState(project: Project): ProjectHistoryState {
   return { past: [], present: project, future: [] }
@@ -40,6 +54,58 @@ function commit(state: ProjectHistoryState, candidate: Project): ProjectHistoryS
   return { past: [...state.past, state.present], present: validated, future: [] }
 }
 
+
+/**
+ * Preset overrides merge KEY BY KEY, and an explicit null on a key removes that one override —
+ * the same contract style overrides use, and for the same reason: `undefined` is dropped by
+ * JSON.stringify, so a removal expressed that way would never reach the server. A whole-object
+ * null clears every override ("put it back to the preset").
+ */
+function mergePresetOverride(
+  current: PresetOverride | undefined,
+  change: Partial<PresetOverride> | null,
+): PresetOverride | undefined {
+  if (change === null) return undefined
+  const merged: Record<string, unknown> = { ...(current ?? {}) }
+  for (const [key, value] of Object.entries(change)) {
+    if (value === null || value === undefined) delete merged[key]
+    else merged[key] = value
+  }
+  return Object.keys(merged).length > 0 ? (merged as PresetOverride) : undefined
+}
+
+function updateWord(project: Project, wordId: string, patch: Partial<Word>): Project {
+  return {
+    ...project,
+    words: project.words.map((word) => (word.id === wordId ? { ...word, ...patch } : word)),
+  }
+}
+
+/**
+ * One agent patch onto a project, as a pure function. Shared by the single-action cases and by
+ * APPLY_AGENT_PATCHES so a batch can never drift from what the same patch would do on its own.
+ */
+export function applyAgentPatch(project: Project, patch: AgentPatch): Project {
+  switch (patch.type) {
+    case 'UPDATE_WORD':
+      return updateWord(project, patch.wordId, patch.patch)
+    case 'SET_PRESET':
+      return { ...project, presetId: patch.presetId }
+    case 'SET_SETTINGS':
+      return { ...project, settings: { ...project.settings, ...patch.settings } }
+    case 'SET_PRESET_OVERRIDE': {
+      const presetOverride = mergePresetOverride(project.presetOverride, patch.override)
+      if (presetOverride === undefined) {
+        const { presetOverride: _dropped, ...rest } = project
+        return rest as Project
+      }
+      return { ...project, presetOverride }
+    }
+    case 'ADD_OVERLAY':
+      return { ...project, overlays: [...project.overlays, patch.overlay] }
+  }
+}
+
 export function projectReducer(state: ProjectHistoryState, action: ProjectAction): ProjectHistoryState {
   switch (action.type) {
     case 'SET_PROJECT': {
@@ -56,12 +122,7 @@ export function projectReducer(state: ProjectHistoryState, action: ProjectAction
     }
 
     case 'UPDATE_WORD': {
-      return commit(state, {
-        ...state.present,
-        words: state.present.words.map((word) =>
-          word.id === action.wordId ? { ...word, ...action.patch } : word,
-        ),
-      })
+      return commit(state, updateWord(state.present, action.wordId, action.patch))
     }
 
     // Setting a whole line's emotion touches N words but is ONE user action, so it is one
@@ -102,11 +163,36 @@ export function projectReducer(state: ProjectHistoryState, action: ProjectAction
       return commit(state, { ...state.present, presetId: action.presetId })
     }
 
+    case 'SET_SETTINGS': {
+      return commit(state, {
+        ...state.present,
+        settings: { ...state.present.settings, ...action.settings },
+      })
+    }
+
     case 'ADD_OVERLAY': {
       return commit(state, {
         ...state.present,
         overlays: [...state.present.overlays, action.overlay],
       })
+    }
+
+    case 'SET_PRESET_OVERRIDE': {
+      return commit(state, applyAgentPatch(state.present, action))
+    }
+
+    // One utterance is one undo step. The agent returns a list of patches that are ONE user
+    // intent ("make that line angry" is four words), so they fold into a single candidate and
+    // commit once. Dispatching them individually would make the user press Ctrl+Z once per word
+    // to take back one sentence they said — the same rule UPDATE_WORDS exists for.
+    //
+    // Folding also means validation runs once, on the finished result, so a batch that is only
+    // valid as a whole is accepted and a batch that is invalid is dropped entirely rather than
+    // applied halfway.
+    case 'APPLY_AGENT_PATCHES': {
+      if (action.patches.length === 0) return state
+      const candidate = action.patches.reduce(applyAgentPatch, state.present)
+      return commit(state, candidate)
     }
 
     case 'UNDO': {

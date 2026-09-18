@@ -255,36 +255,79 @@ def _merge_style(current: dict | None, patch: dict) -> dict | None:
     return merged or None
 
 
+def _index_of(doc: dict, word_id: str) -> int:
+    for index, word in enumerate(doc["words"]):
+        if word["id"] == word_id:
+            return index
+    raise WordNotFound(word_id)
+
+
+def _apply_word_patch(word: dict, patch: dict) -> None:
+    """Mutate one word dict in place. `style` merges key-by-key; other fields replace.
+
+    Single-sourced so the single-word and bulk routes cannot drift apart on the merge rule.
+    """
+    for key, value in patch.items():
+        if key == "style":
+            style = _merge_style(word.get("style"), value or {})
+            if style is None:
+                word.pop("style", None)
+            else:
+                word["style"] = style
+        elif value is None:
+            word.pop(key, None)     # only optional fields (emoji, signals) survive validation
+        else:
+            word[key] = value
+
+
 def patch_word(project_id: str, word_id: str, patch: dict, expected_version: int | None):
     """Apply a partial Word update. `style` merges key-by-key; other fields replace."""
     def change(doc: dict):
-        for index, word in enumerate(doc["words"]):
-            if word["id"] == word_id:
-                break
-        else:
-            raise WordNotFound(word_id)
-        for key, value in patch.items():
-            if key == "style":
-                style = _merge_style(word.get("style"), value or {})
-                if style is None:
-                    word.pop("style", None)
-                else:
-                    word["style"] = style
-            elif value is None:
-                word.pop(key, None)     # only optional fields (emoji, signals) survive validation
-            else:
-                word[key] = value
+        index = _index_of(doc, word_id)
+        _apply_word_patch(doc["words"][index], patch)
         return lambda project: project.words[index]
     return _edit(project_id, expected_version, change)
 
 
+def patch_words(project_id: str, patches: list[tuple[str, dict]], expected_version: int | None):
+    """Apply many per-word patches as ONE write and ONE version bump.
+
+    All-or-nothing, which is what makes one agent turn one atomic edit: every word id is resolved
+    BEFORE anything is mutated, so an unknown id raises WordNotFound having changed nothing, and
+    `_edit` only ever persists a whole Project that validated. A 94-word restyle is one round trip
+    through the version counter instead of 94 sequential ones.
+
+    `patches` is ordered [(wordId, patch), ...]; the same word may appear twice, in which case the
+    patches apply in order (a repeated key wins last, and `style` keeps merging cumulatively).
+    """
+    def change(doc: dict):
+        indexes = [_index_of(doc, word_id) for word_id, _ in patches]   # resolve all ids first
+        for (_, patch), index in zip(patches, indexes):
+            _apply_word_patch(doc["words"][index], patch)
+        return lambda project: [project.words[index] for index in indexes]
+    return _edit(project_id, expected_version, change)
+
+
 def patch_project(project_id: str, patch: dict, expected_version: int | None):
-    """presetId and/or settings (settings merge key-by-key)."""
+    """presetId, settings and/or presetOverride (the latter two merge key-by-key).
+
+    `presetOverride` follows the style rule (`_merge_style`): a key with an explicit null is
+    REMOVED, and an override emptied of every key is dropped entirely rather than stored as `{}`.
+    A whole-object `presetOverride: null` clears every override at once — the "back to the preset"
+    command — which is why it is not treated as the no-op that `style: null` is on a word.
+    """
     def change(doc: dict):
         if "presetId" in patch:
             doc["presetId"] = patch["presetId"]
         if "settings" in patch:
             doc["settings"] = {**doc["settings"], **patch["settings"]}
+        if "presetOverride" in patch:
+            value = patch["presetOverride"]
+            merged = None if value is None else _merge_style(doc.get("presetOverride"), value)
+            if merged is None:
+                doc.pop("presetOverride", None)
+            else:
+                doc["presetOverride"] = merged
         return lambda project: project
     return _edit(project_id, expected_version, change)
 

@@ -42,6 +42,19 @@ export interface StretchTuning {
   maxRepeats: number
 }
 
+/**
+ * How a caption block is arranged.
+ *
+ * `inline` is one wrapped line, words side by side — the conventional subtitle shape.
+ *
+ * `stack` is the reference product's actual signature and the reason its templates read as
+ * typography rather than as subtitles: every word gets its OWN line, the lines step sideways as
+ * they descend so the block reads diagonally down-right, and the emphasised word is centred
+ * because at 2-3x the base size it spans the frame anyway. Paired with `reveal: 'hidden'` the
+ * block builds up a word at a time and the already-spoken words stay put.
+ */
+export type CaptionLayout = 'inline' | 'stack'
+
 export type Preset = {
   id: PresetId
   name: string
@@ -64,14 +77,38 @@ export type Preset = {
   stretch?: StretchTuning
   /** Horizontal alignment of the caption line. Layout, so it lives here and not in Style. */
   align?: 'left' | 'center' | 'right'
+  layout?: CaptionLayout
+  /**
+   * `stack` only: the horizontal offset of each line, as a percentage of the frame width, cycled
+   * by line index. An emphasised line ignores this and centres. Measured off the reference:
+   * line 0 sits left of centre, line 1 centred, line 2 right of centre, then it repeats.
+   */
+  stackOffsets?: number[]
+  /**
+   * Never let more than this many consecutive blocks go by without an emphasised word.
+   *
+   * Emphasis is what every one of these looks is built around — the size jump, the second face,
+   * the colour. A stretch of plain speech that the pipeline found nothing to stress in therefore
+   * renders as flat body text for seconds at a time, which is exactly when the preset looks
+   * worst. This is a RENDER-TIME rhythm rule; see `resolveEmphasis`. It never writes to the
+   * Project, so it cannot be mistaken for something the prosody analysis actually found.
+   * 0 disables it.
+   */
+  emphasisEveryBlocks?: number
   wordsPerLine: number
 }
 
+// Inline captions sit low, out of the subject's face, and are centred on that point.
 const center = { x: 50, y: 70 }
+// A STACK is anchored by its TOP and grows downward as words arrive, so it starts high enough
+// that a four-word block still lands inside the frame. Matched to where the reference puts it.
+const stackTop = { x: 50, y: 34 }
 
 export const PRESETS: Record<PresetId, Preset> = {
-  // Reference: "Kalakar Motion". Editorial italic serif body, huge red Anton emphasis. No glow at
-  // all — the contrast is size + face + colour, which is why it survives on any footage.
+  // Structure from the reference's "Kalakar Motion" — editorial italic serif body, huge display
+  // emphasis, no glow, contrast carried by size + face + colour. The COLOURS are ours: the
+  // reference's #A6190D is a flat oxblood, and warming it to a vermilion against a paper-white
+  // body is what stops this reading as a copy of their template.
   rangmanch: {
     id: 'rangmanch',
     name: 'Rangmanch',
@@ -79,69 +116,80 @@ export const PRESETS: Record<PresetId, Preset> = {
       fontFamily: 'Instrument Serif',
       italic: true,
       fontSize: 45,
-      color: '#FFFFF0',
+      color: '#FFF6E9',
       weight: 400,
       letterSpacing: -0.046, // measured -2.05px at 45px
       lineHeight: 0.9,
-      ...center,
+      ...stackTop,
     },
-    emphasis: { fontFamily: 'Anton', italic: false, weight: 400, color: '#A6190D', textCase: 'upper' },
+    emphasis: { fontFamily: 'Anton', italic: false, weight: 400, color: '#E2452A', textCase: 'upper' },
     emphasisScale: 2.93, // 132px / 45px
     reveal: 'none',
+    layout: 'stack',
+    emotion: { angry: { style: { color: '#FF5C3A', shake: 3 } } },
     wordsPerLine: 3,
   },
 
-  // Reference: "Kalakar Glow". Heavy Inter, green gradient emphasis under a 100px halo.
-  // The gradient is SYMMETRIC — lightest at the 50% stop — so it reads as a centred sheen rather
-  // than a left-to-right ramp. That needs all 7 stops; a 2-tuple cannot express it.
+  // Structure from "Kalakar Glow": heavy sans body, gradient-filled display emphasis under a wide
+  // halo. The gradient is SYMMETRIC — lightest at the 50% stop — so it reads as a centred sheen
+  // rather than a left-to-right ramp, which needs all 7 stops. Recoloured from their acid green
+  // to a warm gold that belongs to our palette.
   chamak: {
     id: 'chamak',
     name: 'Chamak',
-    base: { fontFamily: 'Inter', fontSize: 96, color: '#FFFFFF', weight: 800, lineHeight: 0.9, ...center },
+    base: { fontFamily: 'Inter', fontSize: 96, color: '#FFFFFF', weight: 800, lineHeight: 0.9, ...stackTop },
     emphasis: {
       fontFamily: 'Inter',
       weight: 900,
       textCase: 'upper',
       gradientStops: [
-        { color: '#A0D83E', at: 0 },
-        { color: '#A0D83E', at: 20 },
-        { color: '#AADC53', at: 40 },
-        { color: '#CAE993', at: 50 },
-        { color: '#AADC53', at: 70 },
-        { color: '#A0D83E', at: 80 },
-        { color: '#A0D83E', at: 100 },
+        { color: '#FFAE1A', at: 0 },
+        { color: '#FFAE1A', at: 20 },
+        { color: '#FFC44D', at: 40 },
+        { color: '#FFE7A8', at: 50 },
+        { color: '#FFC44D', at: 70 },
+        { color: '#FFAE1A', at: 80 },
+        { color: '#FFAE1A', at: 100 },
       ],
       // The halo colour is NOT the fill: gradient text sets `color: transparent`, so the glow has
       // to be told its own colour. See `glowWrapperCss` for why it is a filter and not a shadow.
       glow: 100,
-      glowColor: '#A0D83E',
+      glowColor: '#FFAE1A',
     },
     emphasisScale: 2.19, // 209.92px / 96px
-    reveal: 'none',
+    reveal: 'hidden',
+    layout: 'stack',
+    emotion: { angry: { style: { color: '#FF6B3D', shake: 4 } } },
     wordsPerLine: 3,
   },
 
-  // Reference: "Delhi". A TYPEFACE contrast, not a colour one — clean grotesque body, italic
-  // display serif for the stressed word, both pure white, separated only by the glow.
+  // Structure from "Delhi", whose whole idea is a TYPEFACE contrast rather than a colour one:
+  // clean grotesque body, italic display serif for the stressed word, both white, separated only
+  // by the glow. That identity is the reason both stay white here; the halo is cooled to a
+  // moonlight blue instead, which is the part that was theirs.
   nazm: {
     id: 'nazm',
     name: 'Nazm',
-    base: { fontFamily: 'Instrument Sans', fontSize: 72, color: '#FFFFFF', weight: 400, lineHeight: 1, ...center },
+    base: { fontFamily: 'Instrument Sans', fontSize: 72, color: '#FFFFFF', weight: 400, lineHeight: 1, ...stackTop },
     emphasis: {
       fontFamily: 'Instrument Serif',
       italic: true,
       weight: 400,
       color: '#FFFFFF',
       glow: 30, // measured as .8/10px, .6/20px, .4/30px — three layers, which glowLayers rebuilds
-      glowColor: '#FFFFFF',
+      glowColor: '#D6ECFF',
     },
     emphasisScale: 1.5, // 108px / 72px
     reveal: 'hidden',
+    layout: 'stack',
+    emotion: { angry: { style: { color: '#FFD9D2', shake: 2 } } },
     wordsPerLine: 4,
   },
 
-  // Reference: "Kathmandu" (the reference's own, not our old preset of that name). Tight lowercase
-  // Montserrat, yellow emphasis, olive halo. The negative tracking is a large part of the punch.
+  // Structure from the reference's own "Kathmandu": tight lowercase Montserrat, a same-face
+  // emphasis carried entirely by colour, and a wide low-alpha halo. The negative tracking is a
+  // large part of the punch. Their yellow-on-olive became a magenta punch so it cannot be
+  // confused with chamak's gold.
   dhamaka: {
     id: 'dhamaka',
     name: 'Dhamaka',
@@ -155,12 +203,14 @@ export const PRESETS: Record<PresetId, Preset> = {
       lineHeight: 1,
       // Unlike chamak/nazm the halo is a template-wide effect here, not an emphasis-only one.
       glow: 108,
-      glowColor: '#898B26', // measured rgba(137,139,38)
-      ...center,
+      glowColor: '#5E1130',
+      ...stackTop,
     },
-    emphasis: { fontFamily: 'Montserrat', weight: 800, color: '#F9FD45', textCase: 'lower' },
+    emphasis: { fontFamily: 'Montserrat', weight: 800, color: '#FF4D8D', textCase: 'lower' },
     emphasisScale: 1.34, // 120.6px / 90px
     reveal: 'dim',
+    layout: 'stack',
+    emotion: { angry: { style: { color: '#FF2E6B', shake: 5 } } },
     wordsPerLine: 3,
   },
 
@@ -173,6 +223,7 @@ export const PRESETS: Record<PresetId, Preset> = {
     emphasis: { color: '#FFE600' },
     emphasisScale: 1.15, // was emphasis.fontSize 92 against base 80
     reveal: 'dim',
+    layout: 'inline',
     wordsPerLine: 2,
   },
   minimal: {
@@ -182,6 +233,10 @@ export const PRESETS: Record<PresetId, Preset> = {
     emphasis: { weight: 800 },
     emphasisScale: 1,
     reveal: 'dim',
+    layout: 'inline',
+    // The quiet preset opts out of the rhythm rule: "minimal" promising not to shout at you is
+    // the whole point of it, and a guaranteed emphasis every few lines is shouting.
+    emphasisEveryBlocks: 0,
     wordsPerLine: 4,
   },
   'hinglish-bold': {
@@ -191,9 +246,16 @@ export const PRESETS: Record<PresetId, Preset> = {
     emphasis: { gradient: ['#FF7A00', '#FF2D55'] },
     emphasisScale: 1.12, // was emphasis.fontSize 76 against base 68
     reveal: 'dim',
+    layout: 'inline',
     wordsPerLine: 3,
   },
 }
+
+/** `stack` line offsets when a preset does not override them: left of centre, centred, right. */
+export const DEFAULT_STACK_OFFSETS = [-14, 0, 14]
+
+/** How many blocks may pass with no emphasis before one is promoted. See `emphasisEveryBlocks`. */
+export const DEFAULT_EMPHASIS_EVERY_BLOCKS = 3
 
 // The font set the app loads and the editor's font picker may offer. All are Google Fonts, so
 // apps/web loads them with one <link> and Remotion can fetch the same families.

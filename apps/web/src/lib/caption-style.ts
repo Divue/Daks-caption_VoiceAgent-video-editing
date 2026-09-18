@@ -62,6 +62,14 @@ export interface ResolvedStyle {
   y: number
 }
 
+export interface ResolveOptions {
+  /**
+   * Draw this word in the emphasis face, regardless of `Word.emphasis`. The render-time rhythm
+   * rule promotes words this way rather than by writing to the Project — see shared/emphasis.ts.
+   */
+  emphasised?: boolean
+}
+
 /** True when this style's fill is a gradient, which makes `color` transparent. */
 export function isGradientFill(style: ResolvedStyle): boolean {
   return Boolean(style.gradientStops ?? style.gradient)
@@ -84,8 +92,9 @@ export function resolveWordStyle(
   preset: Preset,
   settings: Project['settings'],
   frameWidth: number,
+  options: ResolveOptions = {},
 ): ResolvedStyle {
-  const { style: presetLayers, sizeMultiplier } = resolvePresetLayers(word, preset, settings)
+  const { style: presetLayers, sizeMultiplier } = resolvePresetLayers(word, preset, settings, options)
   const merged: Partial<Style> = { ...presetLayers, ...word.style }
   const scale = frameWidth > 0 ? frameWidth / REFERENCE_WIDTH : 1
 
@@ -132,7 +141,12 @@ export function resolvePresetLayers(
   word: Word,
   preset: Preset,
   settings: Project['settings'],
+  options: ResolveOptions = {},
 ): { style: Partial<Style>; sizeMultiplier: number } {
+  // `emphasised` overrides `word.emphasis` so the rhythm rule (shared/emphasis.ts) can promote a
+  // word WITHOUT writing to it. Absent, the stored flag is the answer, which keeps this function
+  // usable on a bare Word.
+  const emphasised = options.emphasised ?? word.emphasis
   const layers: Partial<Style>[] = [preset.base]
   let sizeMultiplier = 1
 
@@ -144,7 +158,7 @@ export function resolvePresetLayers(
     }
   }
 
-  if (word.emphasis) {
+  if (emphasised) {
     layers.push(preset.emphasis)
     sizeMultiplier *= preset.emphasisScale
   }

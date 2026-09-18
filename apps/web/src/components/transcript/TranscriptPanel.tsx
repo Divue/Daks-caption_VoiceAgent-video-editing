@@ -19,6 +19,9 @@ interface TranscriptPanelProps {
   onSetBlockEmotion: (block: CaptionBlock, emotion: Emotion) => void
   onSetWordEmotion: (word: Word, emotion: Emotion) => void
   onSetWordSingle: (word: Word, single: boolean) => void
+  onSetWordEmphasis: (word: Word, emphasis: boolean) => void
+  emphasisIds: Set<string>
+  promotedEmphasisIds: Set<string>
 }
 
 export function TranscriptPanel({
@@ -34,6 +37,9 @@ export function TranscriptPanel({
   onSetBlockEmotion,
   onSetWordEmotion,
   onSetWordSingle,
+  onSetWordEmphasis,
+  emphasisIds,
+  promotedEmphasisIds,
 }: TranscriptPanelProps) {
   const [query, setQuery] = useState('')
   const trimmed = query.trim().toLowerCase()
@@ -116,6 +122,9 @@ export function TranscriptPanel({
             onSetBlockEmotion={onSetBlockEmotion}
             onSetWordEmotion={onSetWordEmotion}
             onSetWordSingle={onSetWordSingle}
+            onSetWordEmphasis={onSetWordEmphasis}
+            emphasisIds={emphasisIds}
+            promotedEmphasisIds={promotedEmphasisIds}
           />
         )}
       </div>

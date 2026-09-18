@@ -43,7 +43,12 @@ export function EditorBootstrap() {
 
   useEffect(() => {
     if (USE_FIXTURE) {
-      const parsed = Project.safeParse(demoProject)
+      // The fixture's videoUrl is a placeholder ("demo.mp4"), not a file that exists. Left in
+      // place it mounts a <video> that never loads, never fires `error` under the dev server's
+      // SPA fallback, and so stays attached as the playback clock reporting currentTime 0 —
+      // which freezes the transport, the timeline and the caption preview. Fixture mode has no
+      // video, so it says so, and PlaybackProvider's fallback clock drives the playhead instead.
+      const parsed = Project.safeParse({ ...demoProject, videoUrl: '' })
       if (parsed.success) {
         setState({ k: 'loaded', project: parsed.data, version: 0 })
         setLifecycle({ k: 'ready' })
@@ -102,7 +107,7 @@ export function EditorBootstrap() {
 
   return (
     <ProjectProvider initial={state.project}>
-      <PlaybackProvider>
+      <PlaybackProvider fallbackDurationMs={state.project.durationMs}>
         <WordPatchProvider>
           {/* Reads project.presetId, so it mounts inside ProjectProvider. */}
           <PresetOverrideProvider>

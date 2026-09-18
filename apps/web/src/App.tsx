@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { AgentActivityPanel } from '@/components/agent/AgentActivityPanel'
 import { AgentCommandBar } from '@/components/agent/AgentCommandBar'
 import { CaptionStylePanel } from '@/components/inspector/CaptionStylePanel'
@@ -11,6 +11,7 @@ import { CollapsiblePanel } from '@/components/shell/CollapsiblePanel'
 import { Timeline } from '@/components/timeline/Timeline'
 import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { resolveEmphasis } from '@captions/shared'
 import type { CaptionBlock, Emotion, Word } from '@captions/shared'
 import type { MicStatus } from '@/hooks/useAgentActivity'
 import { useAgentActivity } from '@/hooks/useAgentActivity'
@@ -39,6 +40,15 @@ function App() {
   const [revealBlockId, setRevealBlockId] = useState<string | null>(null)
 
   const { blocks, wordsOf } = useCaptionBlocks(mergeShort)
+
+  // Which words RENDER emphasised: the pipeline's own plus the rhythm rule's promotions. Computed
+  // once here and handed to both the preview and the caption list, so the two can never disagree
+  // about which word is the big one.
+  const emphasis = useMemo(
+    () => resolveEmphasis(project.words, blocks, preset.emphasisEveryBlocks),
+    [project.words, blocks, preset.emphasisEveryBlocks],
+  )
+
   const activeBlockIndex = findBlockIndexAt(blocks, timeMs)
   const activeBlockId = activeBlockIndex === -1 ? null : blocks[activeBlockIndex].id
 
@@ -81,6 +91,15 @@ function App() {
     [patchWord],
   )
 
+  // Emphasis is the single biggest visual lever these presets have, so it is editable straight
+  // from the caption list rather than only from the inspector — same place tone already is.
+  const handleSetWordEmphasis = useCallback(
+    (word: Word, emphasis: boolean) => {
+      patchWord(word.id, { emphasis })
+    },
+    [patchWord],
+  )
+
   // Clicking a caption row both seeks and asks the timeline to scroll that block into view.
   const handleSeekToBlock = useCallback(
     (block: { id: string; startMs: number }) => {
@@ -113,6 +132,9 @@ function App() {
                 onSetBlockEmotion={handleSetBlockEmotion}
                 onSetWordEmotion={handleSetWordEmotion}
                 onSetWordSingle={handleSetWordSingle}
+                onSetWordEmphasis={handleSetWordEmphasis}
+                emphasisIds={emphasis.ids}
+                promotedEmphasisIds={emphasis.promoted}
               />
             </CollapsiblePanel>
 
@@ -127,6 +149,7 @@ function App() {
                     wordsOf={wordsOf}
                     project={project}
                     preset={preset}
+                    emphasisIds={emphasis.ids}
                     timeMs={timeMs}
                     frameWidth={frameWidth}
                     selectedWordId={selectedWordId}

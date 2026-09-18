@@ -59,7 +59,7 @@ export function VideoStage({ src, width, height, captionLayer }: VideoStageProps
           // so a 9:16 reel and a 16:9 clip both sit correctly inside the same stage.
           style={{ aspectRatio: `${width} / ${height}`, height: '100%', maxWidth: '100%' }}
         >
-          {src ? (
+          {src && !error ? (
             <video
               ref={attachVideo}
               src={src}
@@ -73,15 +73,19 @@ export function VideoStage({ src, width, height, captionLayer }: VideoStageProps
               }
             />
           ) : (
+            // Unmounting the <video> on error is deliberate, not just a tidier empty state: a
+            // failed element stays attached as the playback clock and reports duration NaN, which
+            // freezes the transport and the caption preview at 0. Detaching hands the clock to
+            // PlaybackProvider's fallback, so the captions can still be reviewed and demoed.
             <div className="flex size-full items-center justify-center p-4 text-center text-xs text-muted-foreground">
-              No video yet
+              {error ? '' : 'No video yet'}
             </div>
           )}
 
           {captionsEnabled && frameWidth > 0 && captionLayer?.(frameWidth)}
 
           {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-neutral-950/80 p-4 text-center text-xs text-destructive-foreground">
+            <div className="absolute inset-x-0 bottom-0 bg-black/70 p-2 text-center text-[11px] text-muted-foreground">
               {error}
             </div>
           )}

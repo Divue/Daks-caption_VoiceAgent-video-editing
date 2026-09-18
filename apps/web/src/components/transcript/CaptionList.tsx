@@ -30,6 +30,12 @@ interface CaptionListProps {
   onSetWordEmotion: (word: Word, emotion: Emotion) => void
   /** Pulls one word out of its line into a block of its own, or puts it back. */
   onSetWordSingle: (word: Word, single: boolean) => void
+  /** Sets `emphasis` on one word — the preset's biggest visual lever. */
+  onSetWordEmphasis: (word: Word, emphasis: boolean) => void
+  /** Every word id drawn in the emphasis face: stored plus rhythm-promoted. */
+  emphasisIds: Set<string>
+  /** Only the ids the rhythm rule added. These are NOT stored on the word. */
+  promotedEmphasisIds: Set<string>
 }
 
 /**
@@ -53,6 +59,9 @@ export function CaptionList({
   onSetBlockEmotion,
   onSetWordEmotion,
   onSetWordSingle,
+  onSetWordEmphasis,
+  emphasisIds,
+  promotedEmphasisIds,
 }: CaptionListProps) {
   const activeRef = useRef<HTMLLIElement | null>(null)
 
@@ -97,9 +106,12 @@ export function CaptionList({
                   key={word.id}
                   word={word}
                   selected={word.id === selectedWordId}
+                  emphasised={emphasisIds.has(word.id)}
+                  promoted={promotedEmphasisIds.has(word.id)}
                   onSelect={onSelectWord}
                   onSetEmotion={onSetWordEmotion}
                   onSetSingle={onSetWordSingle}
+                  onSetEmphasis={onSetWordEmphasis}
                 />
               ))}
             </div>
@@ -163,15 +175,23 @@ function BlockToneMenu({
 function WordChip({
   word,
   selected,
+  emphasised,
+  promoted,
   onSelect,
   onSetEmotion,
   onSetSingle,
+  onSetEmphasis,
 }: {
   word: Word
   selected: boolean
+  /** Renders in the emphasis face — stored on the word, or promoted by the rhythm rule. */
+  emphasised: boolean
+  /** Promoted, i.e. NOT stored. Drawn as an outline so the two are never confused. */
+  promoted: boolean
   onSelect: (wordId: string) => void
   onSetEmotion: (word: Word, emotion: Emotion) => void
   onSetSingle: (word: Word, single: boolean) => void
+  onSetEmphasis: (word: Word, emphasis: boolean) => void
 }) {
   const isSingle = word.single === true
 
@@ -180,12 +200,22 @@ function WordChip({
       // Emphasis has no label anywhere in the panel, so it says what it is on hover. Green said
       // nothing and, sitting beside the amber/red tone badges, read as a third emotion rather
       // than a different axis — emphasis is per word, tone is per run.
-      title={word.emphasis ? 'Emphasised — drawn in the preset\u2019s emphasis face' : undefined}
+      title={
+        promoted
+          ? 'Auto-emphasised to keep the preset from going flat. Not saved — click to keep it.'
+          : emphasised
+            ? 'Emphasised \u2014 drawn in the preset\u2019s emphasis face'
+            : undefined
+      }
       className={cn(
         'group/word inline-flex items-center rounded transition-colors',
         // Emphasis reads as a pill, which is a clearer affordance than bold text. Primary, because
         // "the loud word" is exactly what the brand colour is for.
-        word.emphasis && 'bg-primary/15 font-semibold text-primary',
+        emphasised && !promoted && 'bg-primary/15 font-semibold text-primary',
+        // A promoted word is drawn but NOT stored, so it gets an outline rather than a fill. The
+        // distinction has to survive a glance: filled means the pipeline found it, outlined means
+        // the renderer is filling a gap and a reload could choose differently.
+        promoted && 'font-semibold text-primary ring-1 ring-primary/40 ring-inset',
         selected && 'ring-2 ring-primary ring-offset-1',
       )}
     >
@@ -220,6 +250,18 @@ function WordChip({
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
+          <DropdownMenuCheckboxItem
+            checked={emphasised}
+            onCheckedChange={(checked) => onSetEmphasis(word, checked === true)}
+          >
+            Emphasis
+          </DropdownMenuCheckboxItem>
+          {promoted && (
+            <p className="px-2 pb-1 text-[10px] leading-snug text-muted-foreground">
+              Auto, to keep the line from going flat. Tick to keep it.
+            </p>
+          )}
+          <DropdownMenuSeparator />
           <DropdownMenuLabel>Word emotion</DropdownMenuLabel>
           {EMOTION_OPTIONS.map((option) => (
             <DropdownMenuItem key={option} onSelect={() => onSetEmotion(word, option)}>

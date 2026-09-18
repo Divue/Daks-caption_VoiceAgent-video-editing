@@ -136,22 +136,58 @@ lead rather than assuming it.
 
 ## Part F — new editor features worth building, and the tools P4 would wrap
 
-The catalogue the user asked for. For each proposal give: what the user says, the editor feature, the
-tool P4 exposes, the API it needs, and an honest effort estimate.
+The catalogue the user asked for. **Inventing new editor capabilities is explicitly in scope** — do
+not limit this to wrapping what already exists. If a natural spoken command has no feature behind it,
+propose the feature *and* the tool.
 
-Start from what is missing today (audit 17 §4 and P4's §6), including:
+For each: what the user says → the editor feature → the tool P4 exposes → the API it needs → who
+owns it → an honest effort estimate. Mark each **MVP / after / skip**.
 
-- **no add / delete / split / merge word** — "delete that word", "split this line" are natural and
-  impossible; there is no API either
-- **overlay update / delete** — add-only today, and nothing renders overlays at all
-- **`set_settings`** — `emojis` / `emotionLayer`. The route accepts it; no tool exists. "Stop making
-  things red" is unanswerable
+### F.1 Fix the granularity first
+
+The biggest structural problem with the current 19 tools is that **13 of them take a single
+`wordId`**, while almost every spoken command is about a *line*, a *range*, or *everything*.
+"Make that line angry" becomes `list_blocks` + four `set_emotion` calls — five tool calls and four
+sequential PATCHes, against a 6-iteration cap. One line nearly exhausts the budget.
+
+Evaluate recommending to P4 that **every mutating tool take `wordIds: string[]`**, with a single id
+as the degenerate case — and that `move_caption` / `scale_caption` (explicitly described as thin
+wrappers "so the model picks the right tool") be dropped in favour of fewer, better-described tools.
+Fewer tools generally means better tool selection, and for voice, latency is the product.
+
+This pairs with the bulk word endpoint: `wordIds[]` tools plus one bulk PATCH turns most commands
+into one tool call and one round trip.
+
+### F.2 Gaps that already have a name
+
+From audit 17 §4 and P4's own §6 — these are known, not discoveries:
+
+- **no add / delete / split / merge word**, and no API for it — "delete that word", "split this line"
+- **overlay update / delete**, plus *nothing renders overlays at all*
+- **`set_settings`** (`emojis`, `emotionLayer`) — route accepts it, no tool. "Stop making things red"
 - **bulk word PATCH** — turns a 94-call restyle into one atomic call
-- **`analyze_frame` is broken at the boundary** — it wants `s3://`, the project carries a presigned
-  `https` URL. "Put the captions above her head" cannot work until that is fixed
+- **`analyze_frame` is broken at the boundary** — wants `s3://`, gets a presigned `https` URL
 
-Then propose beyond that list. Judge each against `CLAUDE.md`'s MVP cuts — do not propose cutting,
-transitions or object tracking.
+### F.3 Candidates to evaluate — seeds, not decisions
+
+Judge each on how natural the command is versus what it costs. Reject freely; several of these are
+probably wrong. They are here so the plan argues with something concrete.
+
+| What the user says | Feature needed | Rough cost |
+|---|---|---|
+| "captions are late, push them 200ms" | shift timing across a scope | small — per-word timing writes already exist |
+| "move the captions to the top" | position presets (top/middle/bottom) mapped to `y` on all words | small |
+| "replace bhai with bro everywhere" | find-and-replace across the transcript | small — search already exists |
+| "remove the ums" / "delete that word" | delete words | needs an API and a decision about renumbering |
+| "take the punctuation out" | punctuation strip / case normalise across words | small; the reference product has exactly this |
+| "emphasise the loudest word in every line" | one aggregate tool over `signals`, instead of N `set_emphasis` calls | small, and it removes N round trips |
+| "make this bit bigger" (dragging over four words) | range selection in the transcript | small, P3-only, and it feeds Part B |
+| "undo that" | an agent-turn undo the tool can call | depends on Part C |
+| "fewer words per line" | `wordsPerLine` is a **Preset** field — blocked, see Part G | — |
+| "put the captions above her head" | `analyze_frame`, once the s3:// boundary is fixed | medium, and the least reliable thing here |
+
+Judge every proposal against `CLAUDE.md`'s MVP cuts. Do not propose cutting, trimming, transitions,
+zoom, music or object tracking.
 
 ## Part G — the thing the agent most obviously cannot do
 

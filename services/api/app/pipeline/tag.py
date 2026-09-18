@@ -11,6 +11,8 @@ import re
 
 import boto3
 
+from ..costs import cost_event
+
 STRETCH_RATIO = 2.0      # duration per syllable vs this speaker's median
 STRETCH_MIN_MS = 250     # and it must actually be held this much longer, in absolute time
 MS_PER_EXTRA_CHAR = 120  # one repeated letter per this much held time
@@ -34,7 +36,13 @@ def is_stretched(signals: dict) -> bool:
 
 
 def stretch_text(text: str, extra_ms: float) -> str:
-    """"guys" held 590ms longer -> "guuuuuys": repeated letters in proportion to the drawl."""
+    """"guys" held 590ms longer -> "guuuuuys": repeated letters in proportion to the drawl.
+
+    NOT called by the pipeline: elongation is carried by Word.stretch, never by repeating letters
+    in Word.text (.claude/INDEX.md; audit 11 §5.3 measured "STT"->"ST"). Kept as the reference
+    arithmetic for the renderer (P2): the repeat count comes from signals.extraMs, not from
+    `stretch` (which is durationRatio) — plan §8.1.
+    """
     repeats = max(1, min(round(extra_ms / MS_PER_EXTRA_CHAR), MAX_EXTRA_CHARS))
     repeats = min(repeats, max(1, MAX_WORD_CHARS - len(text)))
     return VOWEL_GROUP.sub(lambda m: m.group(1) + m.group(1)[-1] * repeats, text, count=1)
@@ -52,14 +60,12 @@ def tag(words: list[dict], *, use_llm: bool = True) -> list[dict]:
             "emphasis": bool(emphasis),
             "emotion": "excited" if stretched else "neutral",
             "stretch": round(s["durationRatio"], 2) if stretched else 1.0,
-            "text": stretch_text(word["text"], s["extraMs"]) if stretched else word["text"],
         })
 
     angry = _angry_words(tagged) if use_llm else []
     for index in angry[:MAX_ANGRY_WORDS]:
         tagged[index]["emotion"] = "angry"
-        tagged[index]["stretch"] = 1.0
-        tagged[index]["text"] = words[index]["text"]  # shouting is not stretching
+        tagged[index]["stretch"] = 1.0  # shouting is not stretching
     return tagged
 
 
@@ -71,6 +77,8 @@ def _angry_words(words: list[dict]) -> list[int]:
     out — the Day 1 Angry clip scored zero that way. Anger lives in the words ("fed up of
     this", swearing); the audio is used only to reject words said quietly.
     """
+    if not words:
+        return []
     client = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_REGION", "ap-south-1"))
     indexed = {i: w["text"] for i, w in enumerate(words)}
     prompt = (
@@ -82,11 +90,14 @@ def _angry_words(words: list[dict]) -> list[int]:
         "Return only a JSON array of indices.\n\n"
         f"<words>\n{json.dumps(indexed, ensure_ascii=False)}\n</words>"
     )
-    response = client.converse(
-        modelId=os.environ["BEDROCK_MODEL_ID"],
-        messages=[{"role": "user", "content": [{"text": prompt}]}],
-        inferenceConfig={"maxTokens": 500, "temperature": 0},
-    )
+    model_id = os.environ["BEDROCK_MODEL_ID"]
+    with cost_event(stage="tag", service="bedrock", model_id=model_id) as ev:
+        response = client.converse(
+            modelId=model_id,
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"maxTokens": 500, "temperature": 0},
+        )
+        ev.usage_from(response)
     text = response["output"]["message"]["content"][0]["text"]
     text = text[text.find("[") : text.rfind("]") + 1]
     try:

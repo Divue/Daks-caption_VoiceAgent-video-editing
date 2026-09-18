@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Card } from '@/components/ui/card'
 import { usePlayback } from '@/state/playback-context'
 import { TransportBar } from './TransportBar'
 
@@ -48,10 +47,11 @@ export function VideoStage({ src, width, height, captionLayer }: VideoStageProps
   }, [])
 
   return (
-    <Card className="flex h-full min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-background p-0">
-      {/* A darker well behind the frame: the reel should be the brightest thing on screen, and a
-          card-coloured backdrop puts the chrome and the footage at the same value. */}
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-[oklch(0.125_0.004_62)] p-4">
+    // One container, not three. It was a card, holding a well, holding a rounded frame — three
+    // nested boxes around the one thing the user is looking at (audit 16 §2.12). The well IS the
+    // container now, and the frame sits directly in it.
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[oklch(0.125_0.004_62)]">
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-5">
         <div
           ref={frameRef}
           className="shadow-stage relative max-h-full overflow-hidden rounded-xl bg-black ring-1 ring-white/8"
@@ -99,6 +99,6 @@ export function VideoStage({ src, width, height, captionLayer }: VideoStageProps
         onToggleCaptions={() => setCaptionsEnabled((value) => !value)}
         onFullscreen={requestFullscreen}
       />
-    </Card>
+    </div>
   )
 }

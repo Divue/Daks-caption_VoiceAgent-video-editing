@@ -77,21 +77,6 @@ export function TranscriptPanel({
           </Label>
         </div>
 
-        {/* The list carries two unlabelled marks on two different axes — a highlighted word is
-            emphasis (per word), a badge at the row's end is tone (per run). Without this, the
-            highlight just looks like a third tone. */}
-        <div className="flex items-center gap-3 text-[10px] text-muted-foreground/80">
-          <span className="flex items-center gap-1.5">
-            <span className="rounded bg-primary/15 px-1 font-semibold text-primary">word</span>
-            emphasised
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="rounded bg-amber-500/15 px-1 font-medium text-amber-600 dark:text-amber-400">
-              TONE
-            </span>
-            per line
-          </span>
-        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">

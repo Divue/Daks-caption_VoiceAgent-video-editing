@@ -209,14 +209,15 @@ function WordChip({
       }
       className={cn(
         'group/word inline-flex items-center rounded transition-colors',
-        // Emphasis reads as a pill, which is a clearer affordance than bold text. Primary, because
-        // "the loud word" is exactly what the brand colour is for.
-        emphasised && !promoted && 'bg-primary/15 font-semibold text-primary',
+        // Emphasis is a bright neutral chip, not an orange one. Tone is the only thing in this
+        // list that carries colour, so two unrelated meanings no longer share the accent
+        // (audit 16 §2.8) — and orange is left to mean "selected".
+        emphasised && !promoted && 'bg-white/10 font-semibold text-foreground',
         // A promoted word is drawn but NOT stored, so it gets an outline rather than a fill. The
         // distinction has to survive a glance: filled means the pipeline found it, outlined means
         // the renderer is filling a gap and a reload could choose differently.
-        promoted && 'font-semibold text-primary ring-1 ring-primary/40 ring-inset',
-        selected && 'ring-2 ring-primary ring-offset-1',
+        promoted && 'font-semibold text-foreground/80 ring-1 ring-white/20 ring-inset',
+        selected && 'ring-2 ring-primary ring-offset-1 ring-offset-card',
       )}
     >
       <button

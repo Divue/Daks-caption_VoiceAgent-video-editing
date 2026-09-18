@@ -38,6 +38,7 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | 12 | `audits/12-api-persistence-layer.md` | `services/api` API + DynamoDB/S3 persistence, job runner, cost logging (P1) | Any API endpoint, project storage, pipeline jobs/status, cost rows, the P4 agent / P2 render seams. Measured e2e on 4 clips; **not deployed, not called by `apps/web`**. |
 | 13 | `audits/13-caption-emotion-and-single.md` | `Word.single` + editable line/word emotion (P3, schema change) | Caption grouping, `deriveBlocks`, emotion editing, or anything that writes words to the API |
 | 14 | `audits/14-kalakar-reference-audit.md` | Kalakar competitor teardown: measured template/font/effect values | Caption *visual* work — presets, fonts, glow/gradient/stroke, reveal behaviour, or picking what to build next |
+| 16 | `audits/16-editor-ui-critique.md` | Editor UI critique + the redesign it drove (P3) | Any editor chrome/layout/colour work. Read §1 first: the timeline was a picture of a video editor we are not building, and most of the ugliness was downstream of that. |
 | 15 | `audits/15-caption-style-panel-and-editor-ui.md` | Caption style panel, the 4 measured presets, **schema v2**, editor UI/theme (P3) | Anything touching `Style`, `Preset`, the style resolver, the inspector panel, style writes, or the editor's look. **Read before any `Style`/`PresetId` change** — v2 renamed two fields and one preset id. |
 
 Documents 09 and 10 both originate from a single commit (`628a3e6`) that
@@ -129,6 +130,14 @@ Things Claude must preserve when working in `apps/web`:
   explicit `null`. `undefined` is dropped by `JSON.stringify` and the removal
   never reaches the server. Use `patchStyle`/`StyleChange`, never a whole-object
   `style` write (audit 15 §4).
+- The bottom strip is a CAPTION RIBBON, not a timeline: one lane, no Video/Audio
+  tracks, no track headers, no editing toolbar. `CLAUDE.md` puts cutting,
+  layering and mixing out of scope, so any UI implying them is a picture of a
+  product we are not building (audit 16 §1). Do not re-add them.
+- Orange has a budget: the playhead, the primary action, and the current
+  selection. Everything else uses the warm neutral scale (audit 16 §3.3).
+- Emphasis promoted by the rhythm rule is drawn OUTLINED, never filled — filled
+  means the pipeline found it, outlined means the renderer is filling a gap.
 - Schema v2: `Style.uppercase` is gone (use `textCase`), and the preset id
   `kathmandu` is gone (it is `rangmanch`). `store/projects.py` migrates stored
   v1 rows on read; do not reintroduce either name.

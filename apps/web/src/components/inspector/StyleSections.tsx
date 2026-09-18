@@ -14,13 +14,15 @@ import type { StyleScope } from './style-scope'
  * so it lives in the preset sections instead.
  */
 
+// Six options is a list, not a segmented control — at panel width each cell was ~35px of
+// unreadable, untappable text (audit 16 §2.9).
 const WEIGHTS = [
-  { value: '300', label: 'Light' },
-  { value: '400', label: 'Regular' },
-  { value: '600', label: 'Semi' },
-  { value: '700', label: 'Bold' },
-  { value: '800', label: 'Extra' },
-  { value: '900', label: 'Black' },
+  { value: '300', label: 'Light — 300' },
+  { value: '400', label: 'Regular — 400' },
+  { value: '600', label: 'Semibold — 600' },
+  { value: '700', label: 'Bold — 700' },
+  { value: '800', label: 'Extrabold — 800' },
+  { value: '900', label: 'Black — 900' },
 ] as const
 
 const CASES: { value: TextCase; label: string; title: string }[] = [
@@ -56,7 +58,7 @@ export function TextSection({ scope, children }: { scope: StyleScope; children?:
         onChange={(value) => scope.write({ fontFamily: value })}
         onClear={clear(scope, 'fontFamily')}
       />
-      <SegmentedField
+      <SelectField
         label="Weight"
         value={String(weight)}
         options={WEIGHTS}

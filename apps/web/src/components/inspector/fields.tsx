@@ -26,14 +26,16 @@ export function Section({
   children: ReactNode
 }) {
   return (
-    <section className="flex flex-col gap-3 border-t border-border/60 px-4 py-4 first:border-t-0">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-          {title}
-        </h3>
+    // A section has to READ as a group, or a long panel is one undifferentiated list of controls
+    // (audit 16 §2.10). The header gets the full eyebrow treatment and a rule; the fields below it
+    // drop to a quieter weight, so the eye lands on section names first and controls second.
+    <section className="flex flex-col gap-3 px-4 py-4">
+      <div className="flex items-center gap-2">
+        <h3 className="eyebrow shrink-0 text-foreground/70">{title}</h3>
+        <span className="h-px min-w-3 flex-1 bg-border/70" />
         {badge}
       </div>
-      {hint && <p className="-mt-1 text-[11px] leading-snug text-muted-foreground/80">{hint}</p>}
+      {hint && <p className="-mt-1.5 text-[11px] leading-snug text-muted-foreground/70">{hint}</p>}
       <div className="flex flex-col gap-3">{children}</div>
     </section>
   )
@@ -68,7 +70,7 @@ export function Field({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex min-h-5 items-center justify-between gap-2">
-        <Label className={cn('text-xs', isOverridden && 'text-foreground')}>
+        <Label className={cn('text-[11px] font-normal text-muted-foreground', isOverridden && 'text-foreground')}>
           {label}
           {isOverridden && <span className="ml-1 text-primary" aria-label="overridden">•</span>}
         </Label>

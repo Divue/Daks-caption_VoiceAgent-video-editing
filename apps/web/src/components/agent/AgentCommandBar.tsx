@@ -6,11 +6,16 @@ import { Input } from '@/components/ui/input'
 import type { MicStatus } from '@/hooks/useAgentActivity'
 import { MicButton } from './MicButton'
 
+/**
+ * Things this app can actually do. The previous set offered a zoom effect and a karaoke style,
+ * neither of which exists and neither of which is in scope — suggesting features we do not have is
+ * the same sin as drawing a timeline for an editor we are not building (audit 16 §1, §2.16).
+ */
 const SUGGESTIONS = [
-  'Make this word more dramatic',
-  'Highlight key moments',
-  'Add a zoom effect',
-  'Change to karaoke style',
+  'Emphasise the loudest word in each line',
+  'Make the angry lines shake harder',
+  'Switch to the Chamak preset',
+  'Bigger captions, higher up',
 ]
 
 interface AgentCommandBarProps {

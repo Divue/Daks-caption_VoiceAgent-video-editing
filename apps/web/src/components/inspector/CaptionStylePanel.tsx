@@ -69,43 +69,52 @@ export function CaptionStylePanel({ selectedWordId }: { selectedWordId: string |
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 flex-col gap-2 border-b border-border/60 px-4 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex rounded-md border border-border bg-muted/40 p-0.5" role="tablist">
-            <ScopeTab
-              active={scope === 'preset'}
-              onClick={() => setScope('preset')}
-              label="All captions"
-              detail={`${project.words.length} words`}
-            />
-            <ScopeTab
-              active={scope === 'word'}
-              onClick={() => setScope('word')}
-              label="This word"
-              detail={word ? word.text : 'none selected'}
-            />
-          </div>
-          {saving && <span className="text-[10px] text-muted-foreground">Saving…</span>}
+      {/*
+        The scope switch decides what a drag changes — the whole caption track or one word. It is
+        the most consequential control in the panel, so it is full width and loud, not the small
+        grey box-in-box it was (audit 16 §2.11).
+      */}
+      <div className="flex shrink-0 flex-col gap-2 border-b border-border/60 px-3 py-3">
+        <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted/50 p-1" role="tablist">
+          <ScopeTab
+            active={scope === 'preset'}
+            onClick={() => setScope('preset')}
+            label="All captions"
+            detail={`${project.words.length} words`}
+          />
+          <ScopeTab
+            active={scope === 'word'}
+            onClick={() => setScope('word')}
+            label="This word"
+            detail={word ? word.text : 'none selected'}
+          />
         </div>
 
-        {scope === 'preset' && (
-          <div className="flex items-center justify-between gap-2">
-            <p className="truncate text-[11px] text-muted-foreground">
-              Preset <span className="font-medium text-foreground">{preset.name}</span>
-              {isOverridden && ' — tweaked'}
-            </p>
-            {isOverridden && (
+        <div className="flex min-h-5 items-center justify-between gap-2 px-1">
+          <p className="truncate text-[11px] text-muted-foreground">
+            {scope === 'preset' ? (
+              <>
+                Preset <span className="font-medium text-foreground">{preset.name}</span>
+                {isOverridden && ' — tweaked'}
+              </>
+            ) : (
+              'Overrides just this word'
+            )}
+          </p>
+          <div className="flex items-center gap-2">
+            {saving && <span className="text-[10px] text-muted-foreground">Saving…</span>}
+            {scope === 'preset' && isOverridden && (
               <button
                 type="button"
                 onClick={reset}
-                className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+                className="flex items-center gap-1 rounded px-1 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
               >
                 <RotateCcw className="size-3" />
-                Reset preset
+                Reset
               </button>
             )}
           </div>
-        )}
+        </div>
       </div>
 
       {error && (
@@ -181,14 +190,16 @@ function ScopeTab({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        'flex min-w-0 flex-col items-start rounded-[5px] px-2.5 py-1 transition-colors',
-        active ? 'bg-background shadow-sm' : 'hover:bg-background/40',
+        'flex min-w-0 flex-col items-start rounded-md px-2.5 py-1.5 transition-colors',
+        active
+          ? 'bg-background shadow-sm ring-1 ring-primary/35'
+          : 'text-muted-foreground hover:bg-background/40',
       )}
     >
-      <span className={cn('text-[11px] font-medium', active ? 'text-foreground' : 'text-muted-foreground')}>
+      <span className={cn('text-xs font-medium', active ? 'text-foreground' : 'text-muted-foreground')}>
         {label}
       </span>
-      <span className="max-w-[9rem] truncate text-[10px] text-muted-foreground/80">{detail}</span>
+      <span className="w-full truncate text-left text-[10px] text-muted-foreground/70">{detail}</span>
     </button>
   )
 }

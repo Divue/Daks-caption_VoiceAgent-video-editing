@@ -1,26 +1,26 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { AudioLines, Camera, Type } from 'lucide-react'
+import { Minus, Plus } from 'lucide-react'
 import type { CaptionBlock, Word } from '@captions/shared'
-import { EditorToolbar } from '@/components/toolbar/EditorToolbar'
-import { CaptionTrack } from './CaptionTrack'
-import { MediaTrack } from './MediaTrack'
+import { CaptionRibbon } from './CaptionRibbon'
 import { Playhead } from './Playhead'
 import { TimeRuler } from './TimeRuler'
-import { TRACK_HEADER_WIDTH, TrackHeader } from './TrackHeader'
 import { usePlayback } from '@/state/playback-context'
+import { formatTimestamp } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 const MAX_PX_PER_MS = 0.5
 /** Auto-scroll re-centres once the playhead leaves this central band of the viewport. */
 const KEEP_VISIBLE_BAND = 0.6
 /** How long manual scrolling suspends auto-scroll. */
 const MANUAL_SCROLL_PAUSE_MS = 2500
+/** One press of the zoom buttons. */
+const ZOOM_STEP = 1.6
 
 interface TimelineProps {
   durationMs: number
-  width: number
-  height: number
   blocks: CaptionBlock[]
   wordsOf: (block: CaptionBlock) => Word[]
+  emphasisIds: Set<string>
   activeBlockId: string | null
   selectedWordId: string | null
   onSelectWord: (wordId: string) => void
@@ -28,13 +28,19 @@ interface TimelineProps {
   revealBlockId: string | null
 }
 
-/** Owns zoom and scroll, and nothing else. Time comes from PlaybackContext. */
+/**
+ * The caption ribbon: where the captions are, what tone they carry, where the playhead is.
+ *
+ * It owns zoom and scroll and nothing else; time comes from PlaybackContext. What it deliberately
+ * does NOT own any more is a track stack, a track-header gutter or an editing toolbar — see
+ * CaptionRibbon's header and audit 16 §1 for why those were a picture of a product we are not
+ * building.
+ */
 export function Timeline({
   durationMs,
-  width,
-  height,
   blocks,
   wordsOf,
+  emphasisIds,
   activeBlockId,
   selectedWordId,
   onSelectWord,
@@ -63,7 +69,19 @@ export function Timeline({
     return () => observer.disconnect()
   }, [])
 
-  const handleSeek = useCallback((ms: number) => seek(Math.max(0, Math.min(durationMs, ms))), [seek, durationMs])
+  const handleSeek = useCallback(
+    (ms: number) => seek(Math.max(0, Math.min(durationMs, ms))),
+    [seek, durationMs],
+  )
+
+  const zoomBy = useCallback(
+    (factor: number) => {
+      setPxPerMs((current) =>
+        Math.max(fitPxPerMs, Math.min(MAX_PX_PER_MS, (current ?? fitPxPerMs) * factor)),
+      )
+    },
+    [fitPxPerMs],
+  )
 
   // Auto-scroll while playing, suspended for a moment after any manual scroll so the two
   // do not fight each other.
@@ -89,68 +107,102 @@ export function Timeline({
     const block = blocks.find((candidate) => candidate.id === revealBlockId)
     if (!block) return
     manualScrollUntil.current = Date.now() + MANUAL_SCROLL_PAUSE_MS
-    element.scrollTo({ left: Math.max(0, block.startMs * effectiveZoom - element.clientWidth / 3), behavior: 'smooth' })
+    element.scrollTo({
+      left: Math.max(0, block.startMs * effectiveZoom - element.clientWidth / 3),
+      behavior: 'smooth',
+    })
   }, [revealBlockId, blocks, effectiveZoom])
 
-  const contentWidth = durationMs * effectiveZoom
+  const isZoomed = effectiveZoom > fitPxPerMs * 1.01
 
   return (
-    <div className="flex min-h-0 flex-col border-t bg-background">
-      <EditorToolbar
-        zoom={effectiveZoom}
-        minZoom={fitPxPerMs}
-        maxZoom={MAX_PX_PER_MS}
-        onZoomChange={(zoom) => setPxPerMs(zoom)}
-      />
-
-      <div className="flex min-h-0 flex-1">
-        {/* Fixed gutter of track headers, aligned to the tracks by matching heights. */}
-        <div className="flex shrink-0 flex-col" style={{ width: TRACK_HEADER_WIDTH }}>
-          <div className="h-7 shrink-0 border-r border-b bg-muted/40" />
-          <TrackHeader name="Captions" icon={Type} iconClassName="text-amber-600" />
-          <TrackHeader name="Video 1" icon={Camera} iconClassName="text-sunset-amber" />
-          <TrackHeader name="Audio 1" icon={AudioLines} iconClassName="text-sunset-red" />
-        </div>
-
-        <div
-          ref={scrollRef}
-          data-timeline-content
-          className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden"
-          onScroll={() => {
-            manualScrollUntil.current = Date.now() + MANUAL_SCROLL_PAUSE_MS
-          }}
-        >
-          <div className="relative" style={{ width: contentWidth }}>
-            <TimeRuler durationMs={durationMs} pxPerMs={effectiveZoom} onSeek={handleSeek} />
-            <CaptionTrack
-              blocks={blocks}
-              wordsOf={wordsOf}
-              pxPerMs={effectiveZoom}
-              durationMs={durationMs}
-              activeBlockId={activeBlockId}
-              selectedWordId={selectedWordId}
-              onSelectWord={onSelectWord}
-              onSeek={handleSeek}
-            />
-            <MediaTrack
-              label="Video 1"
-              durationMs={durationMs}
-              pxPerMs={effectiveZoom}
-              detail={`${width}×${height}`}
-              variant="video"
-              onSeek={handleSeek}
-            />
-            <MediaTrack
-              label="Audio 1"
-              durationMs={durationMs}
-              pxPerMs={effectiveZoom}
-              variant="audio"
-              onSeek={handleSeek}
-            />
-            <Playhead timeMs={timeMs} pxPerMs={effectiveZoom} durationMs={durationMs} onSeek={handleSeek} />
+    <div className="flex min-h-0 shrink-0 flex-col border-t border-border/60 bg-card">
+      <div className="flex h-8 shrink-0 items-center justify-between gap-3 px-3">
+        <span className="eyebrow text-muted-foreground">Captions over time</span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
+            {formatTimestamp(timeMs)}
+          </span>
+          <div className="flex items-center rounded-md border border-border/70">
+            <ZoomButton label="Zoom out" onClick={() => zoomBy(1 / ZOOM_STEP)} disabled={!isZoomed}>
+              <Minus className="size-3" />
+            </ZoomButton>
+            <button
+              type="button"
+              onClick={() => setPxPerMs(null)}
+              disabled={!isZoomed}
+              className="h-6 border-x border-border/70 px-2 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+            >
+              Fit
+            </button>
+            <ZoomButton
+              label="Zoom in"
+              onClick={() => zoomBy(ZOOM_STEP)}
+              disabled={effectiveZoom >= MAX_PX_PER_MS}
+            >
+              <Plus className="size-3" />
+            </ZoomButton>
           </div>
         </div>
       </div>
+
+      <div
+        ref={scrollRef}
+        data-timeline-content
+        className="relative min-w-0 flex-1 overflow-x-auto overflow-y-hidden"
+        onScroll={() => {
+          manualScrollUntil.current = Date.now() + MANUAL_SCROLL_PAUSE_MS
+        }}
+      >
+        <div className="relative" style={{ width: durationMs * effectiveZoom }}>
+          <TimeRuler durationMs={durationMs} pxPerMs={effectiveZoom} onSeek={handleSeek} />
+          <CaptionRibbon
+            blocks={blocks}
+            wordsOf={wordsOf}
+            emphasisIds={emphasisIds}
+            pxPerMs={effectiveZoom}
+            durationMs={durationMs}
+            activeBlockId={activeBlockId}
+            selectedWordId={selectedWordId}
+            onSelectWord={onSelectWord}
+            onSeek={handleSeek}
+          />
+          <Playhead
+            timeMs={timeMs}
+            pxPerMs={effectiveZoom}
+            durationMs={durationMs}
+            onSeek={handleSeek}
+          />
+        </div>
+      </div>
     </div>
+  )
+}
+
+function ZoomButton({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  disabled: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'flex h-6 w-6 items-center justify-center text-muted-foreground transition-colors',
+        'hover:text-foreground disabled:opacity-40',
+      )}
+    >
+      {children}
+    </button>
   )
 }

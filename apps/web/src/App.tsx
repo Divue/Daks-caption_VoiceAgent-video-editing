@@ -138,7 +138,7 @@ function App() {
               />
             </CollapsiblePanel>
 
-            <section className="flex min-h-[320px] min-w-0 flex-1 flex-col p-4 lg:min-h-0">
+            <section className="flex min-h-[320px] min-w-0 flex-1 flex-col lg:min-h-0">
               <VideoStage
                 src={localPreviewUrl ?? project.videoUrl}
                 width={project.width}
@@ -199,10 +199,9 @@ function App() {
 
           <Timeline
             durationMs={project.durationMs}
-            width={project.width}
-            height={project.height}
             blocks={blocks}
             wordsOf={wordsOf}
+            emphasisIds={emphasis.ids}
             activeBlockId={activeBlockId}
             selectedWordId={selectedWordId}
             onSelectWord={select}

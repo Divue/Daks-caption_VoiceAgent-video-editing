@@ -6,7 +6,7 @@ import uuid
 
 def build_project(
     *, video_url: str, duration_ms: int, width: int, height: int,
-    words: list[dict], preset_id: str = "kathmandu", project_id: str | None = None,
+    words: list[dict], preset_id: str = "rangmanch", project_id: str | None = None,
 ) -> dict:
     return {
         "id": project_id or uuid.uuid4().hex[:12],

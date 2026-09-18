@@ -4,9 +4,24 @@ import { useProject } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
 import { isApiError, patchProject } from '@/lib/api'
 import { Project, PRESETS } from '@captions/shared'
-import type { PresetId, Style } from '@captions/shared'
+import type { Preset, PresetId, Word } from '@captions/shared'
+import { glowWrapperCss, resolveWordStyle, styleToCss } from '@/lib/caption-style'
 
-const PREVIEW_SCALE = 0.35
+/**
+ * The swatch renders through the REAL resolver at a small frame width, so what a card shows is
+ * what the preview draws — including the italic face, the tracking and the emphasis scale, which
+ * a hand-rolled style object silently dropped. `Style.fontSize` is px at 1080p, so passing the
+ * swatch's own width as the frame width scales every preset by the same honest factor.
+ */
+const PREVIEW_FRAME_WIDTH = 300
+
+const PREVIEW_SETTINGS = { emojis: false, emotionLayer: false }
+
+function sampleWord(id: string, text: string, emphasis: boolean): Word {
+  return { id, text, startMs: 0, endMs: 1, emphasis, emotion: 'neutral', stretch: 1 }
+}
+
+const SAMPLE_WORDS = [sampleWord('a', 'suno', false), sampleWord('b', 'bhai', true)]
 
 export function PresetPicker() {
   const { project, dispatch } = useProject()
@@ -66,7 +81,7 @@ export function PresetPicker() {
                 {preset.wordsPerLine} words/line
               </span>
             </div>
-            <PresetPreview style={preset.base} />
+            <PresetPreview preset={preset} />
           </button>
         )
       })}
@@ -74,19 +89,17 @@ export function PresetPicker() {
   )
 }
 
-function PresetPreview({ style }: { style: Style }) {
+function PresetPreview({ preset }: { preset: Preset }) {
   return (
-    <div
-      className="flex h-16 items-center justify-center overflow-hidden rounded-md bg-black/85 px-2 text-center"
-      style={{
-        fontFamily: style.fontFamily,
-        fontSize: style.fontSize * PREVIEW_SCALE,
-        color: style.color,
-        fontWeight: style.weight,
-        textTransform: style.uppercase ? 'uppercase' : 'none',
-      }}
-    >
-      Hellooooo bhai
+    <div className="flex h-20 items-center justify-center gap-[0.28em] overflow-hidden rounded-md bg-black/85 px-2 text-center">
+      {SAMPLE_WORDS.map((word) => {
+        const style = resolveWordStyle(word, preset, PREVIEW_SETTINGS, PREVIEW_FRAME_WIDTH)
+        return (
+          <span key={word.id} style={{ ...glowWrapperCss(style), display: 'inline-block' }}>
+            <span style={{ ...styleToCss(style), display: 'inline-block' }}>{word.text}</span>
+          </span>
+        )
+      })}
     </div>
   )
 }

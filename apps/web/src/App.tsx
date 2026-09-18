@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { AgentActivityPanel } from '@/components/agent/AgentActivityPanel'
 import { AgentCommandBar } from '@/components/agent/AgentCommandBar'
-import { WordInspector } from '@/components/inspector/WordInspector'
+import { CaptionStylePanel } from '@/components/inspector/CaptionStylePanel'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { CaptionRenderer } from '@/components/preview/CaptionRenderer'
@@ -18,6 +18,7 @@ import { findBlockIndexAt, useCaptionBlocks } from '@/hooks/useCaptionBlocks'
 import { useSelection } from '@/hooks/useSelection'
 import { useUndoRedoShortcuts } from '@/hooks/useUndoRedoShortcuts'
 import { usePlayback } from '@/state/playback-context'
+import { usePresetOverride } from '@/state/preset-override-context'
 import { useProject } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
 import { useWordPatch } from '@/state/word-patch-context'
@@ -29,6 +30,7 @@ function App() {
   const { selectedWordId, select } = useSelection()
   const { entries, addEntry } = useAgentActivity()
   const { patch: patchWord, patchWords } = useWordPatch()
+  const { preset } = usePresetOverride()
   const [micStatus, setMicStatus] = useState<MicStatus>('idle')
 
   // A view preference, not project data: local state, never Project.settings (a schema
@@ -124,6 +126,7 @@ function App() {
                     blocks={blocks}
                     wordsOf={wordsOf}
                     project={project}
+                    preset={preset}
                     timeMs={timeMs}
                     frameWidth={frameWidth}
                     selectedWordId={selectedWordId}
@@ -135,13 +138,13 @@ function App() {
             <CollapsiblePanel name="stylePanel" side="right" title="style panel" width="lg:w-[320px] w-full">
               <Tabs defaultValue="inspector" className="flex h-full min-h-0 flex-col">
                 <TabsList className="grid w-full shrink-0 grid-cols-3">
-                  <TabsTrigger value="inspector">Inspector</TabsTrigger>
+                  <TabsTrigger value="inspector">Style</TabsTrigger>
                   <TabsTrigger value="presets">Presets</TabsTrigger>
                   <TabsTrigger value="agent">Agent Log</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="inspector" className="min-h-0 flex-1 overflow-y-auto">
-                  <WordInspector selectedWordId={selectedWordId} />
+                <TabsContent value="inspector" className="min-h-0 flex-1 overflow-hidden">
+                  <CaptionStylePanel selectedWordId={selectedWordId} />
                 </TabsContent>
                 <TabsContent value="presets" className="min-h-0 flex-1 overflow-y-auto">
                   <PresetPicker />

@@ -6,6 +6,7 @@ import { getProject, isApiError, startProcess } from '@/lib/api'
 import type { ApiError } from '@/lib/api'
 import { ProjectLoader } from '@/components/editor/ProjectLoader'
 import { PlaybackProvider } from '@/state/playback-context'
+import { PresetOverrideProvider } from '@/state/preset-override-context'
 import { ProjectProvider } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
 import { WordPatchProvider } from '@/state/word-patch-context'
@@ -83,8 +84,11 @@ export function EditorBootstrap() {
     <ProjectProvider initial={state.project}>
       <PlaybackProvider>
         <WordPatchProvider>
-          <ProjectLoader onReloaded={reload} />
-          <App />
+          {/* Reads project.presetId, so it mounts inside ProjectProvider. */}
+          <PresetOverrideProvider>
+            <ProjectLoader onReloaded={reload} />
+            <App />
+          </PresetOverrideProvider>
         </WordPatchProvider>
       </PlaybackProvider>
     </ProjectProvider>

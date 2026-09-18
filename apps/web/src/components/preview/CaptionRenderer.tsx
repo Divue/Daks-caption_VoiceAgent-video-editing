@@ -1,13 +1,24 @@
 import { useMemo } from 'react'
-import type { CaptionBlock, Project, Word } from '@captions/shared'
-import { PRESETS } from '@captions/shared'
+import type { CaptionBlock, Preset, Project, Word } from '@captions/shared'
 import { findBlockIndexAt } from '@/hooks/useCaptionBlocks'
-import { renderedText, resolveWordStyle, styleToCss } from '@/lib/caption-style'
+import {
+  glowWrapperCss,
+  renderedText,
+  resolveWordStyle,
+  revealOpacity,
+  styleToCss,
+} from '@/lib/caption-style'
 
 interface CaptionRendererProps {
   blocks: CaptionBlock[]
   wordsOf: (block: CaptionBlock) => Word[]
   project: Project
+  /**
+   * The preset to draw with. Passed in rather than read from PRESETS[project.presetId] so the
+   * style panel's session-level preset tweaks reach the preview without this component growing a
+   * context dependency (see the PROPS ONLY note below).
+   */
+  preset: Preset
   timeMs: number
   /** Real rendered width of the video frame; caption sizes are px at 1080p and scale from it. */
   frameWidth: number
@@ -25,12 +36,11 @@ export function CaptionRenderer({
   blocks,
   wordsOf,
   project,
+  preset,
   timeMs,
   frameWidth,
   selectedWordId,
 }: CaptionRendererProps) {
-  const preset = PRESETS[project.presetId]
-
   const active = useMemo(() => {
     const index = findBlockIndexAt(blocks, timeMs)
     return index === -1 ? null : blocks[index]
@@ -67,6 +77,7 @@ export function CaptionRenderer({
             key={word.id}
             word={word}
             project={project}
+            preset={preset}
             frameWidth={frameWidth}
             timeMs={timeMs}
             isSelected={word.id === selectedWordId}
@@ -80,24 +91,29 @@ export function CaptionRenderer({
 function CaptionWord({
   word,
   project,
+  preset,
   frameWidth,
   timeMs,
   isSelected,
 }: {
   word: Word
   project: Project
+  preset: Preset
   frameWidth: number
   timeMs: number
   isSelected: boolean
 }) {
-  const preset = PRESETS[project.presetId]
   const style = useMemo(
     () => resolveWordStyle(word, preset, project.settings, frameWidth),
     [word, preset, project.settings, frameWidth],
   )
 
   const isActive = timeMs >= word.startMs && timeMs < word.endMs
-  const text = renderedText(word)
+  const text = renderedText(word, preset.stretch)
+
+  // Words already spoken stay fully visible; only the ones ahead of the playhead follow the
+  // preset's reveal mode (audit 14 §5 — it is per template, not global).
+  const opacity = revealOpacity(preset.reveal, timeMs >= word.startMs)
 
   // Angry's shake is a real px amplitude from EMOTION_STYLES. Driven off the clock so it is
   // deterministic at a given time rather than a CSS animation drifting against the video.
@@ -109,20 +125,29 @@ function CaptionWord({
         }
       : null
 
+  // Gradient text needs its halo as a wrapper filter, never a text-shadow — see glowWrapperCss.
+  const wrapper = glowWrapperCss(style)
+
+  const glyphs = (
+    <span style={{ ...styleToCss(style), display: 'inline-block' }}>
+      {text}
+      {project.settings.emojis && word.emoji ? ` ${word.emoji}` : ''}
+    </span>
+  )
+
   return (
     <span
       style={{
-        ...styleToCss(style),
+        ...wrapper,
         display: 'inline-block',
-        opacity: isActive ? 1 : 0.55,
+        opacity,
         transform: shakeOffset ? `translate(${shakeOffset.x}px, ${shakeOffset.y}px)` : undefined,
         outline: isSelected ? '2px solid rgba(99,102,241,0.9)' : undefined,
         outlineOffset: '2px',
         borderRadius: isSelected ? '4px' : undefined,
       }}
     >
-      {text}
-      {project.settings.emojis && word.emoji ? ` ${word.emoji}` : ''}
+      {glyphs}
     </span>
   )
 }

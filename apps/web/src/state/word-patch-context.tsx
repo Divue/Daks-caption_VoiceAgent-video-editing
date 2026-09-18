@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useWordPatchState } from '@/hooks/useWordPatch'
 import type { PatchState } from '@/hooks/useWordPatch'
 import type { Word } from '@captions/shared'
+import type { StyleChange } from '@/lib/style-change'
 
 /**
  * One writer for the whole editor.
@@ -19,6 +20,8 @@ import type { Word } from '@captions/shared'
 interface WordPatchValue extends PatchState {
   patch: (wordId: string, fields: Partial<Word>) => void
   patchWords: (wordIds: string[], fields: Partial<Word>) => void
+  /** Per-key style override edit; an explicit null in `change` removes that key. */
+  patchStyle: (wordIds: string[], change: StyleChange) => void
   clearError: () => void
 }
 

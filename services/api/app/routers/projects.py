@@ -45,7 +45,7 @@ def _version_headers(response: Response, version: int, schema_version: int) -> N
 class CreateProject(BaseModel):
     filename: str = Field(min_length=1, max_length=200)
     contentType: str = Field(pattern=r"^video/[\w.+-]+$")
-    presetId: PresetId = "kathmandu"
+    presetId: PresetId = "rangmanch"
 
 
 @router.post("", status_code=201)

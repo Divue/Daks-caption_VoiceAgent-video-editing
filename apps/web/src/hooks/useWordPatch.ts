@@ -3,6 +3,7 @@ import { Project } from '@captions/shared'
 import type { Word } from '@captions/shared'
 import { getProject, isApiError, patchWord } from '@/lib/api'
 import type { ApiError, WordPatch } from '@/lib/api'
+import type { StyleChange } from '@/lib/style-change'
 import { useProject } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
 
@@ -32,6 +33,7 @@ export interface PatchState {
 export function useWordPatchState(): PatchState & {
   patch: (wordId: string, fields: Partial<Word>) => void
   patchWords: (wordIds: string[], fields: Partial<Word>) => void
+  patchStyle: (wordIds: string[], change: StyleChange) => void
   clearError: () => void
 } {
   const { dispatch } = useProject()
@@ -150,9 +152,46 @@ export function useWordPatchState(): PatchState & {
     [projectId, dispatch, setVersion, enqueue],
   )
 
+  /**
+   * A per-key edit to the style override of one or more words.
+   *
+   * Separate from `patchWords` because a style override MERGES per key on both sides — the
+   * reducer and the server — while every other word field replaces. Passing a whole `style`
+   * object through `patchWords` cannot express "remove this one key": the old panel wrote
+   * `undefined` for a cleared field, `JSON.stringify` dropped it, and the removal never left the
+   * browser. `StyleChange` carries an explicit `null` instead, which survives serialisation and
+   * is exactly what the API's `_merge_style` treats as a removal.
+   *
+   * It shares the one queue, so a preset-scope edit across N words is still N ordered PATCHes
+   * carrying the version each previous write returned.
+   */
+  const patchStyle = useCallback(
+    (wordIds: string[], change: StyleChange) => {
+      if (wordIds.length === 0 || Object.keys(change).length === 0) return
+      dispatch({ type: 'PATCH_WORDS_STYLE', wordIds, change })
+      setError(null)
+      if (!projectId) return
+
+      enqueue(async () => {
+        for (const wordId of wordIds) {
+          const { version: next } = await patchWord(
+            projectId,
+            wordId,
+            { style: change },
+            versionRef.current,
+            controllerRef.current?.signal,
+          )
+          versionRef.current = next
+        }
+        setVersion(versionRef.current)
+      })
+    },
+    [projectId, dispatch, setVersion, enqueue],
+  )
+
   const clearError = useCallback(() => setError(null), [])
 
-  return { saving, error, patch, patchWords, clearError }
+  return { saving, error, patch, patchWords, patchStyle, clearError }
 }
 
 /**
@@ -171,7 +210,9 @@ function toWordPatch(fields: Partial<Word>): WordPatch {
   if (fields.emotion !== undefined) body.emotion = fields.emotion
   if (fields.stretch !== undefined) body.stretch = fields.stretch
   if (fields.single !== undefined) body.single = fields.single === true ? true : null
-  if (fields.emoji !== undefined) body.emoji = fields.emoji
+  // '' is the editor's "cleared" value; null is what the API removes a key on. Same shape as
+  // `single` above, and for the same reason: undefined would be dropped by JSON.stringify.
+  if (fields.emoji !== undefined) body.emoji = fields.emoji === '' ? null : fields.emoji
   if (fields.style !== undefined) body.style = fields.style ?? null
   return body
 }

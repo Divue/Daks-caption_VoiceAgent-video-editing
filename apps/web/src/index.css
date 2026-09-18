@@ -123,3 +123,126 @@
     @apply bg-background text-foreground;
     }
 }
+
+/*
+ * Landing page design tokens (src/pages/LandingPage.tsx, src/components/VoiceSphere.tsx).
+ * Ported from the standalone voice-video-editor prototype's tailwind.config.ts (a Tailwind v3
+ * JS config) into this project's Tailwind v4 CSS-based theme. Namespaced under names (canvas,
+ * ink-*, signal, precision, display/heading/body/label/mono-sm) that don't overlap the shadcn
+ * tokens above, so the editor's look is unaffected — see design.md for the source spec.
+ */
+@theme {
+  --color-canvas: #0a0a0c;
+  --color-surface: #111114;
+  --color-surface-raised: #18181c;
+  --color-overlay: #1e1e23;
+  --color-line: #33333a;
+  --color-line-subtle: #242429;
+  --color-line-default: #33333a;
+  --color-ink-primary: #f5f5f7;
+  --color-ink-secondary: #a3a3ad;
+  --color-ink-tertiary: #6b6b75;
+  --color-signal: #ff6b4a;
+  --color-signal-dim: #5c2a20;
+  --color-precision: #4adede;
+  --color-precision-dim: #123b3b;
+  --color-success: #5fd87a;
+  --color-warning: #f5b84a;
+  --color-danger: #f0503c;
+
+  --font-display: "General Sans", "Inter", sans-serif;
+
+  --text-display-xl: 4.5rem;
+  --text-display-xl--line-height: 1.05;
+  --text-display-xl--letter-spacing: -0.03em;
+  --text-display-xl--font-weight: 600;
+  --text-display-lg: 3.5rem;
+  --text-display-lg--line-height: 1.08;
+  --text-display-lg--letter-spacing: -0.03em;
+  --text-display-lg--font-weight: 600;
+  --text-display-md: 2.5rem;
+  --text-display-md--line-height: 1.12;
+  --text-display-md--letter-spacing: -0.02em;
+  --text-display-md--font-weight: 600;
+  --text-heading-lg: 1.75rem;
+  --text-heading-lg--line-height: 1.25;
+  --text-heading-lg--font-weight: 600;
+  --text-heading-md: 1.25rem;
+  --text-heading-md--line-height: 1.3;
+  --text-heading-md--font-weight: 600;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.6;
+  --text-body-md: 1rem;
+  --text-body-md--line-height: 1.6;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.5;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.2;
+  --text-label--font-weight: 500;
+  --text-label--letter-spacing: 0.04em;
+  --text-mono-sm: 0.8125rem;
+  --text-mono-sm--line-height: 1.4;
+
+  --shadow-soft: 0 20px 60px -20px rgba(0, 0, 0, 0.5);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-pulse-ring: pulse-ring 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  --animate-glow-drift: glow-drift 8s ease-in-out infinite;
+  --animate-fade-up: fade-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Named "landing-enter", not "enter" — tw-animate-css (imported above) already defines its
+     own @keyframes enter with only a 0% frame; same-named keyframes don't merge, the last one
+     registered wins outright, so reusing "enter" silently drops our 100% end state and every
+     animate-enter element snaps back to its plain (opacity-20, etc.) base style at rest. */
+  --animate-landing-enter: landing-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-scroll-bounce: scroll-bounce 1.8s ease-in-out infinite;
+  --animate-twinkle: twinkle 3s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.45; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes glow-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(2%, -3%); }
+}
+@keyframes fade-up {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes landing-enter {
+  0% { opacity: 0; transform: translateY(14px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes scroll-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(5px); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.6; }
+}
+
+/* Not a themeable Tailwind v4 namespace, so plain utility classes instead of @theme. */
+.bg-grid-texture {
+  background-image:
+    linear-gradient(to right, rgba(245, 245, 247, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 245, 247, 0.05) 1px, transparent 1px);
+}
+.bg-grid {
+  background-size: 40px 40px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-ring,
+  .animate-glow-drift,
+  .animate-landing-enter,
+  .animate-scroll-bounce {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .animate-twinkle {
+    animation: none !important;
+  }
+}

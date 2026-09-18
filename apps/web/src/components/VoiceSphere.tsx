@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 import { createProgram, generateSphereBuffers, rotationMat3 } from "../lib/webgl";
 import { smoothTowards, clamp } from "../lib/smoothing";
 import { useMicAnalyser } from "../hooks/useMicAnalyser";
@@ -17,66 +16,183 @@ uniform float uScale;
 uniform float uStretch;
 uniform float uDisplacement;
 uniform float uAudioLevel;
+uniform float uAudioBass;
+uniform float uAudioMid;
+uniform float uAudioTreble;
+uniform float uShake;
 uniform float uPixelRatio;
 uniform float uAspect;
 uniform float uSizeBase;
-uniform float uTreble;
+uniform float uRenderScale;
 uniform vec2 uPointerNDC;
 
 varying float vBrightness;
 varying float vTint;
 
+/* Classic 3D simplex noise (Ashima Arts / Ian McEwan, webgl-noise —
+   public-domain-style reference implementation, no texture lookups,
+   commonly inlined directly in shaders like this rather than pulled in
+   as a library). Used below for spatially-coherent particle displacement:
+   nearby particles sample nearby noise values and move together, so the
+   sphere bulges in clusters instead of moving as one rigid body or as
+   fully independent random dots. */
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
+vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+float snoise(vec3 v) {
+  const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+  const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+
+  vec3 i  = floor(v + dot(v, C.yyy));
+  vec3 x0 = v - i + dot(i, C.xxx);
+
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min(g.xyz, l.zxy);
+  vec3 i2 = max(g.xyz, l.zxy);
+
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy;
+  vec3 x3 = x0 - D.yyy;
+
+  i = mod289(i);
+  vec4 p = permute(permute(permute(
+             i.z + vec4(0.0, i1.z, i2.z, 1.0))
+           + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+           + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+
+  float n_ = 0.142857142857;
+  vec3 ns = n_ * D.wyz - D.xzx;
+
+  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_);
+
+  vec4 x = x_ * ns.x + ns.yyyy;
+  vec4 y = y_ * ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+
+  vec4 b0 = vec4(x.xy, y.xy);
+  vec4 b1 = vec4(x.zw, y.zw);
+
+  vec4 s0 = floor(b0) * 2.0 + 1.0;
+  vec4 s1 = floor(b1) * 2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+
+  vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+  vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+
+  vec3 p0 = vec3(a0.xy, h.x);
+  vec3 p1 = vec3(a0.zw, h.y);
+  vec3 p2 = vec3(a1.xy, h.z);
+  vec3 p3 = vec3(a1.zw, h.w);
+
+  vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+
+  vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+}
+
 void main() {
+  vec3 n = normalize(aPosition);
+
+  /* Idle micro-sparkle: tiny, cosmetic, always-on surface shimmer along
+     each particle's own direction. This is NOT the deformation mechanism —
+     just a small resting-state texture, same role as before. */
   float a1 = aPosition.x * 3.1 + uTime * 0.5 + aSeed * 6.28318;
   float a2 = aPosition.y * 4.3 - uTime * 0.38 + aSeed * 6.28318;
   float a3 = aPosition.z * 5.1 + uTime * 0.34 + aSeed * 6.28318;
-  float rippleNoise = (sin(a1) + sin(a2) + sin(a3)) / 3.0;
+  float idleSparkle = (sin(a1) + sin(a2) + sin(a3)) / 3.0;
 
   float shellRadius = mix(1.0, 0.66, aShell);
-  float audioRipple = uAudioLevel * 0.045;
-  float radius = shellRadius + rippleNoise * uDisplacement + audioRipple;
+  vec3 basePos = n * (shellRadius + idleSparkle * uDisplacement);
 
-  vec3 displaced = aPosition * radius;
+  /* Primary voice/shake/cursor reaction: a genuine 3D coherent VECTOR flow
+     field, not a radial scale. Earlier versions multiplied a scalar noise
+     value onto each particle's own fixed direction (radius = base + k; pos
+     = n * radius) — every particle's angular position was permanently
+     frozen, so no matter how large k got, the result still read as "an
+     invisible sphere being inflated." That is exactly the artifact this
+     rewrite removes: there is no radius variable and no per-particle
+     direction constraint anywhere below. Each axis of the flow is sampled
+     from an independent noise channel, so displacement can point sideways
+     /tangentially just as easily as in or out — regions can bulge while a
+     neighboring region pulls inward or sideways, and the silhouette itself
+     reshapes asymmetrically, matching the reference video. Particles are
+     free to travel however far this field takes them; they simply relax
+     back toward basePos as the driving energy fades (see uAudio* uniforms,
+     which are already smoothed/sprung in JS) — there is no maximum-radius
+     clamp, bounding sphere, or clipping of any kind here or anywhere else
+     in this file. */
+  vec3 lowFlow = vec3(
+    snoise(n * 1.1 + vec3(0.0, 0.0, uTime * 0.09)),
+    snoise(n * 1.1 + vec3(31.7, 6.0, uTime * 0.09)),
+    snoise(n * 1.1 + vec3(6.0, 57.3, uTime * 0.09))
+  );
+  vec3 highFlow = vec3(
+    snoise(n * 3.4 + vec3(11.0, 4.0, uTime * 0.3)),
+    snoise(n * 3.4 + vec3(4.0, 23.0, uTime * 0.3)),
+    snoise(n * 3.4 + vec3(23.0, 11.0, uTime * 0.3))
+  );
+
+  float particleVariance = 0.7 + 0.6 * aSeed;
+  vec3 voiceFlow = (
+    lowFlow * (uAudioBass * 0.55 + uAudioLevel * 0.22) +
+    highFlow * (uAudioTreble + uAudioMid * 0.6) * 0.34 +
+    highFlow * uShake * 0.4
+  ) * particleVariance;
+
+  vec3 displaced = basePos + voiceFlow;
   vec3 rotated = uRotation * displaced;
 
   vec3 world = rotated * uScale;
   world.x *= (1.0 + uStretch);
   world.y *= (1.0 - uStretch * 0.55);
 
-  /* Primary voice reaction: per-particle vertical bob, phase-shifted per
-     particle so the motion reads as a live wave across the field rather
-     than the whole sphere translating as one rigid body. */
-  float bobPhase = aSeed * 6.28318 + uTime * 2.4 + aPosition.x * 2.2;
-  float bobAmount = (0.55 + aSeed * 0.9);
-  world.y += sin(bobPhase) * uAudioLevel * 0.34 * bobAmount;
-
   float cameraDistance = 2.6;
   float focal = 2.1;
 
   float viewZ0 = world.z + cameraDistance;
   float perspective0 = focal / viewZ0;
-  vec2 screen0 = world.xy * perspective0;
+  /* uRenderScale shrinks only the on-screen position, not perspective/depth
+     itself (that stays below, unscaled, for gl_PointSize/vBrightness) — see
+     JS side for why: the canvas is now much bigger than the sphere's visual
+     footprint so displaced particles have room before hitting its edge, and
+     this puts the sphere back to its original apparent size within it. */
+  vec2 screen0 = world.xy * perspective0 * uRenderScale;
   screen0.x *= uAspect;
 
   float pointerDist = distance(screen0, uPointerNDC);
   float pointerProx = smoothstep(0.4, 0.0, pointerDist);
+  /* Cursor uses the same flow-field principle as voice — a local push along
+     the coherent noise direction, not a fixed radial or axis-aligned nudge —
+     plus a small toward-camera pull for a tactile parallax cue. */
+  world += highFlow * pointerProx * 0.09;
   world.z -= pointerProx * 0.16;
 
   float viewZ = world.z + cameraDistance;
   float perspective = focal / viewZ;
-  vec2 screen = world.xy * perspective;
+  vec2 screen = world.xy * perspective * uRenderScale;
   screen.x *= uAspect;
   gl_Position = vec4(screen, 0.0, 1.0);
 
   float depthFactor = clamp((perspective - 0.55) / 0.5, 0.0, 1.0);
   float sizeVariance = 0.6 + aSeed * 0.8;
-  float sparkle = 1.0 + uTreble * aSeed * 0.9;
+  float sparkle = 1.0 + uAudioTreble * aSeed * 0.9;
   float sizeAudio = 1.0 + uAudioLevel * 0.5;
   gl_PointSize = uSizeBase * sizeVariance * depthFactor * perspective * uPixelRatio * sparkle * sizeAudio;
 
-  float shellDim = mix(1.0, 0.55, aShell);
+  float shellDim = mix(1.0, 0.6, aShell);
   float brightnessAudio = 1.0 + uAudioLevel * 0.4 + pointerProx * 0.25;
-  vBrightness = (0.35 + depthFactor * 0.85) * shellDim * brightnessAudio;
+  vBrightness = (0.4 + depthFactor * 0.75) * shellDim * brightnessAudio;
   vTint = aTint;
 }
 `;
@@ -95,6 +211,8 @@ void main() {
   float falloff = smoothstep(0.5, 0.0, dist);
   if (falloff <= 0.001) discard;
 
+  // uColorAccent is a brighter warm-white highlight, not a different hue —
+  // reference sphere is monochrome ivory with a few brighter "hero" dots.
   vec3 color = vTint > 0.85 ? uColorAccent : uColorNeutral;
   float alpha = falloff * vBrightness * uGlobalAlpha;
   gl_FragColor = vec4(color * vBrightness, alpha);
@@ -103,14 +221,25 @@ void main() {
 
 const OUTER_COUNT = 3200;
 const INNER_COUNT = 700;
-const BASE_POINT_SIZE = 8.5;
+const BASE_POINT_SIZE = 8.8;
 
-// Sphere stays on the single approved accent (design.md --accent-signal);
-// only the four hero controls use the reference's per-control hues (see
-// design.md §12).
-const DIM = 0.55;
-const COLOR_NEUTRAL: [number, number, number] = [0.82 * DIM, 0.83 * DIM, 0.88 * DIM];
-const COLOR_ACCENT: [number, number, number] = [1.0 * DIM, 0.42 * DIM, 0.29 * DIM];
+// The canvas element is CANVAS_FRACTION of the stage width (see JSX below);
+// the sphere is tuned to visually fill roughly SPHERE_FRACTION of the stage.
+// RENDER_SCALE shrinks the projected position (not perspective/depth) so
+// the resting sphere keeps that same apparent size inside the now much
+// larger, mostly-empty canvas — the extra room is what displaced particles
+// move into instead of hitting the canvas's own rectangular edge.
+const CANVAS_FRACTION = 0.58;
+const SPHERE_FRACTION = 0.3;
+const RENDER_SCALE = SPHERE_FRACTION / CANVAS_FRACTION;
+
+// Reference sphere reads as a bright, warm-white/ivory particle field, not
+// the project's orange signal accent — the sphere is a deliberate exception,
+// kept monochrome so it doesn't compete with the four hero controls' colors.
+// Standard alpha blending (see draw call below) means brightness here comes
+// straight from these values, not from a workaround dim/glow multiplier.
+const COLOR_NEUTRAL: [number, number, number] = [0.92, 0.88, 0.79];
+const COLOR_ACCENT: [number, number, number] = [1.0, 0.97, 0.88];
 
 const MIC_ACCENT = "#8B98F0"; // matches STRETCH — reference's mic ring is the same blue-violet
 
@@ -134,7 +263,7 @@ const EFFECT_RELEASE: Record<EffectKey, number> = {
 interface ControlSpec {
   label: string;
   effect: EffectKey;
-icon: (props: { className?: string }) => ReactElement;
+  icon: (props: { className?: string }) => ReactElement;
   color: string;
   css: string;
   anchor: { x: number; y: number };
@@ -239,7 +368,7 @@ function ControlButton({
     <button
       type="button"
       onClick={onTrigger}
-      className={`${motionSafe ? "animate-enter" : ""} pointer-events-auto group inline-flex cursor-pointer select-none items-center gap-2.5 rounded-full border bg-surface/60 py-2 pl-2 pr-4 backdrop-blur-md transition-all duration-200 ease-out-expo hover:-translate-y-0.5 hover:brightness-125 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas`}
+      className={`${motionSafe ? "animate-landing-enter" : ""} pointer-events-auto group inline-flex cursor-pointer select-none items-center gap-2.5 rounded-full border bg-surface/60 py-2 pl-2 pr-4 backdrop-blur-md transition-all duration-200 ease-out-expo hover:-translate-y-0.5 hover:brightness-125 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas`}
       style={{
         borderColor: hexToRgba(spec.color, active ? 0.6 : 0.32),
         boxShadow: active ? `0 0 16px -6px ${hexToRgba(spec.color, 0.55)}` : undefined,
@@ -278,6 +407,10 @@ export function VoiceSphere() {
   const [motionSafe] = useState(() => !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 
   const effectsRef = useRef<Record<EffectKey, number>>({ shake: 0, stretch: 0, scaleUp: 0, glow: 0 });
+  // Underdamped spring on top of the hook's smoothed level: lets the field
+  // settle back past resting by a touch (a slight "contract") before it
+  // comes to rest, instead of a flat exponential decay to zero.
+  const levelSpring = useRef({ pos: 0, vel: 0 });
   const pointerTiltTarget = useRef({ x: 0, y: 0 });
   const pointerTilt = useRef({ x: 0, y: 0 });
   const pointerNdcTarget = useRef({ x: 10, y: 10 });
@@ -339,10 +472,14 @@ export function VoiceSphere() {
       stretch: gl.getUniformLocation(program, "uStretch"),
       displacement: gl.getUniformLocation(program, "uDisplacement"),
       audioLevel: gl.getUniformLocation(program, "uAudioLevel"),
+      audioBass: gl.getUniformLocation(program, "uAudioBass"),
+      audioMid: gl.getUniformLocation(program, "uAudioMid"),
+      audioTreble: gl.getUniformLocation(program, "uAudioTreble"),
+      shake: gl.getUniformLocation(program, "uShake"),
       pixelRatio: gl.getUniformLocation(program, "uPixelRatio"),
       aspect: gl.getUniformLocation(program, "uAspect"),
       sizeBase: gl.getUniformLocation(program, "uSizeBase"),
-      treble: gl.getUniformLocation(program, "uTreble"),
+      renderScale: gl.getUniformLocation(program, "uRenderScale"),
       pointerNDC: gl.getUniformLocation(program, "uPointerNDC"),
       globalAlpha: gl.getUniformLocation(program, "uGlobalAlpha"),
       colorNeutral: gl.getUniformLocation(program, "uColorNeutral"),
@@ -396,6 +533,15 @@ export function VoiceSphere() {
 
       const levels = sample();
 
+      // Critically-underdamped spring: stiffness > (damping^2)/4 so it can
+      // briefly overshoot past the target on the way down, giving the field
+      // a slight "contract" beat after speech stops, then settle — rather
+      // than a flat one-directional decay.
+      const spring = levelSpring.current;
+      spring.vel += ((levels.level - spring.pos) * 90 - spring.vel * 11) * dt;
+      spring.pos += spring.vel * dt;
+      const springLevel = clamp(spring.pos, -0.25, 1.3);
+
       (Object.keys(effectsRef.current) as EffectKey[]).forEach((key) => {
         effectsRef.current[key] = smoothTowards(effectsRef.current[key], 0, dt, 0.05, EFFECT_RELEASE[key]);
       });
@@ -414,8 +560,10 @@ export function VoiceSphere() {
       const effects = effectsRef.current;
 
       const idleBreath = prefersReducedMotion ? 0 : Math.sin(now * 0.0006) * 0.012;
-      const scale = 1 + idleBreath + levels.level * 0.05 + effects.scaleUp * 0.26;
-      const displacement = 0.01 + levels.mid * 0.05 + levels.bass * 0.03 + effects.shake * 0.24;
+      const scale = 1 + idleBreath + springLevel * 0.03 + effects.scaleUp * 0.26;
+      // Idle cosmetic shimmer only — SHAKE now drives real 3D flow-field
+      // turbulence (uShake below), not this scalar radial ripple.
+      const displacement = 0.01 + idleBreath * 0.4;
       const stretch = effects.stretch * 0.2;
 
       const rotSpeed = (prefersReducedMotion ? 0.012 : 0.08) + levels.bass * 0.1;
@@ -430,18 +578,22 @@ export function VoiceSphere() {
       gl!.uniform1f(uniforms.scale, scale);
       gl!.uniform1f(uniforms.stretch, stretch);
       gl!.uniform1f(uniforms.displacement, displacement);
-      gl!.uniform1f(uniforms.audioLevel, levels.level);
+      gl!.uniform1f(uniforms.audioLevel, springLevel);
+      gl!.uniform1f(uniforms.audioBass, levels.bass);
+      gl!.uniform1f(uniforms.audioMid, levels.mid);
+      gl!.uniform1f(uniforms.audioTreble, levels.treble);
+      gl!.uniform1f(uniforms.shake, effects.shake);
       gl!.uniform1f(uniforms.pixelRatio, dpr);
       gl!.uniform1f(uniforms.aspect, canvas!.height / canvas!.width);
       gl!.uniform1f(uniforms.sizeBase, BASE_POINT_SIZE);
-      gl!.uniform1f(uniforms.treble, levels.treble);
+      gl!.uniform1f(uniforms.renderScale, RENDER_SCALE);
       gl!.uniform2f(uniforms.pointerNDC, pointerNdcSmooth.current.x, pointerNdcSmooth.current.y);
-      gl!.uniform1f(uniforms.globalAlpha, 0.42 + levels.level * 0.12 + effects.glow * 0.3);
+      gl!.uniform1f(uniforms.globalAlpha, 0.55 + springLevel * 0.08 + effects.glow * 0.12);
       gl!.uniform3fv(uniforms.colorNeutral, COLOR_NEUTRAL);
       gl!.uniform3fv(uniforms.colorAccent, COLOR_ACCENT);
 
       if (glowRef.current) {
-        glowRef.current.style.opacity = String(0.045 + levels.level * 0.04 + effects.glow * 0.12);
+        glowRef.current.style.opacity = String(0.028 + springLevel * 0.025 + effects.glow * 0.07);
       }
 
       gl!.clearColor(0, 0, 0, 0);
@@ -502,7 +654,7 @@ export function VoiceSphere() {
       <div className="relative aspect-[3/2] w-full">
         <div
           ref={glowRef}
-          className="pointer-events-none absolute left-1/2 top-[44%] h-[60%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-signal blur-[64px]"
+          className="pointer-events-none absolute left-1/2 top-[44%] h-[60%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F3E7D2] blur-[64px]"
           style={{ opacity: 0.045 }}
           aria-hidden="true"
         />
@@ -515,10 +667,23 @@ export function VoiceSphere() {
 
         <ConnectorField />
 
-        <div className="absolute left-1/2 top-[44%] aspect-square w-[30%] -translate-x-1/2 -translate-y-1/2">
+        {/* Canvas is deliberately much larger than the resting sphere's
+            visual footprint (compensated via RENDER_SCALE below) so the
+            now-unbounded voice/cursor displacement has room to move into
+            before it reaches the canvas's own edge. WebGL always hard-clips
+            geometry outside the ±1 NDC range — that clip region is an
+            axis-aligned rectangle by definition of how the GPU rasterizes,
+            so a canvas sized tightly around the sphere turns that incidental
+            edge into a visible "square" the moment particles travel far
+            enough to reach it. This is not a containment boundary we added;
+            it's removing one that was accidentally too tight. */}
+        <div
+          className="absolute left-1/2 top-[44%] aspect-square -translate-x-1/2 -translate-y-1/2"
+          style={{ width: `${CANVAS_FRACTION * 100}%` }}
+        >
           <canvas
             ref={canvasRef}
-            className={`h-full w-full ${motionSafe ? "animate-enter" : ""}`}
+            className={`h-full w-full ${motionSafe ? "animate-landing-enter" : ""}`}
             style={motionSafe ? { animationDelay: "80ms" } : undefined}
           />
         </div>
@@ -549,7 +714,7 @@ export function VoiceSphere() {
       </div>
 
       <div
-        className={`mt-8 flex flex-col items-center gap-4 ${motionSafe ? "animate-enter" : ""}`}
+        className={`mt-8 flex flex-col items-center gap-4 ${motionSafe ? "animate-landing-enter" : ""}`}
         style={motionSafe ? { animationDelay: "560ms" } : undefined}
       >
         <p className={`text-label uppercase tracking-widest ${status === "denied" ? "text-danger" : "text-ink-tertiary"}`}>
@@ -584,7 +749,7 @@ export function SphereCornerCaptions({ motionSafe }: { motionSafe: boolean }) {
   return (
     <>
       <div
-        className={`absolute bottom-8 left-4 flex items-start gap-3 sm:left-8 ${motionSafe ? "animate-enter" : ""}`}
+        className={`absolute bottom-8 left-4 flex items-start gap-3 sm:left-8 ${motionSafe ? "animate-landing-enter" : ""}`}
         style={motionSafe ? { animationDelay: "700ms" } : undefined}
       >
         <span className="mt-0.5 h-10 w-px bg-line-default" aria-hidden="true" />
@@ -597,7 +762,7 @@ export function SphereCornerCaptions({ motionSafe }: { motionSafe: boolean }) {
         </p>
       </div>
       <div
-        className={`absolute bottom-8 right-4 flex items-start gap-3 sm:right-8 ${motionSafe ? "animate-enter" : ""}`}
+        className={`absolute bottom-8 right-4 flex items-start gap-3 sm:right-8 ${motionSafe ? "animate-landing-enter" : ""}`}
         style={motionSafe ? { animationDelay: "760ms" } : undefined}
       >
         <span className="mt-0.5 h-10 w-px bg-line-default" aria-hidden="true" />

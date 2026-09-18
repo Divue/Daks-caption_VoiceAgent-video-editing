@@ -6,8 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Every family in CAPTION_FONTS (packages/shared/src/presets.ts) plus Inter for the UI.
+      Loading only Inter made three of the four presets render in a fallback face.
+      Single-weight display families (Anton, Luckiest Guy, Bangers, Titan One, Archivo
+      Black, Bebas Neue) are requested WITHOUT a weight axis — asking for 700 on
+      Luckiest Guy silently returns nothing. lib/caption-style.ts holds the guard that
+      keeps this list and CAPTION_FONTS in step.
+    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bangers&family=Bebas+Neue&family=Fredoka:wght@300..700&family=Instrument+Serif:ital@0;1&family=Inter:wght@100..900&family=Luckiest+Guy&family=Montserrat:wght@100..900&family=Oswald:wght@200..700&family=Poppins:wght@400;500;600;700;800;900&family=Titan+One&display=swap"
       rel="stylesheet"
     />
     <title>Expressive Captions</title>

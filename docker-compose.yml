@@ -1,11 +1,19 @@
 # Local dev: only the Python API runs in Docker. Web and Remotion run natively (npm run dev).
 services:
   api:
-    build: ./services/api
+    build:
+      context: ./services/api
+      args:
+        INSTALL_DEV: "true"   # pytest + moto for local tests; the App Runner image builds without them
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"   # API_PORT=8010 docker compose up, if 8000 is taken
     env_file: .env
     volumes:
       - ./services/api/app:/srv/app
+      - ./services/api/tests:/srv/tests
+      - ./services/api/scripts:/srv/scripts
       - ./packages/shared/fixtures:/srv/fixtures:ro
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - ~/.aws:/root/.aws:ro
+    # Note: --reload restarts the process on every save, which kills a running pipeline job.
+    # The job then shows as failed ("worker lost") once its heartbeat goes stale.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app

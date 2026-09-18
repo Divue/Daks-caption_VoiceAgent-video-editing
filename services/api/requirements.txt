@@ -13,3 +13,4 @@ python-multipart
 livekit-api
 requests
 indic-transliteration
+soundfile

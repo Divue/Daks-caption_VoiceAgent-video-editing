@@ -23,7 +23,9 @@ export const PRESETS: Record<PresetId, Preset> = {
   mrbeast: {
     id: 'mrbeast',
     name: 'MrBeast',
-    base: { fontFamily: 'Komika Axis', fontSize: 80, color: '#FFFFFF', weight: 800, uppercase: true, ...center },
+    // Komika Axis is not on Google Fonts (and is not freely licensed for this); Luckiest Guy is the
+    // closest chunky caption face we can actually load. See CAPTION_FONTS below.
+    base: { fontFamily: 'Luckiest Guy', fontSize: 80, color: '#FFFFFF', weight: 400, uppercase: true, ...center },
     emphasis: { color: '#FFE600', fontSize: 92 },
     wordsPerLine: 2,
   },
@@ -42,6 +44,25 @@ export const PRESETS: Record<PresetId, Preset> = {
     wordsPerLine: 3,
   },
 }
+
+// The font set the app loads and the editor's font picker may offer. All are Google Fonts, so
+// apps/web loads them with one <link> and Remotion can fetch the same families.
+// Every preset's fontFamily must be in this list, or it will silently render in a fallback.
+export const CAPTION_FONTS = [
+  'Anton',            // Impact-like; the default "bold subtitle" look
+  'Bebas Neue',       // tall condensed caps, very common in reels
+  'Archivo Black',    // heavy grotesque
+  'Luckiest Guy',     // chunky cartoon (MrBeast-ish)
+  'Bangers',          // comic-book shout, popular on TikTok
+  'Titan One',        // rounded heavy display
+  'Fredoka',          // friendly rounded
+  'Montserrat',       // clean geometric, 800 for captions
+  'Poppins',          // geometric, the Hinglish default
+  'Inter',            // neutral UI/subtitle face
+  'Instrument Serif', // editorial serif
+  'Oswald',           // condensed sans
+] as const
+export type CaptionFont = (typeof CAPTION_FONTS)[number]
 
 // Emotion layer defaults (scope board: angry = CAPS + bold + red + shake, excited = stretch + pop).
 export const EMOTION_STYLES = {

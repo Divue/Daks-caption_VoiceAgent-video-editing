@@ -1,94 +1,86 @@
-# Next session prompt — API + database layer
+# Next session prompt — build the frontend editor shell + captions workflow (P3)
 
-Paste the block below into a fresh Claude Code session. **Planning only — no
-implementation in that session.**
+Paste the block below into a fresh Claude Code session.
+
+> Supersedes the previous contents of this file (P1's *build the API* prompt, consumed on
+> 2026-09-18 — that work shipped; see `.claude/audits/12-api-persistence-layer.md`).
+> The approved plan, `.claude/plans/frontend-editor-captions.md`, is the source of truth.
 
 ---
 
-We're building the backend for Expressive Captions (AWS First Commit hackathon,
-Ship It track). The transcription/prosody pipeline is designed and validated; your
-job is the **API surface and the database layer** that wrap it.
-
-**PLAN FIRST. Do not write implementation code this session.** Use plan mode,
-ask me about anything genuinely ambiguous, and end with a plan I approve. I want
-to review the data model and endpoint list before a line is written.
+Implement the frontend editor shell + captions workflow for Expressive Captions
+(`apps/web`, P3's folder). The plan is written, audited and approved. Build it.
 
 ## Read first, in this order
+
 1. Root `CLAUDE.md` — rules, ownership, stack, branches.
-2. `.claude/INDEX.md` — audit index and invariants.
-3. `.claude/audits/11-stt-prosody-pipeline.md` — **the important one.** The pipeline
-   this API wraps: its 8 stages, measured results, the proposed schema change (§6),
-   a first-draft API surface (§7), cost/latency (§8), and open decisions (§10).
-4. `packages/shared/src/project.ts` — the data contract. `services/api/app/schema.py`
-   mirrors it.
-5. `services/api/app/pipeline/` — **the pipeline we're shipping** (`run.py`, `align.py`,
-   `prosody.py`, `tag.py`). This is what the API orchestrates. Do not rewrite it.
-   `services/api/scripts/stt_bakeoff/caption_eval/` is its *test harness*, not a rival
-   implementation — see the box at the top of audit 11.
+2. `.claude/INDEX.md` — critical invariants (especially: no fake backend/AI behaviour;
+   `project-reducer.ts` is the only mutation site; `PRESETS` is the only preset source;
+   stretch never goes in `Word.text`).
+3. **`.claude/plans/frontend-editor-captions.md` — the plan. Read all of it.**
+   §0 corrects the facts an earlier brief got wrong. §0.1 and §3.1 are day-one blockers.
+   §9b is the plan's own audit; findings A1 and A2 are the ones that will bite first.
+4. `packages/shared/src/project.ts` and `presets.ts` — the data contract.
+5. `.claude/audits/00-current-frontend-architecture.md` for orientation, then `02`
+   (reducer contract) and `09` (current editor layout). Skim `04`–`08` only when you
+   touch those components.
 
-Audit 11 §7 is a **first draft I wrote without building anything**. Treat it as a
-starting point to improve or argue with, not a spec.
+Do **not** read `services/api/app/**` — `services/api/README.md` §Endpoints plus the
+plan's §4.2 table is the whole API surface you need, and both were verified against the
+running API.
 
-## What to plan
+## Two things may block you on day one — check both before writing code
 
-### 1. Database — Postgres
-- **Postgres, not Mongo.** Pick whatever makes schema migrations easiest and least
-  ceremonial; recommend one stack (ORM + migration tool) and justify it briefly.
-- The repo currently documents **DynamoDB** for project JSON (`CLAUDE.md:46`).
-  Moving to Postgres is a documented-stack change — flag it for me explicitly,
-  say what it costs to switch, and propose the CLAUDE.md edit. Don't just do it.
-- Decide where it runs (RDS? Aurora Serverless v2? something else) and what that
-  costs to stand up for a 3-day hackathon. We're on AWS ap-south-1 with credits,
-  and using AWS meaningfully is a judging criterion.
-- Key question to answer: does the `Project` JSON live as a JSONB blob, or as
-  normalised `projects` / `lines` / `words` tables? Argue both; the editor does
-  per-word PATCHes and the agent applies validated JSON patches, so think about
-  what each shape costs.
+- **Plan §0.1:** `packages/shared/fixtures/demo-project.json` is missing `extraMs` in
+  every `signals` object, which `Signals` requires, so `Project.parse()` throws and
+  `/editor` cannot mount. The lead owns the fix. Verify it has landed; if not, ask —
+  do not work around it, and do not edit `packages/shared` yourself.
+- **Plan §3.1:** `packages/shared/src/blocks.ts` (`deriveBlocks`) is the lead's to land
+  and Task 3 needs it. If it is missing, ask rather than writing a local copy — a copy
+  that diverges from P2's is the exact failure that module exists to prevent.
 
-### 2. API surface
-- Async job flow — the pipeline takes 20–45s per clip.
-- Cover: create project + upload, poll per-stage status, fetch project, per-word
-  edits, the agent endpoint (P4's seam), and export via Remotion Lambda.
-- The editor is at `apps/web` (currently Vite + React, **not** Next.js — confirm
-  with me whether that's changing before you design around it).
-- Video should go **straight to S3** via presigned URL, never through FastAPI.
+If both are still outstanding, Tasks 0–2 (API client, real video playing on screen) need
+neither — start there rather than waiting.
 
-### 3. Model cost logging — required
-Every external model/service call must be logged so we can see what a video cost:
-- Which service (Bedrock / Transcribe / Sarvam), which model id, input+output
-  tokens or audio seconds, computed USD, latency, and which project + pipeline
-  stage it belongs to.
-- Queryable per project and in aggregate ("what have we spent today", "what does
-  a 30s clip cost us").
-- Audit 11 §8 has the measured per-stage numbers to calibrate against
-  (~$0.05 per 30s video; Bedrock ~$0.038 of it).
-- Note: **Bedrock cost is not a constraint** on model choice — this logging is for
-  visibility, not for throttling or downgrading models.
+## Before you write code
 
-## Environment — fix this as part of the plan
-- `SARVAM_API_KEY` is read by `services/api/app/pipeline/run.py:26`,
-  `scripts/stt_bakeoff/engines.py:192` and both `caption_eval` scripts, but is set
-  **nowhere** — not in `.env`, not in `.env.example`. Anyone cloning the repo hits
-  a `KeyError`. Add it to both, and plan how the container receives it.
-- `.env.example` says `AWS_REGION=us-east-1`; everything we actually run is
-  `ap-south-1`. Fix.
-- `.env.example` lists `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`, but the real
-  `.env` says credentials come from `~/.aws`. Pick one story and make both files
-  agree.
-- Plan how secrets reach App Runner in deployment (Secrets Manager? SSM Parameter
-  Store?) rather than shipping a `.env`.
+- `npm install` at the repo root (`node_modules` is absent; `npm run dev` fails without it).
+- `docker compose up --build`; `API_PORT=8010` is the repo default, so
+  `curl localhost:8010/health` → `{"ok":true}`.
+- Add `envDir: '../..'` to `apps/web/vite.config.ts`. Without it Vite never reads the
+  repo-root `.env` and `import.meta.env.VITE_API_URL` is `undefined` (plan §0). Prove it
+  with a `console.log` before trusting any fetch.
+- `git checkout -b p3-editor` off **`p1-pipeline`** — `master` has no API and no audit 12.
 
-## Constraints
-- Ownership: `services/api` is P1's. Schema changes (`packages/shared/src/project.ts`
-  + `services/api/app/schema.py`) need lead agreement — propose, don't apply.
-- Python 3.12, FastAPI, container on App Runner. API deps live in
-  `services/api/requirements.txt` (that image ships to production — do **not** add
-  torch, whisper, or anything the pipeline doesn't need; only librosa + soundfile
-  beyond current deps).
-- 3-day MVP, team of 4. Reliable beats clever.
-- No auth, no Step Functions (cut from MVP scope per CLAUDE.md).
+## Scope
 
-## Deliverable
-A plan I can approve: the data model, the migration story, the endpoint list with
-request/response shapes, the cost-logging design, the env/secrets fix, and anything
-in audit 11 §10 you think we should settle before building.
+Whole editor shell, but **only the captions workflow is implemented**: drop a video →
+`POST /projects` → presigned S3 upload → `POST /process` → poll `/status` showing the
+real 7-stage map → `GET /projects/{id}` → captions on the timeline and over the playing
+video → select a word → `PATCH /words/{id}`. Everything else (trim, split, transitions,
+effects, stickers, music) is present with real labels and correct icons and is **visibly
+inert**. No mock data, no fake progress, no simulated agent replies.
+
+Stay inside `apps/web`. Never touch `packages/shared/`, `services/api/`, `remotion/` or
+`app/agent/`. If a task seems to need a schema change, stop and ask — plan §10 lists the
+changes already proposed to the lead; propose, never apply.
+
+## How to work
+
+Follow the plan's §6 build order. It is nine tasks, 12–18 h total, each ending somewhere
+committable; commit after each. Tasks 2 and 3 put a real video and real captions on
+screen early — do those before the shell.
+
+The plan's §9 is your verification list. The headline check: upload
+`services/api/scripts/stt_bakeoff/clips/Angry.mp4` and expect **15.9 s, 478×850, 46
+words, 6 emphasised (13.0%), all 46 `angry`, ~18–22 s end to end**. Disagreement means
+something is wrong. Run `npm run lint && npm run build` before each commit.
+
+Two invariants that are easy to break and expensive to debug: **never reconstruct
+`Word.text` from repeated letters** — repeats are drawn from `signals.extraMs`, and
+collapsing them turns `know` into `now` (plan §8.6). And **`timeMs` never enters
+`project-reducer`** — it would run a full-project Zod validation 60×/s (plan §3.2).
+
+When you are done, write `.claude/audits/13-frontend-editor-captions.md` in the style of
+audit 12: label every claim measured or assumed, record deviations from the plan and why,
+and list what is weak or unfinished.

@@ -15,6 +15,9 @@ import uuid
 
 import boto3
 
+from .. import jobctx
+from ..costs import cost_event
+
 BEDROCK_REGION = os.environ.get("AWS_REGION", "ap-south-1")
 
 
@@ -22,23 +25,33 @@ def _ms(seconds: str | float) -> int:
     return int(round(float(seconds) * 1000))
 
 
-def transcribe(s3_uri: str, media_format: str = "wav", language: str = "hi-IN") -> list[dict]:
+TRANSCRIBE_TIMEOUT_S = 600
+
+
+def transcribe(s3_uri: str, media_format: str = "wav", language: str = "hi-IN",
+               audio_seconds: float = 0.0) -> list[dict]:
     """Run a Transcribe job over an object already in S3. Returns [{text, startMs, endMs}]."""
     client = boto3.client("transcribe", region_name=BEDROCK_REGION)
     job = f"captions-{uuid.uuid4().hex[:12]}"
-    client.start_transcription_job(
-        TranscriptionJobName=job,
-        Media={"MediaFileUri": s3_uri},
-        MediaFormat=media_format,
-        LanguageCode=language,
-    )
-    while True:
-        status = client.get_transcription_job(TranscriptionJobName=job)["TranscriptionJob"]
-        if status["TranscriptionJobStatus"] in ("COMPLETED", "FAILED"):
-            break
-        time.sleep(2)
-    if status["TranscriptionJobStatus"] == "FAILED":
-        raise RuntimeError(status.get("FailureReason", "transcribe failed"))
+    with cost_event(stage="transcribe", service="transcribe", model_id=f"batch-{language}") as ev:
+        ev.audio(audio_seconds)
+        client.start_transcription_job(
+            TranscriptionJobName=job,
+            Media={"MediaFileUri": s3_uri},
+            MediaFormat=media_format,
+            LanguageCode=language,
+        )
+        deadline = time.monotonic() + TRANSCRIBE_TIMEOUT_S
+        while True:
+            status = client.get_transcription_job(TranscriptionJobName=job)["TranscriptionJob"]
+            if status["TranscriptionJobStatus"] in ("COMPLETED", "FAILED"):
+                break
+            if time.monotonic() > deadline:
+                raise TimeoutError(f"transcribe job {job} still {status['TranscriptionJobStatus']} after {TRANSCRIBE_TIMEOUT_S}s")
+            jobctx.heartbeat()  # the long stage: keep the job from looking abandoned
+            time.sleep(2)
+        if status["TranscriptionJobStatus"] == "FAILED":
+            raise RuntimeError(status.get("FailureReason", "transcribe failed"))
 
     with urllib.request.urlopen(status["Transcript"]["TranscriptFileUri"]) as response:
         raw = json.load(response)
@@ -67,11 +80,14 @@ def romanize_words(words: list[dict], chunk_size: int = 60) -> list[dict]:
             f"sentence starts.\nReturn only a JSON array of exactly {len(tokens)} strings.\n\n"
             "<tokens>\n" + json.dumps(tokens, ensure_ascii=False) + "\n</tokens>"
         )
-        response = client.converse(
-            modelId=os.environ["BEDROCK_MODEL_ID"],
-            messages=[{"role": "user", "content": [{"text": prompt}]}],
-            inferenceConfig={"maxTokens": 4000, "temperature": 0},
-        )
+        model_id = os.environ["BEDROCK_MODEL_ID"]
+        with cost_event(stage="align", service="bedrock", model_id=model_id) as ev:
+            response = client.converse(
+                modelId=model_id,
+                messages=[{"role": "user", "content": [{"text": prompt}]}],
+                inferenceConfig={"maxTokens": 4000, "temperature": 0},
+            )
+            ev.usage_from(response)
         text = response["output"]["message"]["content"][0]["text"].strip()
         text = text[text.find("[") : text.rfind("]") + 1]
         try:

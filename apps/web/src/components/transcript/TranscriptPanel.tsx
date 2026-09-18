@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { CaptionBlock, Word } from '@captions/shared'
+import type { CaptionBlock, Emotion, Word } from '@captions/shared'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -16,6 +16,12 @@ interface TranscriptPanelProps {
   followPlayhead: boolean
   mergeShort: boolean
   onMergeShortChange: (value: boolean) => void
+  onSetBlockEmotion: (block: CaptionBlock, emotion: Emotion) => void
+  onSetWordEmotion: (word: Word, emotion: Emotion) => void
+  onSetWordSingle: (word: Word, single: boolean) => void
+  onSetWordEmphasis: (word: Word, emphasis: boolean) => void
+  emphasisIds: Set<string>
+  promotedEmphasisIds: Set<string>
 }
 
 export function TranscriptPanel({
@@ -28,6 +34,12 @@ export function TranscriptPanel({
   followPlayhead,
   mergeShort,
   onMergeShortChange,
+  onSetBlockEmotion,
+  onSetWordEmotion,
+  onSetWordSingle,
+  onSetWordEmphasis,
+  emphasisIds,
+  promotedEmphasisIds,
 }: TranscriptPanelProps) {
   const [query, setQuery] = useState('')
   const trimmed = query.trim().toLowerCase()
@@ -43,18 +55,20 @@ export function TranscriptPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 flex-col gap-2 border-b p-3">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-foreground">Captions</p>
-          <span className="text-xs tabular-nums text-muted-foreground">{blocks.length} blocks</span>
+      {/* No title here: CollapsiblePanel's own bar already says CAPTIONS, and two headings
+          stacked read as a bug. The block count keeps its place beside the search field. */}
+      <div className="flex shrink-0 flex-col gap-2 border-b border-border/60 p-3">
+        <div className="flex items-center gap-2">
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search captions…"
+            className="h-8 flex-1 text-sm"
+          />
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+            {blocks.length} blocks
+          </span>
         </div>
-
-        <Input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search captions..."
-          className="h-8 text-sm"
-        />
 
         <div className="flex items-center gap-2">
           <Switch id="merge-short" checked={mergeShort} onCheckedChange={onMergeShortChange} />
@@ -62,6 +76,7 @@ export function TranscriptPanel({
             Merge very short captions
           </Label>
         </div>
+
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -89,6 +104,12 @@ export function TranscriptPanel({
             onSelectWord={onSelectWord}
             onSeekToBlock={onSeekToBlock}
             followPlayhead={followPlayhead}
+            onSetBlockEmotion={onSetBlockEmotion}
+            onSetWordEmotion={onSetWordEmotion}
+            onSetWordSingle={onSetWordSingle}
+            onSetWordEmphasis={onSetWordEmphasis}
+            emphasisIds={emphasisIds}
+            promotedEmphasisIds={promotedEmphasisIds}
           />
         )}
       </div>

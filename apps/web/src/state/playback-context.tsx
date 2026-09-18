@@ -32,16 +32,51 @@ interface PlaybackContextValue {
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null)
 
-export function PlaybackProvider({ children }: { children: ReactNode }) {
+/**
+ * `fallbackDurationMs` drives a clock when NO <video> element is attached — the project's own
+ * `durationMs`, so the timeline and the caption preview work with the fixture or while a real
+ * upload is still processing. It is never used once a video exists: the element's own metadata
+ * always wins, because only the file knows its real length.
+ */
+export function PlaybackProvider({
+  children,
+  fallbackDurationMs = 0,
+}: {
+  children: ReactNode
+  fallbackDurationMs?: number
+}) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const frameRef = useRef<number | null>(null)
 
   const [timeMs, setTimeMs] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [durationMs, setDurationMs] = useState(0)
+  const [durationMs, setDurationMs] = useState(fallbackDurationMs)
   const [volume, setVolumeState] = useState(1)
   const [muted, setMuted] = useState(false)
   const [rate, setRateState] = useState(1)
+  const rateRef = useRef(1)
+  // The playhead, readable from a callback without making every callback depend on the render.
+  const timeMsRef = useRef(0)
+  const durationRef = useRef(0)
+  // Where the detached clock started, as (wall clock, playhead). Only read when no video is
+  // attached; a real element is always its own source of truth.
+  const detachedOriginRef = useRef<{ at: number; fromMs: number } | null>(null)
+
+  // A video's own metadata always wins; the fallback only fills in before (or without) one.
+  useEffect(() => {
+    if (!videoRef.current) setDurationMs(fallbackDurationMs)
+  }, [fallbackDurationMs])
+
+  // Mirror the state the detached clock reads into refs, so its rAF tick and the transport
+  // callbacks can read a current value without every one of them depending on the render.
+  // In an effect, not during render: a render-phase ref write is not safe under concurrent
+  // rendering, and a one-commit lag is invisible to a clock that is sampled per frame.
+  useEffect(() => {
+    timeMsRef.current = timeMs
+  }, [timeMs])
+  useEffect(() => {
+    durationRef.current = durationMs
+  }, [durationMs])
 
   const stopLoop = useCallback(() => {
     if (frameRef.current !== null) {
@@ -54,7 +89,22 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     stopLoop()
     const tick = () => {
       const video = videoRef.current
-      if (video) setTimeMs(video.currentTime * 1000)
+      if (video) {
+        setTimeMs(video.currentTime * 1000)
+      } else {
+        const origin = detachedOriginRef.current
+        if (origin) {
+          const elapsed = (performance.now() - origin.at) * rateRef.current
+          const next = origin.fromMs + elapsed
+          if (next >= durationRef.current) {
+            setTimeMs(durationRef.current)
+            setIsPlaying(false)
+            stopLoop()
+            return
+          }
+          setTimeMs(next)
+        }
+      }
       frameRef.current = requestAnimationFrame(tick)
     }
     frameRef.current = requestAnimationFrame(tick)
@@ -137,30 +187,68 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
   const seek = useCallback((ms: number) => {
     const video = videoRef.current
-    if (!video) return
+    if (!video) {
+      const clamped = Math.max(0, Math.min(ms, durationRef.current))
+      detachedOriginRef.current = { at: performance.now(), fromMs: clamped }
+      setTimeMs(clamped)
+      return
+    }
     const durationLimit = Number.isFinite(video.duration) ? video.duration * 1000 : ms
     const clamped = Math.max(0, Math.min(ms, durationLimit))
     video.currentTime = clamped / 1000
     setTimeMs(clamped) // publish immediately; 'seeked' can lag a frame or two
   }, [])
 
-  const play = useCallback(() => {
-    // A rejected play() (autoplay policy, detached src) must not become an unhandled rejection.
-    void videoRef.current?.play().catch(() => undefined)
-  }, [])
+  const startDetached = useCallback(
+    (fromMs: number) => {
+      if (durationRef.current <= 0) return
+      detachedOriginRef.current = {
+        at: performance.now(),
+        fromMs: fromMs >= durationRef.current ? 0 : fromMs,
+      }
+      setIsPlaying(true)
+      startLoop()
+    },
+    [startLoop],
+  )
 
-  const pause = useCallback(() => videoRef.current?.pause(), [])
+  const stopDetached = useCallback(() => {
+    setIsPlaying(false)
+    stopLoop()
+  }, [stopLoop])
+
+  const play = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return startDetached(timeMsRef.current)
+    // A rejected play() (autoplay policy, detached src) must not become an unhandled rejection.
+    void video.play().catch(() => undefined)
+  }, [startDetached])
+
+  const pause = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return stopDetached()
+    video.pause()
+  }, [stopDetached])
 
   const toggle = useCallback(() => {
     const video = videoRef.current
-    if (!video) return
+    if (!video) {
+      if (frameRef.current !== null) stopDetached()
+      else startDetached(timeMsRef.current)
+      return
+    }
     if (video.paused) void video.play().catch(() => undefined)
     else video.pause()
-  }, [])
+  }, [startDetached, stopDetached])
 
   const setRate = useCallback((next: number) => {
     const video = videoRef.current
     if (video) video.playbackRate = next
+    else if (detachedOriginRef.current) {
+      // Re-origin, or the elapsed time already accrued would be re-scaled by the new rate.
+      detachedOriginRef.current = { at: performance.now(), fromMs: timeMsRef.current }
+    }
+    rateRef.current = next
     setRateState(next)
   }, [])
 

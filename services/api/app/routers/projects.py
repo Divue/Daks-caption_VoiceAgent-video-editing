@@ -45,7 +45,7 @@ def _version_headers(response: Response, version: int, schema_version: int) -> N
 class CreateProject(BaseModel):
     filename: str = Field(min_length=1, max_length=200)
     contentType: str = Field(pattern=r"^video/[\w.+-]+$")
-    presetId: PresetId = "kathmandu"
+    presetId: PresetId = "rangmanch"
 
 
 @router.post("", status_code=201)
@@ -121,6 +121,7 @@ class WordPatch(BaseModel):
     emphasis: Optional[bool] = None
     emotion: Optional[Emotion] = None
     stretch: Optional[float] = None
+    single: Optional[bool] = None
     emoji: Optional[str] = None
     style: Optional[dict] = None
     signals: Optional[Signals] = None

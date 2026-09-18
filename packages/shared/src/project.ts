@@ -5,8 +5,30 @@ import { z } from 'zod'
 export const Emotion = z.enum(['neutral', 'angry', 'excited'])
 export type Emotion = z.infer<typeof Emotion>
 
-export const PresetId = z.enum(['kathmandu', 'mrbeast', 'minimal', 'hinglish-bold'])
+// Renamed `kathmandu` -> `rangmanch` (schema v2). The old id was a rough copy of the reference's
+// *Kalakar Motion*, while the reference's actual "Kathmandu" is the yellow Montserrat look we now
+// ship as `dhamaka` — keeping both names would have pointed at each other's looks. Stored rows are
+// migrated on read by services/api/app/store/projects.py (MIGRATIONS 1 -> 2).
+export const PresetId = z.enum([
+  'rangmanch',
+  'chamak',
+  'nazm',
+  'dhamaka',
+  'mrbeast',
+  'minimal',
+  'hinglish-bold',
+])
 export type PresetId = z.infer<typeof PresetId>
+
+export const TextCase = z.enum(['none', 'upper', 'lower'])
+export type TextCase = z.infer<typeof TextCase>
+
+/** One stop of a multi-stop text gradient. `at` is a percentage along the axis (0-100). */
+export const GradientStop = z.object({
+  color: z.string(),
+  at: z.number().min(0).max(100),
+})
+export type GradientStop = z.infer<typeof GradientStop>
 
 // x, y are percentages (0-100) of the frame; fontSize is px at 1080p width.
 export const Style = z.object({
@@ -14,9 +36,21 @@ export const Style = z.object({
   fontSize: z.number().positive(),
   color: z.string(),
   gradient: z.tuple([z.string(), z.string()]).optional(),
+  // A gradient with more than two stops — the reference's green sheen is symmetric, lightest at
+  // the 50% stop, which a 2-tuple cannot express. Wins over `gradient` when both are present.
+  gradientStops: z.array(GradientStop).min(2).optional(),
   weight: z.number().int().min(100).max(900),
-  uppercase: z.boolean().optional(),
-  glow: z.number().min(0).optional(),
+  italic: z.boolean().optional(),
+  // Replaced `uppercase?: boolean` in schema v2: one preset needs forced LOWERCASE, and two
+  // booleans that can both be true is a precedence rule nobody would remember.
+  textCase: TextCase.optional(),
+  glow: z.number().min(0).optional(), // halo radius in px at 1080p, 0 = none
+  glowColor: z.string().optional(),   // defaults to `color`, which is wrong for gradient text
+  strokeWidth: z.number().min(0).optional(), // px at 1080p, 0 = none
+  strokeColor: z.string().optional(),
+  // em-relative, NOT px: it has to survive the frame scaling that fontSize goes through.
+  letterSpacing: z.number().optional(),
+  lineHeight: z.number().positive().optional(), // multiplier, e.g. 0.9
   shake: z.number().min(0).optional(), // amplitude in px, 0 = none
   x: z.number().min(0).max(100),
   y: z.number().min(0).max(100),
@@ -40,6 +74,11 @@ export const Word = z.object({
   emphasis: z.boolean(),
   emotion: Emotion,
   stretch: z.number().min(1), // 1 = none, 2.5 = "hellloooo"
+  // Pull this word out of its caption block and show it on its own, for its own
+  // startMs–endMs. A layout choice, not a style: it changes the GROUPING, so it is
+  // read by deriveBlocks (rule 4), not by the style resolver. Optional, like `emoji` —
+  // absent and `false` mean the same thing, and the pipeline never sets it.
+  single: z.boolean().optional(),
   emoji: z.string().optional(),
   style: Style.partial().optional(), // per-word override from user or agent
   signals: Signals.optional(),

@@ -1,28 +1,78 @@
 // Pure style resolution for one caption word. No React, no DOM, no context — so it ports
 // unchanged into a Remotion composition when P2 swaps CaptionRenderer for <Player>.
-import { CAPTION_FONTS, EMOTION_STYLES, PRESETS } from '@captions/shared'
-import type { Preset, Project, Style, Word } from '@captions/shared'
+//
+// The only React thing here is the CSSProperties *type*, which is types-only and erases at build.
+import {
+  CAPTION_FONTS,
+  DEFAULT_GLOW_LAYERS,
+  DEFAULT_STRETCH,
+  EMOTION_STYLES,
+  ITALIC_REQUIRED_FONTS,
+  PRESETS,
+} from '@captions/shared'
+import type {
+  EmotionStyle,
+  GradientStop,
+  Preset,
+  Project,
+  RevealMode,
+  StretchTuning,
+  Style,
+  TextCase,
+  Word,
+} from '@captions/shared'
 
 /** The schema's fontSize is "px at 1080p width", so every size scales by the real frame width. */
 const REFERENCE_WIDTH = 1080
 
-/** Repeat sizing: one extra letter per this many ms of measured stretch. */
-const MS_PER_REPEAT = 120
-const MAX_REPEATS = 5
 /** Beyond this the word stops fitting the frame at any preset size. */
 const MAX_RENDERED_LENGTH = 14
+
+/**
+ * The readability shadow every caption carries, regardless of preset. The reference uses the same
+ * idea at a larger, softer, down-right offset (audit 14 §5), so ours follows it.
+ */
+const READABILITY_TEXT_SHADOW = '0 2px 8px rgba(0,0,0,0.55)'
+const READABILITY_DROP_SHADOW = 'drop-shadow(rgba(0,0,0,0.35) 5px 5px 15px)'
+
+/** Alpha of the innermost glow layer, and how much each successive layer gives up. */
+const GLOW_MAX_ALPHA = 0.8
+const GLOW_MIN_ALPHA = 0.4
 
 export interface ResolvedStyle {
   fontFamily: string
   fontSize: number
+  italic: boolean
   color: string
   gradient?: [string, string]
+  gradientStops?: GradientStop[]
   weight: number
-  uppercase: boolean
+  textCase: TextCase
+  /** Halo radius in px, already scaled to the frame. 0 = none. */
   glow: number
+  glowColor: string
+  glowLayers: number
+  strokeWidth: number
+  strokeColor: string
+  /** Already multiplied out to px against the resolved font size. */
+  letterSpacing: number
+  lineHeight: number
   shake: number
   x: number
   y: number
+}
+
+export interface ResolveOptions {
+  /**
+   * Draw this word in the emphasis face, regardless of `Word.emphasis`. The render-time rhythm
+   * rule promotes words this way rather than by writing to the Project — see shared/emphasis.ts.
+   */
+  emphasised?: boolean
+}
+
+/** True when this style's fill is a gradient, which makes `color` transparent. */
+export function isGradientFill(style: ResolvedStyle): boolean {
+  return Boolean(style.gradientStops ?? style.gradient)
 }
 
 /**
@@ -31,54 +81,134 @@ export interface ResolvedStyle {
  * Emphasis is applied AFTER emotion deliberately: emotion is a property of the whole tone
  * run, emphasis marks one word inside it, so the narrower signal wins. The per-word
  * override (user or agent) is last and always wins.
+ *
+ * SIZE is the one field that is not a plain overwrite. `Preset.emphasisScale` and an emotion's
+ * `scale` are MULTIPLIERS on the resolved base, so a user who changes the base size keeps the
+ * proportion the look depends on. A per-word `style.fontSize` still wins outright — it is the
+ * narrowest signal, and someone who typed an exact size means it.
  */
 export function resolveWordStyle(
   word: Word,
   preset: Preset,
   settings: Project['settings'],
   frameWidth: number,
+  options: ResolveOptions = {},
 ): ResolvedStyle {
-  const layers: Partial<Style>[] = [preset.base]
-
-  // EMOTION_STYLES.excited.fontSize is a SCALE MULTIPLIER (1.15), not pixels — the comment in
-  // presets.ts says so. Spreading it like the other layers would set fontSize: 1.15px and make
-  // the caption vanish. It is pulled out here and applied to the final size instead.
-  let sizeMultiplier = 1
-
-  if (settings.emotionLayer && word.emotion !== 'neutral') {
-    const emotionLayer = EMOTION_STYLES[word.emotion as keyof typeof EMOTION_STYLES] as
-      | Partial<Style>
-      | undefined
-    if (emotionLayer) {
-      const layer: Partial<Style> = { ...emotionLayer }
-      // A value below this threshold is a multiplier (excited is 1.15); anything larger is
-      // a genuine px size. No preset uses a caption smaller than 10px at 1080p.
-      if (typeof layer.fontSize === 'number' && layer.fontSize < 10) {
-        sizeMultiplier *= layer.fontSize
-        delete layer.fontSize
-      }
-      layers.push(layer)
-    }
-  }
-
-  if (word.emphasis) layers.push(preset.emphasis)
-  if (word.style) layers.push(word.style)
-
-  const merged = layers.reduce<Partial<Style>>((acc, layer) => ({ ...acc, ...layer }), {})
+  const { style: presetLayers, sizeMultiplier } = resolvePresetLayers(word, preset, settings, options)
+  const merged: Partial<Style> = { ...presetLayers, ...word.style }
   const scale = frameWidth > 0 ? frameWidth / REFERENCE_WIDTH : 1
+
+  const explicitSize = word.style?.fontSize
+  const baseSize = merged.fontSize ?? preset.base.fontSize
+  const fontSize = (explicitSize ?? baseSize * sizeMultiplier) * scale
+
+  const color = merged.color ?? preset.base.color
 
   return {
     fontFamily: merged.fontFamily ?? preset.base.fontFamily,
-    fontSize: (merged.fontSize ?? preset.base.fontSize) * sizeMultiplier * scale,
-    color: merged.color ?? preset.base.color,
+    fontSize,
+    italic: merged.italic ?? false,
+    color,
     gradient: merged.gradient as [string, string] | undefined,
+    gradientStops: merged.gradientStops,
     weight: merged.weight ?? preset.base.weight,
-    uppercase: merged.uppercase ?? false,
+    textCase: merged.textCase ?? 'none',
     glow: (merged.glow ?? 0) * scale,
+    // A gradient fill makes `color` transparent, so falling back to it would produce no halo at
+    // all. `glowColor` exists for exactly that case; presets using a gradient must set it.
+    glowColor: merged.glowColor ?? color,
+    glowLayers: Math.max(1, Math.round(preset.glowLayers ?? DEFAULT_GLOW_LAYERS)),
+    strokeWidth: (merged.strokeWidth ?? 0) * scale,
+    strokeColor: merged.strokeColor ?? '#000000',
+    // letterSpacing is stored em-relative so it survives frame scaling; it becomes px against the
+    // RESOLVED font size (which is already frame-scaled), never against the frame scale itself.
+    letterSpacing: (merged.letterSpacing ?? 0) * fontSize,
+    lineHeight: merged.lineHeight ?? 1.1,
     shake: (merged.shake ?? 0) * scale,
     x: merged.x ?? preset.base.x,
     y: merged.y ?? preset.base.y,
   }
+}
+
+/**
+ * Everything the preset contributes to a word, BEFORE its own `style` override.
+ *
+ * Exported because the style panel needs it: a control showing "what you are departing from"
+ * must show the emphasis face on an emphasised word, not the base face. Sizes stay in schema
+ * units (px at 1080p) — no frame scaling happens here.
+ */
+export function resolvePresetLayers(
+  word: Word,
+  preset: Preset,
+  settings: Project['settings'],
+  options: ResolveOptions = {},
+): { style: Partial<Style>; sizeMultiplier: number } {
+  // `emphasised` overrides `word.emphasis` so the rhythm rule (shared/emphasis.ts) can promote a
+  // word WITHOUT writing to it. Absent, the stored flag is the answer, which keeps this function
+  // usable on a bare Word.
+  const emphasised = options.emphasised ?? word.emphasis
+  const layers: Partial<Style>[] = [preset.base]
+  let sizeMultiplier = 1
+
+  if (settings.emotionLayer && word.emotion !== 'neutral') {
+    const emotionLayer = resolveEmotionLayer(preset, word.emotion)
+    if (emotionLayer) {
+      layers.push(emotionLayer.style)
+      sizeMultiplier *= emotionLayer.scale ?? 1
+    }
+  }
+
+  if (emphasised) {
+    layers.push(preset.emphasis)
+    sizeMultiplier *= preset.emphasisScale
+  }
+
+  return {
+    style: layers.reduce<Partial<Style>>((acc, layer) => ({ ...acc, ...layer }), {}),
+    sizeMultiplier,
+  }
+}
+
+/** A preset's emotion entry merged over the shared default, key by key. */
+export function resolveEmotionLayer(preset: Preset, emotion: Word['emotion']): EmotionStyle | undefined {
+  const fallback = EMOTION_STYLES[emotion]
+  const override = preset.emotion?.[emotion]
+  if (!fallback && !override) return undefined
+  return {
+    style: { ...fallback?.style, ...override?.style },
+    scale: override?.scale ?? fallback?.scale,
+  }
+}
+
+/**
+ * Whether this block draws as the stacked cascade.
+ *
+ * Two conditions, and both matter. The preset has to offer the layout at all, AND the block has to
+ * have something to cascade around: the look is a small word, a huge word, a small word, so with
+ * nothing emphasised it degrades to three equal words on three lines — a wasteful way to draw a
+ * caption. Those blocks fall back to a normal line.
+ */
+export function shouldCascade(
+  words: Word[],
+  emphasisIds: Set<string>,
+  preset: Preset,
+): boolean {
+  if (preset.layout !== 'stack') return false
+  return words.some((word) => emphasisIds.has(word.id))
+}
+
+/**
+ * Opacity for a word given where the playhead is.
+ *
+ * Only words the playhead has NOT reached are affected — a word already spoken stays fully
+ * visible. The previous code dimmed past words too, which is a fourth behaviour the reference
+ * uses nowhere (audit 14 §5).
+ */
+export function revealOpacity(reveal: RevealMode, hasStarted: boolean): number {
+  if (hasStarted) return 1
+  if (reveal === 'hidden') return 0
+  if (reveal === 'dim') return 0.55
+  return 1
 }
 
 /**
@@ -95,7 +225,7 @@ export function resolveWordStyle(
  * while "bhai" has extraMs 260 with stretch 2.18. Using extraMs alone would stretch words
  * the pipeline chose to leave alone.
  */
-export function renderedText(word: Word): string {
+export function renderedText(word: Word, tuning: StretchTuning = DEFAULT_STRETCH): string {
   if (word.stretch <= 1) return word.text
   const extraMs = word.signals?.extraMs ?? 0
   if (extraMs <= 0) return word.text
@@ -103,50 +233,149 @@ export function renderedText(word: Word): string {
   const lastChar = word.text.at(-1)
   if (!lastChar || !/[a-z]/i.test(lastChar)) return word.text
 
-  const wanted = Math.min(MAX_REPEATS, Math.max(1, Math.round(extraMs / MS_PER_REPEAT)))
+  const msPerRepeat = tuning.msPerRepeat > 0 ? tuning.msPerRepeat : DEFAULT_STRETCH.msPerRepeat
+  const wanted = Math.min(tuning.maxRepeats, Math.max(1, Math.round(extraMs / msPerRepeat)))
   const room = MAX_RENDERED_LENGTH - word.text.length
   const repeats = Math.min(wanted, Math.max(0, room))
   return repeats > 0 ? word.text + lastChar.repeat(repeats) : word.text
 }
 
-/** CSS for a resolved style. Kept beside the resolver so the two stay in step. */
+/**
+ * CSS for a resolved style. Kept beside the resolver so the two stay in step.
+ *
+ * Glow is emitted here ONLY for a solid fill. For gradient text it belongs on a wrapper — see
+ * `glowWrapperCss`, which explains why.
+ */
 export function styleToCss(style: ResolvedStyle): React.CSSProperties {
+  const gradientFill = isGradientFill(style)
+
   const css: React.CSSProperties = {
     fontFamily: `'${style.fontFamily}', sans-serif`,
     fontSize: `${style.fontSize}px`,
+    fontStyle: style.italic ? 'italic' : 'normal',
     fontWeight: style.weight,
-    textTransform: style.uppercase ? 'uppercase' : 'none',
-    lineHeight: 1.1,
+    textTransform: cssTextTransform(style.textCase),
+    lineHeight: style.lineHeight,
   }
 
-  if (style.gradient) {
+  if (style.letterSpacing !== 0) css.letterSpacing = `${style.letterSpacing}px`
+
+  if (gradientFill) {
     // A gradient fill needs the text clipped to the background; `color` is ignored then.
-    css.backgroundImage = `linear-gradient(90deg, ${style.gradient[0]}, ${style.gradient[1]})`
+    css.backgroundImage = gradientCss(style)
     css.WebkitBackgroundClip = 'text'
     css.backgroundClip = 'text'
     css.color = 'transparent'
   } else {
     css.color = style.color
+    const shadows = [READABILITY_TEXT_SHADOW, ...glowLayerCss(style, 'shadow')]
+    css.textShadow = shadows.join(', ')
   }
 
-  // A readability shadow always; the glow layer stacks on top of it when the preset asks.
-  const shadows = ['0 2px 8px rgba(0,0,0,0.55)']
-  if (style.glow > 0) shadows.push(`0 0 ${style.glow}px ${style.color}`)
-  css.textShadow = shadows.join(', ')
+  if (style.strokeWidth > 0) {
+    css.WebkitTextStroke = `${style.strokeWidth}px ${style.strokeColor}`
+    // Without this the stroke is painted OVER the fill and eats the glyph interiors, which at
+    // caption weights closes up counters entirely.
+    css.paintOrder = 'stroke fill'
+  }
 
   return css
 }
 
 /**
+ * CSS for the element WRAPPING a gradient-filled word, or undefined when nothing is needed.
+ *
+ * This is the trap audit 14 §3 documents. Gradient text sets `color: transparent` and
+ * `text-shadow` draws from the glyph's COLOUR, so a gradient word with a text-shadow glow renders
+ * with no halo at all — silently. A wrapper `filter: drop-shadow()` reads the rendered alpha
+ * instead, which is what the reference does. The readability shadow has to move with it, for the
+ * same reason.
+ */
+export function glowWrapperCss(style: ResolvedStyle): React.CSSProperties | undefined {
+  if (!isGradientFill(style)) return undefined
+  const filters = [READABILITY_DROP_SHADOW, ...glowLayerCss(style, 'filter')]
+  return { filter: filters.join(' ') }
+}
+
+function cssTextTransform(textCase: TextCase): React.CSSProperties['textTransform'] {
+  if (textCase === 'upper') return 'uppercase'
+  if (textCase === 'lower') return 'lowercase'
+  return 'none'
+}
+
+function gradientCss(style: ResolvedStyle): string {
+  if (style.gradientStops && style.gradientStops.length >= 2) {
+    const stops = style.gradientStops.map((stop) => `${stop.color} ${stop.at}%`).join(', ')
+    return `linear-gradient(90deg, ${stops})`
+  }
+  const [from, to] = style.gradient ?? ['#FFFFFF', '#FFFFFF']
+  return `linear-gradient(90deg, ${from}, ${to})`
+}
+
+/**
+ * The glow, as N stacked layers at decreasing alpha and increasing radius.
+ *
+ * One `0 0 Npx` shadow bands visibly — it reads as a ring rather than a falloff. The reference
+ * stacks three (Delhi measured at .8/10px, .6/20px, .4/30px), and that ramp is what this rebuilds
+ * for any radius and any layer count.
+ */
+function glowLayerCss(style: ResolvedStyle, kind: 'shadow' | 'filter'): string[] {
+  if (style.glow <= 0) return []
+  const layers = style.glowLayers
+  const span = layers > 1 ? (GLOW_MAX_ALPHA - GLOW_MIN_ALPHA) / (layers - 1) : 0
+
+  return Array.from({ length: layers }, (_, index) => {
+    const radius = (style.glow * (index + 1)) / layers
+    const color = withAlpha(style.glowColor, GLOW_MAX_ALPHA - span * index)
+    return kind === 'shadow' ? `0 0 ${radius}px ${color}` : `drop-shadow(${color} 0 0 ${radius}px)`
+  })
+}
+
+/**
+ * A colour at a given alpha. Handles `#RGB`, `#RRGGBB` and `rgb()/rgba()`; anything else (a named
+ * colour, a var()) is returned untouched rather than mangled — it just glows at full alpha.
+ */
+function withAlpha(color: string, alpha: number): string {
+  const rounded = Math.round(alpha * 1000) / 1000
+  const hex = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)
+  if (hex) {
+    const digits = hex[1]
+    const full =
+      digits.length === 3
+        ? digits
+            .split('')
+            .map((digit) => digit + digit)
+            .join('')
+        : digits
+    const value = Number.parseInt(full, 16)
+    return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${rounded})`
+  }
+
+  const rgb = color.trim().match(/^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/i)
+  if (rgb) return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${rounded})`
+
+  return color
+}
+
+/**
  * Dev guard: every preset face must be in CAPTION_FONTS, or index.html never loads it and the
  * caption silently renders in a fallback — which looks like a styling bug, not a missing font.
+ *
+ * It also checks the ITALIC case: `rangmanch` and `nazm` both depend on Instrument Serif's italic,
+ * and a family loaded at upright-only falls back to a synthesised slant that looks nothing like it.
  */
 export function assertPresetFontsLoadable(): string[] {
   const known = new Set<string>(CAPTION_FONTS)
+  const italicKnown = new Set(ITALIC_REQUIRED_FONTS)
   const missing: string[] = []
+
   for (const preset of Object.values(PRESETS)) {
-    for (const family of [preset.base.fontFamily, preset.emphasis.fontFamily]) {
+    for (const layer of [preset.base, preset.emphasis]) {
+      const family = layer.fontFamily
       if (family && !known.has(family)) missing.push(`${preset.id}: "${family}"`)
+      if (family && layer.italic && !italicKnown.has(family)) {
+        missing.push(`${preset.id}: "${family}" italic (add it to ITALIC_REQUIRED_FONTS + index.html)`)
+      }
     }
   }
   return missing

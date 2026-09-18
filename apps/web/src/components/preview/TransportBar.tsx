@@ -27,7 +27,7 @@ export function TransportBar({
   const progress = durationMs > 0 ? Math.min(100, (timeMs / durationMs) * 100) : 0
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2 border-t px-3 py-2">
+    <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border/60 bg-card px-3 py-2">
       <Button type="button" variant="ghost" size="icon-sm" aria-label={isPlaying ? 'Pause' : 'Play'} onClick={toggle}>
         {isPlaying ? <Pause /> : <Play />}
       </Button>
@@ -45,8 +45,12 @@ export function TransportBar({
         value={Math.round(timeMs)}
         onChange={(event) => seek(Number(event.target.value))}
         className="h-1.5 min-w-[120px] flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+        // Neutral fill, primary thumb. The gradient that used to live here read as decoration on
+        // the one control that should read as position (audit 16 §2.7).
         style={{
-          background: `linear-gradient(to right, var(--color-primary) ${progress}%, var(--color-muted) ${progress}%)`,
+          background: `linear-gradient(to right,
+            oklch(0.86 0.02 80 / 55%) ${progress}%,
+            var(--color-muted) ${progress}%)`,
         }}
       />
 
@@ -80,10 +84,15 @@ export function TransportBar({
 
       <Button
         type="button"
-        variant={captionsEnabled ? 'default' : 'outline'}
+        // A toggle, not a primary action — so it is a neutral "on" state, not the accent colour.
+        // Orange is reserved for the playhead, the primary action and the selection (audit 16 §3.3).
+        variant="outline"
         size="sm"
-        className="px-2 text-xs"
         aria-pressed={captionsEnabled}
+        className={cn(
+          'px-2 text-xs',
+          captionsEnabled && 'border-foreground/30 bg-foreground/10 text-foreground',
+        )}
         onClick={onToggleCaptions}
       >
         CC

@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Project } from '@captions/shared'
+import demoProject from '@captions/shared/fixtures/demo-project.json'
 import App from '@/App'
 import { EditorMessage } from '@/components/editor/EditorMessage'
 import { getProject, isApiError, startProcess } from '@/lib/api'
 import type { ApiError } from '@/lib/api'
 import { ProjectLoader } from '@/components/editor/ProjectLoader'
 import { PlaybackProvider } from '@/state/playback-context'
+import { PresetOverrideProvider } from '@/state/preset-override-context'
 import { ProjectProvider } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
+import { WordPatchProvider } from '@/state/word-patch-context'
 
 type BootstrapState =
   | { k: 'loading' }
@@ -22,12 +25,36 @@ type BootstrapState =
  * ProjectProvider needs the project to exist before it mounts. This component owns that
  * one bootstrap GET; ProjectLoader owns every fetch after it.
  */
-export function EditorBootstrap() {
+/**
+ * `fixture` loads the bundled demo project instead of fetching one, so the editor renders with no
+ * API running — which is what makes UI work and an offline demo possible. It is reached only by
+ * `/editor?demo=1` on a build with VITE_USE_FIXTURE set (router.tsx), never by the env flag alone:
+ * letting the flag decide meant `/editor` stopped being the upload screen for anyone running with
+ * it on, and there was then no route to the dropzone at all.
+ *
+ * It is not a fake backend. `projectId` stays null, and every writer already checks it
+ * (`if (!projectId) return` in useWordPatch), so edits stay local and honest rather than
+ * pretending to save. Nothing here simulates a server response.
+ */
+export function EditorBootstrap({ fixture = false }: { fixture?: boolean }) {
   const { projectId, setVersion, setLifecycle } = useSync()
   const [state, setState] = useState<BootstrapState>({ k: 'loading' })
   const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
+    if (fixture) {
+      // The fixture's videoUrl is a placeholder ("demo.mp4"), not a file that exists. Left in
+      // place it mounts a <video> that never loads, never fires `error` under the dev server's
+      // SPA fallback, and so stays attached as the playback clock reporting currentTime 0 —
+      // which freezes the transport, the timeline and the caption preview. Fixture mode has no
+      // video, so it says so, and PlaybackProvider's fallback clock drives the playhead instead.
+      const parsed = Project.safeParse({ ...demoProject, videoUrl: '' })
+      if (parsed.success) {
+        setState({ k: 'loaded', project: parsed.data, version: 0 })
+        setLifecycle({ k: 'ready' })
+      }
+      return
+    }
     if (!projectId) return
     const controller = new AbortController()
     setState({ k: 'loading' })
@@ -64,25 +91,30 @@ export function EditorBootstrap() {
       })
 
     return () => controller.abort()
-  }, [projectId, reloadToken, setVersion, setLifecycle])
+  }, [projectId, fixture, reloadToken, setVersion, setLifecycle])
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), [])
 
-  if (!projectId) return null
+  if (!projectId && !fixture) return null
 
   if (state.k === 'loading') {
-    return <EditorMessage title="Loading project…" detail={projectId} />
+    return <EditorMessage title="Loading project…" detail={projectId ?? ''} />
   }
 
   if (state.k === 'error') {
-    return <BootstrapError error={state.error} projectId={projectId} onRetry={reload} />
+    return <BootstrapError error={state.error} projectId={projectId ?? ''} onRetry={reload} />
   }
 
   return (
     <ProjectProvider initial={state.project}>
-      <PlaybackProvider>
-        <ProjectLoader onReloaded={reload} />
-        <App />
+      <PlaybackProvider fallbackDurationMs={state.project.durationMs}>
+        <WordPatchProvider>
+          {/* Reads project.presetId, so it mounts inside ProjectProvider. */}
+          <PresetOverrideProvider>
+            <ProjectLoader onReloaded={reload} />
+            <App />
+          </PresetOverrideProvider>
+        </WordPatchProvider>
       </PlaybackProvider>
     </ProjectProvider>
   )

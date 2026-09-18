@@ -90,3 +90,25 @@ def test_patch_project_preset(aws, demo_doc):
     body = r.json()["project"]
     assert body["presetId"] == "hinglish-bold" and body["settings"] == {"emojis": False, "emotionLayer": True}
     assert client().patch("/projects/demo-project", json={"presetId": "comic-sans"}).status_code == 422
+
+
+def test_patch_word_single_set_and_cleared(aws, demo_doc):
+    """`single` is the caption-grouping flag read by packages/shared/src/blocks.ts (rule 4).
+
+    Clearing it must REMOVE the key, not store `false`: the editor sends null for "off", and
+    GET must stay free of nulls because the shared zod schema's .optional() rejects them.
+    """
+    _seed(demo_doc)
+    c = client()
+
+    r = c.patch("/projects/demo-project/words/w2", json={"single": True, "version": 1})
+    assert r.status_code == 200, r.text
+    assert r.json()["word"]["single"] is True
+    assert c.get("/projects/demo-project").json()["words"][1]["single"] is True
+
+    cleared = c.patch("/projects/demo-project/words/w2", json={"single": None, "version": 2})
+    assert cleared.status_code == 200, cleared.text
+    assert "single" not in cleared.json()["word"]
+    body = c.get("/projects/demo-project")
+    assert "single" not in body.json()["words"][1]
+    assert "null" not in body.text

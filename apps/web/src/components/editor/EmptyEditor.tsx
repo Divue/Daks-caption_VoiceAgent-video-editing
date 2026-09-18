@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { Upload, AlertCircle, Loader2 } from 'lucide-react'
+import { Upload, AlertCircle, ArrowLeft, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRoute } from '@/router'
 import { readRecentProjects, rememberProject } from '@/lib/recents'
@@ -256,8 +256,38 @@ export function EmptyEditor() {
   }
 
   // --- Idle: dropzone + recents ---
+  //
+  // This screen had no chrome at all: a dropzone floating in a black void, with no title and no
+  // way back to anywhere. It is the first thing "Get started" lands on, so it gets a header —
+  // the mark, a name, and a route home.
   return (
-    <div className="flex h-screen flex-col items-center justify-center gap-6 bg-background p-6 text-foreground">
+    <div className="flex h-screen flex-col bg-background text-foreground">
+      <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border/60 px-4">
+        <div className="flex items-center gap-2.5">
+          <div className="sunset-stripe flex size-7 shrink-0 items-center justify-center rounded-md">
+            <Sparkles className="size-3.5 text-[oklch(0.2_0.02_45)]" />
+          </div>
+          <span className="font-display text-lg leading-none">Expressive Captions</span>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground"
+          onClick={() => navigate('/')}
+        >
+          <ArrowLeft className="size-4" />
+          Home
+        </Button>
+      </header>
+
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 p-6">
+        <div className="flex flex-col items-center gap-1 text-center">
+          <h1 className="font-display text-3xl leading-tight">Start a new project</h1>
+          <p className="text-sm text-muted-foreground">
+            Drop a reel in and we transcribe it, read its tone, and caption it.
+          </p>
+        </div>
       <div
         className={`group flex w-full max-w-md cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-12 transition-colors ${
           dragOver
@@ -325,6 +355,7 @@ export function EmptyEditor() {
           </ul>
         </div>
       )}
+      </div>
     </div>
   )
 }

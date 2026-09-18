@@ -13,9 +13,12 @@
       Black, Bebas Neue) are requested WITHOUT a weight axis — asking for 700 on
       Luckiest Guy silently returns nothing. lib/caption-style.ts holds the guard that
       keeps this list and CAPTION_FONTS in step.
+      Instrument Serif is requested with `ital@0;1` because two presets depend on its ITALIC
+      face (rangmanch's body, nazm's emphasis) — ITALIC_REQUIRED_FONTS names them, and the same
+      guard checks this link covers them.
     -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bangers&family=Bebas+Neue&family=Fredoka:wght@300..700&family=Instrument+Serif:ital@0;1&family=Inter:wght@100..900&family=JetBrains+Mono:wght@400;500&family=Luckiest+Guy&family=Montserrat:wght@100..900&family=Oswald:wght@200..700&family=Poppins:wght@400;500;600;700;800;900&family=Titan+One&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bangers&family=Bebas+Neue&family=Fredoka:wght@300..700&family=Instrument+Sans:wght@400..700&family=Instrument+Serif:ital@0;1&family=Inter:wght@100..900&family=JetBrains+Mono:wght@400;500&family=Luckiest+Guy&family=Montserrat:wght@100..900&family=Oswald:wght@200..700&family=Poppins:wght@400;500;600;700;800;900&family=Titan+One&display=swap"
       rel="stylesheet"
     />
     <!-- General Sans is the landing page's display face (src/pages/LandingPage.tsx). -->

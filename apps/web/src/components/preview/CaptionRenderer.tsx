@@ -7,6 +7,7 @@ import {
   renderedText,
   resolveWordStyle,
   revealOpacity,
+  shouldCascade,
   styleToCss,
 } from '@/lib/caption-style'
 
@@ -62,7 +63,10 @@ export function CaptionRenderer({
   const anchor = resolveWordStyle(words[0], preset, project.settings, frameWidth, {
     emphasised: emphasisIds.has(words[0].id),
   })
-  const isStack = preset.layout === 'stack'
+
+  // Decided per BLOCK, not per preset — see shouldCascade.
+  const stackCapable = preset.layout === 'stack'
+  const isStack = shouldCascade(words, emphasisIds, preset)
 
   const shared = { project, preset, emphasisIds, frameWidth, timeMs, selectedWordId }
 
@@ -81,7 +85,11 @@ export function CaptionRenderer({
           // A stack GROWS DOWNWARD as words arrive, so it is anchored by its top edge. Centring
           // it vertically would slide every word already on screen upward each time a new one
           // appeared, which is the one thing the reference's build-up never does.
-          transform: isStack ? 'translate(-50%, 0)' : 'translate(-50%, -50%)',
+          //
+          // The anchor follows the PRESET, not the block: in a stacked preset even an un-cascaded
+          // block hangs from the same top edge, so captions do not jump up and down the frame as
+          // blocks with and without emphasis alternate.
+          transform: stackCapable ? 'translate(-50%, 0)' : 'translate(-50%, -50%)',
           width: isStack ? '92%' : undefined,
           maxWidth: '92%',
         }}

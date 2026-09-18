@@ -6,6 +6,7 @@ import { MediaLane } from './MediaLane'
 import { Playhead } from './Playhead'
 import { TimeRuler } from './TimeRuler'
 import { TRACK_HEADER_WIDTH, TrackHeader } from './TrackHeader'
+import { EditorToolbar } from '@/components/toolbar/EditorToolbar'
 import { usePlayback } from '@/state/playback-context'
 import { formatTimestamp } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -130,9 +131,9 @@ export function Timeline({
 
   return (
     <div className="flex min-h-0 shrink-0 flex-col border-t border-border/60 bg-card">
-      <div className="flex h-8 shrink-0 items-center justify-between gap-3 px-3">
-        <span className="eyebrow text-muted-foreground">Captions over time</span>
-        <div className="flex items-center gap-2">
+      <div className="flex h-9 shrink-0 items-center justify-between gap-3 border-b border-border/40 px-2">
+        <EditorToolbar />
+        <div className="flex shrink-0 items-center gap-2">
           <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
             {formatTimestamp(timeMs)}
           </span>

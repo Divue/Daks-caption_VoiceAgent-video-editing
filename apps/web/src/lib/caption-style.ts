@@ -181,6 +181,23 @@ export function resolveEmotionLayer(preset: Preset, emotion: Word['emotion']): E
 }
 
 /**
+ * Whether this block draws as the stacked cascade.
+ *
+ * Two conditions, and both matter. The preset has to offer the layout at all, AND the block has to
+ * have something to cascade around: the look is a small word, a huge word, a small word, so with
+ * nothing emphasised it degrades to three equal words on three lines — a wasteful way to draw a
+ * caption. Those blocks fall back to a normal line.
+ */
+export function shouldCascade(
+  words: Word[],
+  emphasisIds: Set<string>,
+  preset: Preset,
+): boolean {
+  if (preset.layout !== 'stack') return false
+  return words.some((word) => emphasisIds.has(word.id))
+}
+
+/**
  * Opacity for a word given where the playhead is.
  *
  * Only words the playhead has NOT reached are affected — a word already spoken stays fully

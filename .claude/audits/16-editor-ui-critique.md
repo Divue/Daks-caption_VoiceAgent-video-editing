@@ -38,9 +38,9 @@ Severity: **F** = delete or rebuild, **D** = bad, fix properly, **C** = mediocre
 
 | # | Element | Grade | The charge |
 |---|---|---|---|
-| 1 | Editing toolbar (8 icons) | **F** | Scissors, split, link, shuffle, wand, file, music, gauge. All inert, all the same visual weight, no labels, no grouping. It is a picture of a toolbar. Delete it. |
+| 1 | Editing toolbar (8 icons) | **D** | Scissors, split, link, shuffle, wand, file, music, gauge. All inert, all the same visual weight, no labels, no grouping. **Originally graded F — "delete it" — and that was overruled: the affordances stay so there is an obvious place to wire them.** They are grouped with separators now and drawn through `InertControl`, which makes them visibly disabled rather than fake. |
 | 2 | `Video 1` / `Audio 1` tracks | **F** | Two empty coloured bars with a label and nothing in them — no waveform, no thumbnails, no clips, and never will be. They exist to make the app look like an NLE. Delete them. |
-| 3 | Track header column | **F** | `⋮⋮ T C. 🔊 🔒 👁` — six glyphs in 110px, four of them inert, and the track name truncated to **"C."**, **"V."**, **"A."**, which is not a name, it is a typo. |
+| 3 | Track header column | **D** | `⋮⋮ T C. 🔊 🔒 👁` — six glyphs in 110px, and the track name truncated to **"C."**, **"V."**, **"A."**, which is not a name, it is a typo. The controls were never the problem; **squeezing out the one piece of real text was.** The gutter is 168px now, the names fit, and mute/lock/hide rest at 30% opacity until the row is hovered. |
 | 4 | Time ruler | **D** | `00:00.000 00:00.500 00:01.000 …` — 24 labels, millisecond precision, every half second. Nobody editing captions needs `.000`. It is the single densest, noisiest thing on screen and it is labelling the least interesting axis. |
 | 5 | Caption chips | **D** | Identical amber rectangles with a 1px border, evenly sized, sorted left to right. They look like toolbar buttons from 1998, and — the real failure — **they carry none of the information the product is about.** You cannot see tone or emphasis in the one view that shows the whole video. |
 | 6 | Zoom slider | **C** | A slider plus two magnifier buttons for a control nobody will touch twice, with an **orange** thumb pulling the eye to the least important widget in the frame. |
@@ -76,16 +76,21 @@ Severity: **F** = delete or rebuild, **D** = bad, fix properly, **C** = mediocre
 
 ### 3.1 Replace the timeline with a **caption ribbon**
 
-> **Revised after review.** The first cut of this deleted the video and audio lanes outright. That
-> over-read the brief: "that area looks ugly" meant fix it, not remove it, and an editor with no
-> lanes at all reads as missing rather than focused. The lanes are back. What stayed deleted is the
-> part that was actually ugly — the eight inert toolbar buttons and the mute/lock/visibility gutter
-> that squeezed the lane names down to "C." / "V." / "A.".
+> **Revised twice after review, and the lesson is the same both times: I read "this looks ugly" as
+> "delete this".** First the video and audio lanes went; then the toolbar and the per-track
+> controls. Neither was asked for. An editor with no lanes reads as missing rather than focused,
+> and inert affordances are where a half-built product puts the hooks for the next person.
+>
+> Everything is back. What changed is how it is drawn: the tools are grouped instead of run
+> together, the gutter is wide enough for the lane names to fit, the per-track controls rest at low
+> opacity until hovered, and all of it goes through `InertControl` — disabled attribute, muted
+> foreground, not-allowed cursor, tooltip saying it is not built yet. Present and honest beats
+> either absent or fake.
 
 One strip whose top lane does the real work: *where are the captions, what tone are they, and where
 is the playhead.* Below it, the video and audio the captions sit on.
 
-- **Three lanes**, named in full, with no inert per-track controls.
+- **Three lanes**, named in full, with per-track controls that are visibly not wired yet.
 - **Blocks as segments** positioned by time, showing their text, sized by duration.
 - **Tone is the segment's colour** — a muted tint, not a badge: neutral reads as plain surface,
   angry and excited get a low-saturation wash. Now the whole video's emotional shape is legible
@@ -124,8 +129,8 @@ a full-width two-up control at the very top, visually louder than anything below
 
 Tracked here so the next session can see what was taken and what was left.
 
-- [x] 3.1 caption ribbon is the top lane; video/audio lanes kept but rebuilt; toolbar and the
-      mute/lock/visibility gutter deleted
+- [x] 3.1 caption ribbon is the top lane; video/audio lanes, the toolbar and the per-track
+      controls all kept, rebuilt, and drawn as visibly-inert rather than deleted
 - [x] 3.2 stage framing reduced, frame grows
 - [x] 3.3 orange budget
 - [x] 3.4 style panel hierarchy + weight dropdown + scope switch

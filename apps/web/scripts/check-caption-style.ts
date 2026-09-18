@@ -19,6 +19,7 @@ import {
   glowWrapperCss,
   resolveWordStyle,
   revealOpacity,
+  shouldCascade,
   styleToCss,
 } from '../src/lib/caption-style'
 
@@ -319,6 +320,20 @@ check('chamak is the only stacked preset', PRESETS.chamak.layout === 'stack')
 for (const id of ['rangmanch', 'nazm', 'dhamaka', 'mrbeast', 'minimal', 'hinglish-bold'] as PresetId[]) {
   check(`${id}: stays inline`, PRESETS[id].layout === 'inline')
 }
+// The cascade is decided PER BLOCK, not per preset.
+{
+  const block = [word({ id: 'a', text: 'har' }), word({ id: 'b', text: 'saal' })]
+  const withEmphasis = new Set(['b'])
+  const none = new Set<string>()
+
+  check('chamak cascades a block that has an emphasised word',
+    shouldCascade(block, withEmphasis, PRESETS.chamak))
+  check('chamak falls back to a normal line when the block has none',
+    !shouldCascade(block, none, PRESETS.chamak))
+  check('an inline preset never cascades, emphasis or not',
+    !shouldCascade(block, withEmphasis, PRESETS.rangmanch))
+}
+
 // A promoted word must resolve to the emphasis face even though its own flag is false — this is
 // the join between the rhythm rule and the resolver, and it is silent if it breaks.
 {

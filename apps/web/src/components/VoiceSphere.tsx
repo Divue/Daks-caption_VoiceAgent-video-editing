@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactElement } from "react";
 import { createProgram, generateSphereBuffers, rotationMat3 } from "../lib/webgl";
 import { smoothTowards, clamp } from "../lib/smoothing";
 import { useMicAnalyser } from "../hooks/useMicAnalyser";
@@ -20,6 +20,7 @@ uniform float uAudioBass;
 uniform float uAudioMid;
 uniform float uAudioTreble;
 uniform float uShake;
+uniform float uEntranceProgress;
 uniform float uPixelRatio;
 uniform float uAspect;
 uniform float uSizeBase;
@@ -115,23 +116,55 @@ void main() {
   float shellRadius = mix(1.0, 0.66, aShell);
   vec3 basePos = n * (shellRadius + idleSparkle * uDisplacement);
 
-  /* Primary voice/shake/cursor reaction: a genuine 3D coherent VECTOR flow
-     field, not a radial scale. Earlier versions multiplied a scalar noise
-     value onto each particle's own fixed direction (radius = base + k; pos
-     = n * radius) — every particle's angular position was permanently
-     frozen, so no matter how large k got, the result still read as "an
-     invisible sphere being inflated." That is exactly the artifact this
-     rewrite removes: there is no radius variable and no per-particle
-     direction constraint anywhere below. Each axis of the flow is sampled
-     from an independent noise channel, so displacement can point sideways
-     /tangentially just as easily as in or out — regions can bulge while a
-     neighboring region pulls inward or sideways, and the silhouette itself
-     reshapes asymmetrically, matching the reference video. Particles are
-     free to travel however far this field takes them; they simply relax
-     back toward basePos as the driving energy fades (see uAudio* uniforms,
-     which are already smoothed/sprung in JS) — there is no maximum-radius
-     clamp, bounding sphere, or clipping of any kind here or anywhere else
-     in this file. */
+  /* Page-load entrance: each particle travels in from a scattered field into
+     basePos rather than the sphere simply scaling up from nothing. aSeed
+     (already carried per-particle for the idle shimmer above) doubles here
+     as the entrance stagger key, so particles arrive across a spread of
+     times instead of as one rigid wave, and as the scatter distance, so
+     some start much farther out than others. The scattered start point is
+     basePos's own direction n pushed outward and swirled around Y by an
+     angle that unwinds to zero as the particle arrives — a curved approach
+     rather than a straight radial line in. entranceEase is a one-sided
+     "back ease": it reaches exactly 0 at local progress 0 and exactly 1 at
+     local progress 1, but rises just past 1 immediately before settling,
+     so mix() carries the particle slightly through basePos and back — a
+     restrained, deterministic stand-in for a damped spring overshoot. */
+  float entranceLocal = clamp((uEntranceProgress - aSeed * 0.4) / max(1.0 - aSeed * 0.4, 0.001), 0.0, 1.0);
+  float entranceOvershoot = 0.7;
+  float entranceBackC = entranceOvershoot + 1.0;
+  float entranceT = entranceLocal - 1.0;
+  float entranceEase = 1.0 + entranceBackC * entranceT * entranceT * entranceT + entranceOvershoot * entranceT * entranceT;
+
+  float entranceSwirl = (1.0 - entranceLocal) * (0.8 + aSeed * 1.6);
+  float swirlCos = cos(entranceSwirl);
+  float swirlSin = sin(entranceSwirl);
+  // Extra distance is capped well under cameraDistance (2.6): pushing a
+  // particle's world radius past that puts it behind the camera plane
+  // (viewZ = z + cameraDistance goes negative below), which inverts its
+  // perspective divide into garbage screen coordinates instead of a visible
+  // point flying inward. 0.3-0.75 keeps every particle's start radius under
+  // ~1.75, safely in front of the camera and inside the canvas's headroom.
+  vec3 scatterBase = n * (shellRadius + 0.3 + aSeed * 0.45);
+  vec3 scatterPos = vec3(
+    scatterBase.x * swirlCos + scatterBase.z * swirlSin,
+    scatterBase.y,
+    -scatterBase.x * swirlSin + scatterBase.z * swirlCos
+  );
+  vec3 entrancePos = mix(scatterPos, basePos, entranceEase);
+
+  // Gates the per-particle voice/cursor turbulence and the cursor's proximity
+  // pull below so they fade in only as the sphere approaches its formed
+  // state, instead of fighting the still-converging scatter with a hard cut.
+  float entranceInteractGate = smoothstep(0.3, 0.95, uEntranceProgress);
+
+  /* Shared coherent noise field for both the SHAKE effect and ambient voice
+     reactivity below: a genuine 3D vector flow, not a radial scale, so
+     displacement can point sideways/tangentially just as easily as in or
+     out — regions can bulge while a neighboring region pulls inward or
+     sideways. SHAKE (the explicit, user-triggered control) still uses this
+     raw and unconstrained, same as always: it's meant to be a strong,
+     deliberate effect, not something to tone down. Ambient voice reactivity
+     is a different story — see the comment below. */
   vec3 lowFlow = vec3(
     snoise(n * 1.1 + vec3(0.0, 0.0, uTime * 0.09)),
     snoise(n * 1.1 + vec3(31.7, 6.0, uTime * 0.09)),
@@ -143,14 +176,51 @@ void main() {
     snoise(n * 3.4 + vec3(23.0, 11.0, uTime * 0.3))
   );
 
+  /* Ambient voice reactivity, second pass: the first version (a decomposed
+     noise term capped very small) came out too compact/static — motion
+     needs to be clearly visible, not almost imperceptible, while still
+     "dancing" rather than "exploding." This layers two independent
+     traveling waves across the sphere surface — a broad, slow one (driven
+     by bass/overall level, for slow rolling movement) and a finer, faster
+     one (driven by treble/mid, for finer surface motion) — each a function
+     of the particle's own spherical angle (theta, its position around the
+     vertical axis) and height (n.y) plus uTime, so neighboring particles
+     sit at different points on the wave and the sphere deforms non-uniformly
+     instead of scaling as one rigid unit. Both waves drive an explicit
+     tangent-plane basis (t1/t2, both perpendicular to n) for the sideways
+     "flow around the surface" quality that reads as dancing rather than
+     bulging, plus a smaller radial component for the breathing/pulse.
+     t1 is built from a reference axis tilted a hair off true vertical
+     (0,1,0.0001) rather than pure (0,1,0): crossing n with an EXACTLY
+     parallel axis at the sphere's two pole particles would normalize a
+     zero-length vector into NaN; the tilt is imperceptible everywhere else
+     but keeps those particles well-defined. */
+  float theta = atan(n.z, n.x);
+  vec3 tangentRef = vec3(0.0, 1.0, 0.0001);
+  vec3 t1 = normalize(cross(n, tangentRef));
+  vec3 t2 = cross(n, t1);
+
+  float lowWave = sin(theta * 2.0 + uTime * 0.6) * cos(n.y * 1.5 - uTime * 0.4);
+  float highWave = sin(theta * 6.0 - uTime * 1.8 + n.y * 4.0);
+
+  float lowVoiceAmp = uAudioBass * 0.7 + uAudioLevel * 0.3;
+  float highVoiceAmp = uAudioTreble * 0.8 + uAudioMid * 0.4;
+
+  vec3 voiceTangential = t1 * lowWave + t2 * highWave;
+  float voiceRadial = lowWave * 0.6 + highWave * 0.4;
+
+  // Tuned so a normal speaking voice reads as clearly visible flowing
+  // motion (roughly 10-20% of the ~0.66-1.0 unit sphere radius) while the
+  // rare moment every band peaks simultaneously still stays under ~45% —
+  // deforming, never tearing the particle field apart.
   float particleVariance = 0.7 + 0.6 * aSeed;
   vec3 voiceFlow = (
-    lowFlow * (uAudioBass * 0.55 + uAudioLevel * 0.22) +
-    highFlow * (uAudioTreble + uAudioMid * 0.6) * 0.34 +
+    n * voiceRadial * lowVoiceAmp * 0.14 +
+    voiceTangential * (lowVoiceAmp * 0.18 + highVoiceAmp * 0.11) +
     highFlow * uShake * 0.4
   ) * particleVariance;
 
-  vec3 displaced = basePos + voiceFlow;
+  vec3 displaced = entrancePos + voiceFlow * entranceInteractGate;
   vec3 rotated = uRotation * displaced;
 
   vec3 world = rotated * uScale;
@@ -175,8 +245,8 @@ void main() {
   /* Cursor uses the same flow-field principle as voice — a local push along
      the coherent noise direction, not a fixed radial or axis-aligned nudge —
      plus a small toward-camera pull for a tactile parallax cue. */
-  world += highFlow * pointerProx * 0.09;
-  world.z -= pointerProx * 0.16;
+  world += highFlow * pointerProx * 0.09 * entranceInteractGate;
+  world.z -= pointerProx * 0.16 * entranceInteractGate;
 
   float viewZ = world.z + cameraDistance;
   float perspective = focal / viewZ;
@@ -222,6 +292,11 @@ void main() {
 const OUTER_COUNT = 3200;
 const INNER_COUNT = 700;
 const BASE_POINT_SIZE = 8.8;
+
+// Page-load particle entrance: scattered field -> convergence -> settle.
+// See the vertex shader's uEntranceProgress block for the per-particle math;
+// this is just the wall-clock length of that window.
+const ENTRANCE_DURATION_MS = 2400;
 
 // The canvas element is CANVAS_FRACTION of the stage width (see JSX below);
 // the sphere is tuned to visually fill roughly SPHERE_FRACTION of the stage.
@@ -274,17 +349,81 @@ interface ControlSpec {
 // reference composition — controls curve their connector trails toward it.
 const SPHERE_CENTER = { x: 50, y: 44 };
 
-const CONTROLS: ControlSpec[] = [
-  { label: "SHAKE", effect: "shake", icon: ShakeIcon, color: "#FF6B4A", css: "top-[8%] left-[2%] sm:left-[5%]", anchor: { x: 20, y: 15 }, enterDelay: 260 },
-  { label: "STRETCH", effect: "stretch", icon: StretchIcon, color: "#8B98F0", css: "top-[4%] right-[2%] sm:right-[5%]", anchor: { x: 80, y: 13 }, enterDelay: 340 },
-  { label: "SCALE UP", effect: "scaleUp", icon: ScaleUpIcon, color: "#A78BFA", css: "bottom-[10%] left-0 sm:left-[3%]", anchor: { x: 18, y: 82 }, enterDelay: 420 },
-  { label: "GLOW", effect: "glow", icon: GlowIcon, color: "#F2618B", css: "bottom-[6%] right-0 sm:right-[3%]", anchor: { x: 82, y: 84 }, enterDelay: 500 },
+// The four anchor slots around the sphere — positions, connector targets and
+// reveal timing. These stay fixed (they're the ones tuned to sit safely
+// inside the viewport); which effect identity below lands in which slot is
+// shuffled per page load, not the slots themselves.
+//
+// Deliberately asymmetric radial distances AND angles from SPHERE_CENTER
+// (approximate, in this same percentage-of-stage coordinate space): slot 1
+// sits close (~23 units out, tucked just above the sphere), slot 2 medium
+// (~37, lower-left), slot 3 medium-far (~48, upper-left), slot 4 far (~58,
+// lower-right) — not an even four-quadrant ring, so the connector lines
+// read as an intentional, hand-placed cluster rather than a clean geometric
+// pattern. Every anchor still clears the sphere's own footprint (roughly
+// x:[38,62] y:[27,61] in this space, allowing for the "close" slot to sit
+// right at that edge on purpose) with margin, and every css offset stays
+// within the same left-0/right-0 extremes the original slots already used,
+// so nothing sits closer to the viewport edge than before.
+type ControlSlot = Pick<ControlSpec, "css" | "anchor" | "enterDelay">;
+const CONTROL_SLOTS: ControlSlot[] = [
+  { css: "top-[14%] right-[30%] sm:right-[34%]", anchor: { x: 58, y: 22 }, enterDelay: 260 },
+  { css: "bottom-[22%] left-[14%] sm:left-[17%]", anchor: { x: 20, y: 66 }, enterDelay: 340 },
+  { css: "top-[2%] left-[6%] sm:left-[9%]", anchor: { x: 16, y: 10 }, enterDelay: 420 },
+  { css: "bottom-[2%] right-0 sm:right-[1%]", anchor: { x: 90, y: 86 }, enterDelay: 500 },
 ];
 
-function ConnectorField() {
+type ControlIdentity = Pick<ControlSpec, "label" | "effect" | "icon" | "color">;
+const CONTROL_IDENTITIES: ControlIdentity[] = [
+  { label: "SHAKE", effect: "shake", icon: ShakeIcon, color: "#FF6B4A" },
+  { label: "STRETCH", effect: "stretch", icon: StretchIcon, color: "#8B98F0" },
+  { label: "SCALE UP", effect: "scaleUp", icon: ScaleUpIcon, color: "#A78BFA" },
+  { label: "GLOW", effect: "glow", icon: GlowIcon, color: "#F2618B" },
+];
+
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/** Randomizes which effect sits at which of the four fixed slots, once per mount. */
+function useRandomizedControls(): ControlSpec[] {
+  const [controls] = useState<ControlSpec[]>(() => {
+    const shuffledIdentities = shuffle(CONTROL_IDENTITIES);
+    return CONTROL_SLOTS.map((slot, i) => ({ ...slot, ...shuffledIdentities[i] }));
+  });
+  return controls;
+}
+
+// Continuous radial "breathing" for the four controls, added on top of their
+// existing fixed slots/angles — see the dedicated useEffect in VoiceSphere()
+// below for the actual per-frame math. Constants only, kept next to the
+// connector geometry they also drive since both read the same anchor math.
+const BREATHE_PERIOD_MS = 3200;
+const BREATHE_AMPLITUDE = 0.09; // resting radial distance ranges ~91%..109%
+const BREATHE_SCALE_MID = 0.995;
+const BREATHE_SCALE_HALF_RANGE = 0.025; // scale ranges ~0.97 (near) .. 1.02 (far)
+const BREATHE_INTRO_DELAY_MS = 1300; // starts only once entrance (max ~1.2s) has settled
+const BREATHE_INTRO_RAMP_MS = 700; // fades amplitude in rather than snapping to it
+const BREATHE_PHASES = [0, 1.4, 2.9, 4.5]; // radians — one per fixed slot, same tempo, different rhythm
+const BREATHE_TABLET_MAX_WIDTH = 1024; // below this, amplitude is halved (Responsive: reduce on tablet)
+
+type ConnectorNodeRefs = { path: SVGPathElement | null; startDot: SVGCircleElement | null; endDot: SVGCircleElement | null };
+
+function ConnectorField({
+  controls,
+  connectorRefs,
+}: {
+  controls: ControlSpec[];
+  connectorRefs: MutableRefObject<ConnectorNodeRefs[]>;
+}) {
   const paths = useMemo(
     () =>
-      CONTROLS.map((c) => {
+      controls.map((c) => {
         const t = 0.66;
         const endX = c.anchor.x + (SPHERE_CENTER.x - c.anchor.x) * t;
         const endY = c.anchor.y + (SPHERE_CENTER.y - c.anchor.y) * t;
@@ -301,7 +440,7 @@ function ConnectorField() {
           endY,
         };
       }),
-    []
+    [controls]
   );
   return (
     <svg
@@ -310,13 +449,31 @@ function ConnectorField() {
       preserveAspectRatio="none"
       aria-hidden="true"
     >
-      {paths.map((p) => (
-        <g key={p.key}>
-          <path d={p.d} fill="none" stroke={p.color} strokeOpacity={0.45} strokeWidth={0.28} strokeDasharray="0.3 1.6" strokeLinecap="round" />
-          <circle cx={p.startX} cy={p.startY} r={0.55} fill={p.color} fillOpacity={0.7} />
-          <circle cx={p.endX} cy={p.endY} r={0.4} fill={p.color} fillOpacity={0.6} />
-        </g>
-      ))}
+      {paths.map((p, i) => {
+        function registerRef<T extends SVGPathElement | SVGCircleElement>(key: keyof ConnectorNodeRefs) {
+          return (el: T | null) => {
+            connectorRefs.current[i] = connectorRefs.current[i] ?? { path: null, startDot: null, endDot: null };
+            // @ts-expect-error -- key always matches the element type it's called with below
+            connectorRefs.current[i][key] = el;
+          };
+        }
+        return (
+          <g key={p.key}>
+            <path
+              ref={registerRef<SVGPathElement>("path")}
+              d={p.d}
+              fill="none"
+              stroke={p.color}
+              strokeOpacity={0.45}
+              strokeWidth={0.28}
+              strokeDasharray="0.3 1.6"
+              strokeLinecap="round"
+            />
+            <circle ref={registerRef<SVGCircleElement>("startDot")} cx={p.startX} cy={p.startY} r={0.55} fill={p.color} fillOpacity={0.7} />
+            <circle ref={registerRef<SVGCircleElement>("endDot")} cx={p.endX} cy={p.endY} r={0.4} fill={p.color} fillOpacity={0.6} />
+          </g>
+        );
+      })}
     </svg>
   );
 }
@@ -399,8 +556,12 @@ const statusLabel: Record<string, string> = {
 };
 
 export function VoiceSphere() {
+  const controls = useRandomizedControls();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const controlNodeRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const connectorRefs = useRef<ConnectorNodeRefs[]>([]);
   const { status, start, stop, sample } = useMicAnalyser();
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
   const activeTimeoutRef = useRef<number | null>(null);
@@ -476,6 +637,7 @@ export function VoiceSphere() {
       audioMid: gl.getUniformLocation(program, "uAudioMid"),
       audioTreble: gl.getUniformLocation(program, "uAudioTreble"),
       shake: gl.getUniformLocation(program, "uShake"),
+      entranceProgress: gl.getUniformLocation(program, "uEntranceProgress"),
       pixelRatio: gl.getUniformLocation(program, "uPixelRatio"),
       aspect: gl.getUniformLocation(program, "uAspect"),
       sizeBase: gl.getUniformLocation(program, "uSizeBase"),
@@ -526,6 +688,7 @@ export function VoiceSphere() {
     let rafId = 0;
     let lastTime = performance.now();
     let rotY = 0;
+    const entranceStart = lastTime;
 
     function frame(now: number) {
       const dt = Math.min((now - lastTime) / 1000, 0.1);
@@ -560,7 +723,7 @@ export function VoiceSphere() {
       const effects = effectsRef.current;
 
       const idleBreath = prefersReducedMotion ? 0 : Math.sin(now * 0.0006) * 0.012;
-      const scale = 1 + idleBreath + springLevel * 0.03 + effects.scaleUp * 0.26;
+      const scale = 1 + idleBreath + springLevel * 0.055 + effects.scaleUp * 0.26;
       // Idle cosmetic shimmer only — SHAKE now drives real 3D flow-field
       // turbulence (uShake below), not this scalar radial ripple.
       const displacement = 0.01 + idleBreath * 0.4;
@@ -583,6 +746,8 @@ export function VoiceSphere() {
       gl!.uniform1f(uniforms.audioMid, levels.mid);
       gl!.uniform1f(uniforms.audioTreble, levels.treble);
       gl!.uniform1f(uniforms.shake, effects.shake);
+      const entranceProgress = prefersReducedMotion ? 1 : clamp((now - entranceStart) / ENTRANCE_DURATION_MS, 0, 1);
+      gl!.uniform1f(uniforms.entranceProgress, entranceProgress);
       gl!.uniform1f(uniforms.pixelRatio, dpr);
       gl!.uniform1f(uniforms.aspect, canvas!.height / canvas!.width);
       gl!.uniform1f(uniforms.sizeBase, BASE_POINT_SIZE);
@@ -629,6 +794,84 @@ export function VoiceSphere() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Continuous radial breathing for the four controls + their connectors,
+  // layered on top of the sphere's own WebGL loop above (untouched, separate
+  // effect entirely). Drives each control's wrapper <div> transform and each
+  // connector's SVG path/dot attributes directly via refs every frame — no
+  // React state here, so this never triggers a re-render. The controls'
+  // fixed slot/anchor and the ConnectorField geometry formula are reused
+  // as-is; only the anchor fed into that formula moves over time.
+  useEffect(() => {
+    if (!motionSafe) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    let rafId = 0;
+    let stageWidth = stage.clientWidth;
+    let stageHeight = stage.clientHeight;
+    let ampScale = window.innerWidth < BREATHE_TABLET_MAX_WIDTH ? 0.5 : 1;
+
+    function measure() {
+      stageWidth = stage!.clientWidth;
+      stageHeight = stage!.clientHeight;
+      ampScale = window.innerWidth < BREATHE_TABLET_MAX_WIDTH ? 0.5 : 1;
+    }
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(stage);
+
+    const introStart = performance.now();
+
+    function frame(now: number) {
+      const elapsed = now - introStart;
+      const introT = clamp((elapsed - BREATHE_INTRO_DELAY_MS) / BREATHE_INTRO_RAMP_MS, 0, 1);
+      const introEase = introT * introT * (3 - 2 * introT); // smoothstep, so breathing fades in rather than snapping on
+
+      controls.forEach((spec, i) => {
+        const dxAnchor = spec.anchor.x - SPHERE_CENTER.x;
+        const dyAnchor = spec.anchor.y - SPHERE_CENTER.y;
+        const wave = Math.sin((elapsed / BREATHE_PERIOD_MS) * Math.PI * 2 + BREATHE_PHASES[i % BREATHE_PHASES.length]);
+        const amplitude = BREATHE_AMPLITUDE * ampScale * introEase;
+        const f = 1 + amplitude * wave;
+
+        const bx = SPHERE_CENTER.x + dxAnchor * f;
+        const by = SPHERE_CENTER.y + dyAnchor * f;
+
+        const node = controlNodeRefs.current[i];
+        if (node) {
+          const deltaXPx = ((bx - spec.anchor.x) / 100) * stageWidth;
+          const deltaYPx = ((by - spec.anchor.y) / 100) * stageHeight;
+          // Scale ramps in with the same introEase as position, so a control
+          // never scales without also having started to move.
+          const scale = BREATHE_SCALE_MID + BREATHE_SCALE_HALF_RANGE * wave * introEase;
+          node.style.transform = `translate(${deltaXPx}px, ${deltaYPx}px) scale(${scale})`;
+        }
+
+        const conn = connectorRefs.current[i];
+        if (conn?.path) {
+          const t = 0.66;
+          const endX = bx + (SPHERE_CENTER.x - bx) * t;
+          const endY = by + (SPHERE_CENTER.y - by) * t;
+          const midX = (bx + endX) / 2;
+          const midY = (by + endY) / 2;
+          const bow = bx < 50 ? -5 : 5;
+          conn.path.setAttribute("d", `M ${bx} ${by} Q ${midX + bow} ${midY} ${endX} ${endY}`);
+          conn.startDot?.setAttribute("cx", String(bx));
+          conn.startDot?.setAttribute("cy", String(by));
+          conn.endDot?.setAttribute("cx", String(endX));
+          conn.endDot?.setAttribute("cy", String(endY));
+        }
+      });
+
+      rafId = requestAnimationFrame(frame);
+    }
+
+    rafId = requestAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+    };
+  }, [controls, motionSafe]);
+
   const isListening = status === "listening";
   const isBusy = status === "requesting";
 
@@ -651,7 +894,7 @@ export function VoiceSphere() {
     <div className="relative mx-auto flex w-full max-w-[860px] flex-col items-center">
       {/* Stage: a wide, bounded box so every control position (0-100%) is
           guaranteed to stay inside the viewport with margin to spare. */}
-      <div className="relative aspect-[3/2] w-full">
+      <div ref={stageRef} className="relative aspect-[3/2] w-full">
         <div
           ref={glowRef}
           className="pointer-events-none absolute left-1/2 top-[44%] h-[60%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F3E7D2] blur-[64px]"
@@ -665,7 +908,7 @@ export function VoiceSphere() {
           aria-hidden="true"
         />
 
-        <ConnectorField />
+        <ConnectorField controls={controls} connectorRefs={connectorRefs} />
 
         {/* Canvas is deliberately much larger than the resting sphere's
             visual footprint (compensated via RENDER_SCALE below) so the
@@ -688,8 +931,14 @@ export function VoiceSphere() {
           />
         </div>
 
-        {CONTROLS.map((spec) => (
-          <div key={spec.label} className={`absolute z-10 hidden sm:block ${spec.css}`}>
+        {controls.map((spec, i) => (
+          <div
+            key={spec.label}
+            ref={(el) => {
+              controlNodeRefs.current[i] = el;
+            }}
+            className={`absolute z-10 hidden sm:block ${spec.css}`}
+          >
             <ControlButton
               spec={spec}
               active={activeLabel === spec.label}
@@ -702,7 +951,7 @@ export function VoiceSphere() {
 
       {/* Mobile: controls reflow to a row below the stage instead of floating around it */}
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3 sm:hidden">
-        {CONTROLS.map((spec) => (
+        {controls.map((spec) => (
           <ControlButton
             key={spec.label}
             spec={spec}
@@ -713,11 +962,11 @@ export function VoiceSphere() {
         ))}
       </div>
 
-      <div
-        className={`mt-8 flex flex-col items-center gap-4 ${motionSafe ? "animate-landing-enter" : ""}`}
-        style={motionSafe ? { animationDelay: "560ms" } : undefined}
-      >
-        <p className={`text-label uppercase tracking-widest ${status === "denied" ? "text-danger" : "text-ink-tertiary"}`}>
+      <div className="mt-8 flex flex-col items-center gap-4">
+        <p
+          className={`text-label uppercase tracking-widest ${status === "denied" ? "text-danger" : "text-ink-tertiary"} ${motionSafe ? "animate-text-materialize" : ""}`}
+          style={motionSafe ? { animationDelay: "480ms" } : undefined}
+        >
           {statusLabel[status]}
         </p>
         <button
@@ -725,8 +974,8 @@ export function VoiceSphere() {
           onClick={handleMicToggle}
           disabled={isBusy}
           aria-label={isListening ? "Stop voice interaction" : "Start voice interaction"}
-          className="relative flex h-14 w-14 items-center justify-center rounded-full border bg-surface/70 text-ink-secondary backdrop-blur-md transition-all duration-200 ease-out-expo hover:text-ink-primary hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-wait"
-          style={{ borderColor: hexToRgba(MIC_ACCENT, isListening ? 0.55 : 0.28) }}
+          className={`relative flex h-14 w-14 items-center justify-center rounded-full border bg-surface/70 text-ink-secondary backdrop-blur-md transition-all duration-200 ease-out-expo hover:text-ink-primary hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-wait ${motionSafe ? "animate-landing-enter" : ""}`}
+          style={{ borderColor: hexToRgba(MIC_ACCENT, isListening ? 0.55 : 0.28), ...(motionSafe ? { animationDelay: "540ms" } : undefined) }}
         >
           {isListening && (
             <span
@@ -739,8 +988,24 @@ export function VoiceSphere() {
             <MicIcon className="h-5 w-5" />
           </span>
         </button>
-        <p className="text-body-sm text-ink-secondary">Your voice brings it to life</p>
+        <p
+          className={`text-body-sm text-ink-secondary ${motionSafe ? "animate-text-materialize" : ""}`}
+          style={motionSafe ? { animationDelay: "620ms" } : undefined}
+        >
+          Your voice brings it to life
+        </p>
       </div>
+
+      <p
+        className={`mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-widest text-ink-tertiary ${motionSafe ? "animate-text-materialize" : ""}`}
+        style={motionSafe ? { animationDelay: "760ms" } : undefined}
+      >
+        <span>Transcribe</span>
+        <span aria-hidden="true" className="text-line-default">·</span>
+        <span>Read the tone</span>
+        <span aria-hidden="true" className="text-line-default">·</span>
+        <span>Caption with emotion</span>
+      </p>
     </div>
   );
 }
@@ -749,7 +1014,27 @@ export function SphereCornerCaptions({ motionSafe }: { motionSafe: boolean }) {
   return (
     <>
       <div
-        className={`absolute bottom-8 left-4 flex items-start gap-3 sm:left-8 ${motionSafe ? "animate-landing-enter" : ""}`}
+        className={`absolute top-8 left-4 hidden items-start gap-3 sm:left-8 sm:flex ${motionSafe ? "animate-text-materialize" : ""}`}
+        style={motionSafe ? { animationDelay: "620ms" } : undefined}
+      >
+        <span className="mt-0.5 h-10 w-px bg-line-default" aria-hidden="true" />
+        <p className="font-mono text-[11px] uppercase leading-relaxed tracking-widest text-ink-tertiary">
+          Hinglish
+          <br />
+          Captions
+          <br />
+          That feel
+        </p>
+      </div>
+      <div
+        className={`absolute top-8 right-4 hidden items-start gap-3 sm:right-8 sm:flex ${motionSafe ? "animate-text-materialize" : ""}`}
+        style={motionSafe ? { animationDelay: "680ms" } : undefined}
+      >
+        <span className="mt-0.5 h-10 w-px bg-line-default" aria-hidden="true" />
+        <p className="font-mono text-[11px] uppercase leading-relaxed tracking-widest text-ink-tertiary">Tone-aware editing</p>
+      </div>
+      <div
+        className={`absolute bottom-8 left-4 flex items-start gap-3 sm:left-8 ${motionSafe ? "animate-text-materialize" : ""}`}
         style={motionSafe ? { animationDelay: "700ms" } : undefined}
       >
         <span className="mt-0.5 h-10 w-px bg-line-default" aria-hidden="true" />
@@ -762,7 +1047,7 @@ export function SphereCornerCaptions({ motionSafe }: { motionSafe: boolean }) {
         </p>
       </div>
       <div
-        className={`absolute bottom-8 right-4 flex items-start gap-3 sm:right-8 ${motionSafe ? "animate-landing-enter" : ""}`}
+        className={`absolute bottom-8 right-4 flex items-start gap-3 sm:right-8 ${motionSafe ? "animate-text-materialize" : ""}`}
         style={motionSafe ? { animationDelay: "760ms" } : undefined}
       >
         <span className="mt-0.5 h-10 w-px bg-line-default" aria-hidden="true" />

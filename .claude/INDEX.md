@@ -23,6 +23,7 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 
 | ID | Document | Area | When to read |
 |----|----------|------|---------------|
+| — | `WORK-REPORT.md` (in `.claude/`, not `audits/`) | Team handover for the voice / video-player / **export** work (P4 + P3 + P2 + P1): what changed, how to run and test it, who reviews what, open problems, gotchas | **Start here** for anything touching voice commands, the video player, the command bar's feedback, or Export. Written in plain language; the four `audits/ai-agent/phase-16…19` rows below are its detailed evidence. |
 | 00 | `audits/00-current-frontend-architecture.md` | Whole `apps/web` | Any non-trivial frontend task; read first for orientation |
 | 01 | `audits/01-frontend-foundation.md` | Vite/React/TS/Tailwind/shadcn scaffold | Build tooling, path aliases, workspace dependency issues |
 | 02 | `audits/02-state-management.md` | `state/project-reducer.ts`, `state/project-context.tsx` | Any task that dispatches actions or reads/writes `Project` state |
@@ -47,6 +48,10 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | — | `talk-and-edit/phase-06-voice-disconnect.md` | Stopping voice mid-connect left the mic live behind an "off" button; session token, Stop link, Esc |
 | 16 | `audits/16-editor-ui-critique.md` | Editor UI critique + the redesign it drove (P3) | Any editor chrome/layout/colour work. Read §1 first: the timeline was a picture of a video editor we are not building, and most of the ugliness was downstream of that. |
 | 15 | `audits/15-caption-style-panel-and-editor-ui.md` | Caption style panel, the 4 measured presets, **schema v2**, editor UI/theme (P3) | Anything touching `Style`, `Preset`, the style resolver, the inspector panel, style writes, or the editor's look. **Read before any `Style`/`PresetId` change** — v2 renamed two fields and one preset id. |
+| — | `audits/ai-agent/phase-16-local-run-on-p3-branch.md` | Running `p3-agent-talk-edit` on a real machine (P4) | New machine or `.env` trouble: the recipe's traps (wrong `DEV_PREFIX`, LiveKit Cloud vs dev keys, missing `VOICE_STT_LANGUAGE`), and which AWS capabilities the shared identity lacks |
+| — | `audits/ai-agent/phase-17-e2e-voice-and-editor.md` | Sarvam speech-to-text provider for the voice worker; voice + editor tested end to end in a real browser (P4) | Live voice not transcribing (AWS Transcribe streaming is denied), or `VOICE_STT_PROVIDER` / `VOICE_STT_LANGUAGE` |
+| — | `audits/ai-agent/phase-18-voice-video-fixes.md` | Voice controls the video; the player no longer restarts/freezes; loading, layout, feedback; the "no sound" regression (P3 folder, flagged) | `lib/voice-intents.ts`, `VideoStage.tsx`, `playback-context.tsx`, video ducking, or the mis-heard word "pause" |
+| — | `audits/ai-agent/phase-19-export.md` | Export: Remotion composition + local render server, API render route, editor Export button; the shared-renderer word-gap fix (P2 + P1 + P3) | Anything under `remotion/`, `services/api/app/routers/render.py`, `ExportButton.tsx`, or a change to `CaptionRenderer` (the export reuses it) |
 
 Documents 09 and 10 both originate from a single commit (`628a3e6`) that
 combined an editor redesign with a new landing page. They are split by file

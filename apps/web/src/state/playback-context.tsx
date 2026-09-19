@@ -12,6 +12,21 @@ import type { ReactNode } from 'react'
  *    Project with Zod; at 60 fps that would be 60 full-project validations per second.
  *    Playback time is ephemeral UI state and stays here.
  */
+/** Why `play()` did not start playback, in words a person can act on. */
+export type PlayResult = { ok: true } | { ok: false; reason: string }
+
+/** `null` for an AbortError: that is the user pausing again, not a failure worth showing. */
+function describePlayFailure(cause: unknown): string | null {
+  const name = cause instanceof DOMException ? cause.name : ''
+  if (name === 'AbortError') return null
+  if (name === 'NotAllowedError') return 'The browser blocked playback — click the video once, then try again'
+  if (name === 'NotSupportedError') return "This video's format can't be played by your browser"
+  return cause instanceof Error && cause.message ? cause.message : 'The video could not start'
+}
+
+/** While the microphone is open the video is turned down to this share of its volume. */
+const DUCK_FACTOR = 0.25
+
 interface PlaybackContextValue {
   timeMs: number
   isPlaying: boolean
@@ -19,15 +34,25 @@ interface PlaybackContextValue {
   volume: number
   muted: boolean
   rate: number
+  /** Waiting on data mid-playback. Without this a stalled stream looks exactly like a frozen app. */
+  buffering: boolean
+  /** The first frame is available. False while the file is still loading. */
+  ready: boolean
+  /** The reason the last `play()` failed, until playback next succeeds. */
+  playError: string | null
   /** Attach to the one <video>. Callback ref: listeners bind when the element mounts. */
   attachVideo: (el: HTMLVideoElement | null) => void
   seek: (ms: number) => void
   toggle: () => void
-  play: () => void
+  /** Resolves with the outcome, so a voice command can say "couldn't play" instead of nothing. */
+  play: () => Promise<PlayResult>
   pause: () => void
   setRate: (rate: number) => void
   setVolume: (volume: number) => void
   toggleMute: () => void
+  setMuted: (muted: boolean) => void
+  /** Turn the video down (true) or back up (false), remembering the user's own volume. */
+  duck: (on: boolean) => void
 }
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null)
@@ -55,6 +80,12 @@ export function PlaybackProvider({
   const [muted, setMuted] = useState(false)
   const [rate, setRateState] = useState(1)
   const rateRef = useRef(1)
+  const [buffering, setBuffering] = useState(false)
+  const [ready, setReady] = useState(false)
+  const [playError, setPlayError] = useState<string | null>(null)
+  // The volume the USER chose, kept apart from what the element is set to while it is ducked.
+  const userVolumeRef = useRef(1)
+  const duckingRef = useRef(false)
   // The playhead, readable from a callback without making every callback depend on the render.
   const timeMsRef = useRef(0)
   const durationRef = useRef(0)
@@ -125,6 +156,8 @@ export function PlaybackProvider({
 
       if (!el) {
         setIsPlaying(false)
+        setBuffering(false)
+        setReady(false)
         return
       }
 
@@ -135,8 +168,26 @@ export function PlaybackProvider({
       }
       const onPause = () => {
         setIsPlaying(false)
+        setBuffering(false)
         stopLoop()
         publishTime() // land the playhead exactly where playback stopped
+      }
+      // A playing clip that runs out of data fires `waiting`; nothing else tells the UI it is
+      // not frozen. Cleared the moment frames flow again.
+      const onWaiting = () => {
+        if (!el.paused) setBuffering(true)
+      }
+      const onFlowing = () => {
+        setBuffering(false)
+        setPlayError(null)
+      }
+      const onData = () => {
+        setReady(el.readyState >= 2)
+        if (el.readyState >= 3) setBuffering(false)
+      }
+      const onEmptied = () => {
+        setReady(false)
+        setBuffering(false)
       }
       // Scrubbing while paused runs no rAF loop, so seeking must publish time itself.
       const onSeek = publishTime
@@ -144,33 +195,41 @@ export function PlaybackProvider({
         if (Number.isFinite(el.duration)) setDurationMs(el.duration * 1000)
       }
       const onVolume = () => {
+        // While ducked the element is quieter than the user's setting; showing THAT would make the
+        // slider jump every time the mic opens, and would overwrite the volume we must restore.
+        if (duckingRef.current) return
+        userVolumeRef.current = el.volume
         setVolumeState(el.volume)
         setMuted(el.muted)
       }
 
-      el.addEventListener('play', onPlay)
-      el.addEventListener('pause', onPause)
-      el.addEventListener('ended', onPause)
-      el.addEventListener('seeking', onSeek)
-      el.addEventListener('seeked', onSeek)
-      el.addEventListener('loadedmetadata', onLoaded)
-      el.addEventListener('durationchange', onLoaded)
-      el.addEventListener('volumechange', onVolume)
+      const listeners: Array<[string, () => void]> = [
+        ['play', onPlay],
+        ['pause', onPause],
+        ['ended', onPause],
+        ['seeking', onSeek],
+        ['seeked', () => { onSeek(); onData() }],
+        ['loadedmetadata', onLoaded],
+        ['durationchange', onLoaded],
+        ['volumechange', onVolume],
+        ['waiting', onWaiting],
+        ['stalled', onWaiting],
+        ['playing', onFlowing],
+        ['canplay', onData],
+        ['canplaythrough', onData],
+        ['loadeddata', onData],
+        ['emptied', onEmptied],
+      ]
+      for (const [name, handler] of listeners) el.addEventListener(name, handler)
 
       detachRef.current = () => {
-        el.removeEventListener('play', onPlay)
-        el.removeEventListener('pause', onPause)
-        el.removeEventListener('ended', onPause)
-        el.removeEventListener('seeking', onSeek)
-        el.removeEventListener('seeked', onSeek)
-        el.removeEventListener('loadedmetadata', onLoaded)
-        el.removeEventListener('durationchange', onLoaded)
-        el.removeEventListener('volumechange', onVolume)
+        for (const [name, handler] of listeners) el.removeEventListener(name, handler)
       }
 
       // A remounted element may already be mid-load; sync now rather than wait for an event.
       onLoaded()
       onVolume()
+      onData()
       publishTime()
       if (!el.paused) onPlay()
     },
@@ -217,11 +276,23 @@ export function PlaybackProvider({
     stopLoop()
   }, [stopLoop])
 
-  const play = useCallback(() => {
+  const play = useCallback(async (): Promise<PlayResult> => {
     const video = videoRef.current
-    if (!video) return startDetached(timeMsRef.current)
-    // A rejected play() (autoplay policy, detached src) must not become an unhandled rejection.
-    void video.play().catch(() => undefined)
+    if (!video) {
+      startDetached(timeMsRef.current)
+      return { ok: true }
+    }
+    try {
+      await video.play()
+      setPlayError(null)
+      return { ok: true }
+    } catch (cause) {
+      // Reported, not swallowed: a play() that fails must be visible, or "the video is stuck"
+      // is the only symptom anyone gets. An AbortError is the user pausing again — not an error.
+      const reason = describePlayFailure(cause)
+      if (reason) setPlayError(reason)
+      return { ok: false, reason: reason ?? 'interrupted' }
+    }
   }, [startDetached])
 
   const pause = useCallback(() => {
@@ -237,9 +308,9 @@ export function PlaybackProvider({
       else startDetached(timeMsRef.current)
       return
     }
-    if (video.paused) void video.play().catch(() => undefined)
+    if (video.paused) void play()
     else video.pause()
-  }, [startDetached, stopDetached])
+  }, [play, startDetached, stopDetached])
 
   const setRate = useCallback((next: number) => {
     const video = videoRef.current
@@ -254,18 +325,40 @@ export function PlaybackProvider({
 
   const setVolume = useCallback((next: number) => {
     const video = videoRef.current
+    userVolumeRef.current = next
     if (video) {
-      video.volume = next
+      // Still ducked: remember what the user chose, apply it when the duck ends.
+      video.volume = duckingRef.current ? next * DUCK_FACTOR : next
       if (next > 0) video.muted = false
     }
     setVolumeState(next)
   }, [])
 
+  const setMutedTo = useCallback((next: boolean) => {
+    const video = videoRef.current
+    if (!video) return
+    video.muted = next
+    setMuted(next)
+  }, [])
+
   const toggleMute = useCallback(() => {
     const video = videoRef.current
     if (!video) return
-    video.muted = !video.muted
-    setMuted(video.muted)
+    setMutedTo(!video.muted)
+  }, [setMutedTo])
+
+  /**
+   * The microphone is open, and the clip's own narration comes out of the same speakers the mic is
+   * listening to: the recogniser would hear the video and act on it. Turning the video down while
+   * listening cuts what leaks back in without pausing it — the user may be about to say "pause".
+   */
+  const duck = useCallback((on: boolean) => {
+    const video = videoRef.current
+    if (on === duckingRef.current) return
+    duckingRef.current = on
+    if (!video) return
+    if (on) userVolumeRef.current = video.volume
+    video.volume = on ? userVolumeRef.current * DUCK_FACTOR : userVolumeRef.current
   }, [])
 
   const value = useMemo<PlaybackContextValue>(
@@ -276,6 +369,9 @@ export function PlaybackProvider({
       volume,
       muted,
       rate,
+      buffering,
+      ready,
+      playError,
       attachVideo,
       seek,
       toggle,
@@ -284,8 +380,13 @@ export function PlaybackProvider({
       setRate,
       setVolume,
       toggleMute,
+      setMuted: setMutedTo,
+      duck,
     }),
-    [timeMs, isPlaying, durationMs, volume, muted, rate, attachVideo, seek, toggle, play, pause, setRate, setVolume, toggleMute],
+    [
+      timeMs, isPlaying, durationMs, volume, muted, rate, buffering, ready, playError,
+      attachVideo, seek, toggle, play, pause, setRate, setVolume, toggleMute, setMutedTo, duck,
+    ],
   )
 
   return <PlaybackContext.Provider value={value}>{children}</PlaybackContext.Provider>

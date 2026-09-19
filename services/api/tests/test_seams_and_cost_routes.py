@@ -30,11 +30,15 @@ def test_real_agent_router_is_mounted(aws):
     assert client().post("/agent/command", json={}).status_code == 422
 
 
-def test_render_seam_501(aws, demo_doc):
+def test_render_routes_are_real_not_a_501_stub(aws, demo_doc):
+    """The P2 render seam used to answer 501 for everything. It is implemented now (see test_render.py for
+    the behaviour); this only pins that the stub is gone and the routes are still mounted."""
     _seed(demo_doc)
     c = client()
-    assert c.post("/projects/demo-project/render").status_code == 501
-    assert c.get("/projects/demo-project/render/r1").json()["owner"] == "P2"
+    # the seeded demo has no uploaded video, so it is refused for that reason — not "not implemented"
+    refused = c.post("/projects/demo-project/render")
+    assert refused.status_code == 409 and refused.json()["error"] == "no_video"
+    assert c.get("/projects/demo-project/render/abcdef012345").status_code != 501
     assert c.post("/projects/nope/render").status_code == 404
 
 

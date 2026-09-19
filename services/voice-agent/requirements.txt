@@ -2,5 +2,5 @@
 # rule: that file ships into the production API Docker image). This worker is a
 # separate deployable process with its own dependency set — install into its own
 # `uv venv --python 3.12 .venv`, never into system Python or the API's venv/image.
-livekit-agents[aws]~=1.5
+livekit-agents[aws,sarvam]~=1.5
 python-dotenv

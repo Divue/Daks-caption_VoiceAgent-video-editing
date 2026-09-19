@@ -1,9 +1,8 @@
-import { useState } from 'react'
-import { ArrowLeft, Download, FilePlus2, Pencil, Share2 } from 'lucide-react'
+import { ArrowLeft, FilePlus2, Pencil, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRoute } from '@/router'
-import { startRender, isApiError } from '@/lib/api'
 import { useSync } from '@/state/sync-context'
+import { ExportButton } from './ExportButton'
 import { InertControl } from './InertControl'
 import { UndoRedoControls } from './UndoRedoControls'
 
@@ -14,24 +13,6 @@ interface AppHeaderProps {
 export function AppHeader({ projectId }: AppHeaderProps) {
   const { navigate } = useRoute()
   const { projectId: syncProjectId } = useSync()
-  const [exportError, setExportError] = useState<string | null>(null)
-  const [exporting, setExporting] = useState(false)
-
-  function handleExport() {
-    const id = syncProjectId ?? projectId
-    setExportError(null)
-    setExporting(true)
-    startRender(id)
-      .then(() => setExportError(null))
-      .catch((cause) => {
-        if (isApiError(cause) && cause.status === 501) {
-          setExportError('Export is not implemented yet (P2).')
-        } else {
-          setExportError(isApiError(cause) ? (cause.detail ?? cause.code) : String(cause))
-        }
-      })
-      .finally(() => setExporting(false))
-  }
 
   return (
     <header className="shrink-0">
@@ -86,23 +67,7 @@ export function AppHeader({ projectId }: AppHeaderProps) {
           reason="Share is not built yet"
           showLabel
         />
-        <div className="relative">
-          <Button
-            type="button"
-            size="sm"
-            className="gap-1.5"
-            disabled={exporting}
-            onClick={handleExport}
-          >
-            <Download className="size-4" />
-            {exporting ? 'Exporting…' : 'Export'}
-          </Button>
-          {exportError && (
-            <div className="absolute top-full right-0 z-50 mt-1 w-56 rounded-md border bg-popover p-2 text-xs text-popover-foreground shadow-md">
-              {exportError}
-            </div>
-          )}
-        </div>
+        <ExportButton projectId={syncProjectId ?? projectId} />
       </div>
       </div>
       <div className="h-px w-full bg-border/60" />

@@ -14,13 +14,35 @@
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Project, deriveBlocks } from '@captions/shared'
+import { PRESETS, Project, deriveBlocks } from '@captions/shared'
+import type { Preset } from '@captions/shared'
 import { applyAgentPatch, createInitialState, projectReducer } from '../src/state/project-reducer'
 import type { AgentPatch, ProjectHistoryState } from '../src/state/project-reducer'
 import { summarisePatches, summariseTurn } from '../src/lib/agent-summary'
-import { FILLER, MIN_VOICE_CHARS, STOP_LISTENING, UNDO_PHRASES, mergeUtterances } from '../src/lib/voice-intents'
+import {
+  FILLER,
+  MIN_VOICE_CHARS,
+  STOP_LISTENING,
+  UNDO_PHRASES,
+  describeTransport,
+  mergeUtterances,
+  parseTransportIntent,
+  resolveTransport,
+} from '../src/lib/voice-intents'
 import { DEFAULT_CHIPS, DEMO_PROMPTS, isRefusalPrompt } from '../src/lib/demo-prompts'
 import { formatTimecode } from '../src/lib/format'
+import { mediaKey } from '../src/lib/media-key'
+import {
+  INITIAL_EXPORT,
+  exportPercent,
+  exportReducer,
+  exportStatusText,
+  isLinkStale,
+} from '../src/lib/export'
+import type { ExportEvent, ExportState } from '../src/lib/export'
+import type { RenderStatus } from '../src/lib/api'
+import { resolvePreset } from '../src/lib/resolve-preset'
+import type { PresetOverride } from '../src/lib/resolve-preset'
 
 let failures = 0
 function check(label: string, ok: boolean, detail = '') {
@@ -324,6 +346,199 @@ console.log('\nvoice — a pause is not the end of an instruction')
     'three fragments accumulate in order',
     mergeUtterances(mergeUtterances('make the word pagal', 'blue'), 'and shake it') === 'make the word pagal blue and shake it',
   )
+}
+
+console.log('\nvoice — the video obeys "play", "pause", "go to 5 seconds" without a Bedrock round trip')
+{
+  const t = (text: string) => JSON.stringify(parseTransportIntent(text))
+  const is = (text: string, expected: object) => t(text) === JSON.stringify(expected)
+
+  const plays = ['play', 'Play the video.', 'please play it', 'resume', 'continue playing', 'start the video', 'can you play the video', 'video chalao']
+  check('play phrases', plays.every((w) => is(w, { type: 'play' })), plays.filter((w) => !is(w, { type: 'play' })).map((w) => `${w}=>${t(w)}`).join('; '))
+
+  const pauses = ['pause', 'Pause the video', 'pause it', 'stop the video', 'hold on', 'freeze', 'ruko', 'video rok do']
+  check('pause phrases', pauses.every((w) => is(w, { type: 'pause' })), pauses.filter((w) => !is(w, { type: 'pause' })).map((w) => `${w}=>${t(w)}`).join('; '))
+
+  // Sarvam heard a spoken "pause" as "Pass" — recogniser errors that would otherwise leave the video playing.
+  check('a recogniser\'s "Pass" for "pause" still pauses', is('Pass.', { type: 'pause' }) && is('pass', { type: 'pause' }) && is('paws', { type: 'pause' }))
+  check('"pass" inside a real sentence is NOT a pause', parseTransportIntent('pass the emphasis to the next word') === null && parseTransportIntent('make it pass') === null)
+  // Sarvam also returned "House" for a spoken "pause". Only while the video is playing is that read as a pause.
+  const playing = { playing: true }
+  check('"House" while PLAYING is read as a mis-heard pause', JSON.stringify(parseTransportIntent('House.', playing)) === JSON.stringify({ type: 'pause' }) && JSON.stringify(parseTransportIntent('hours', playing)) === JSON.stringify({ type: 'pause' }))
+  check('"House" while PAUSED is left alone, for the agent', parseTransportIntent('House.', { playing: false }) === null && parseTransportIntent('House.') === null)
+  check('the playing-only aliases never fire inside a longer sentence', ['house of cards', 'make the house red', 'force it bigger'].every((w) => parseTransportIntent(w, playing) === null))
+  check('edit words are not stolen while playing', ['bigger', 'red', 'undo', 'yellow'].every((w) => parseTransportIntent(w, playing) === null))
+  check('real transport words keep their own meaning while playing', parseTransportIntent('faster', playing)?.type === 'rateStep' && parseTransportIntent('mute', playing)?.type === 'mute' && parseTransportIntent('restart', playing)?.type === 'restart')
+
+  const restarts = ['restart', 'start over', 'play from the beginning', 'replay', 'go to the start', 'play it again', 'rewind to the beginning']
+  check('restart phrases', restarts.every((w) => is(w, { type: 'restart' })), restarts.filter((w) => !is(w, { type: 'restart' })).map((w) => `${w}=>${t(w)}`).join('; '))
+
+  const seeks: Array<[string, number]> = [
+    ['go to 5 seconds', 5000],
+    ['jump to the 5 second mark', 5000],
+    ['go to five seconds', 5000],
+    ['go to twenty five seconds', 25000],
+    ['seek to 1:30', 90000],
+    ['go to two minutes', 120000],
+    ['take me to 12 seconds', 12000],
+  ]
+  check('absolute seeks', seeks.every(([w, ms]) => is(w, { type: 'seek', ms })), seeks.filter(([w, ms]) => !is(w, { type: 'seek', ms })).map(([w]) => `${w}=>${t(w)}`).join('; '))
+
+  const skips: Array<[string, number]> = [
+    ['skip 10 seconds', 10000],
+    ['skip ahead 10 seconds', 10000],
+    ['forward 15 seconds', 15000],
+    ['go back 5 seconds', -5000],
+    ['skip back ten seconds', -10000],
+    ['rewind 3 seconds', -3000],
+    ['back 2 seconds', -2000],
+  ]
+  check('relative skips', skips.every(([w, ms]) => is(w, { type: 'skip', ms })), skips.filter(([w, ms]) => !is(w, { type: 'skip', ms })).map(([w]) => `${w}=>${t(w)}`).join('; '))
+
+  check('faster steps the speed up', is('faster', { type: 'rateStep', direction: 1 }) && is('speed up', { type: 'rateStep', direction: 1 }))
+  check('slower steps the speed down', is('slower', { type: 'rateStep', direction: -1 }) && is('slow down', { type: 'rateStep', direction: -1 }))
+  check(
+    'named speeds',
+    is('normal speed', { type: 'rate', rate: 1 }) && is('double speed', { type: 'rate', rate: 2 }) && is('half speed', { type: 'rate', rate: 0.5 }) && is('play at 1.5x', { type: 'rate', rate: 1.5 }),
+    ['normal speed', 'double speed', 'half speed', 'play at 1.5x'].map((w) => `${w}=>${t(w)}`).join('; '),
+  )
+  check(
+    'mute and unmute',
+    is('mute', { type: 'mute' }) && is('sound off', { type: 'mute' }) && is('unmute', { type: 'unmute' }) && is('sound on', { type: 'unmute' }),
+  )
+
+  // The dangerous half: a transport parser that is too greedy would swallow real edit commands.
+  const notTransport = [
+    'make that line angry',
+    'play the word bekaar in red',
+    'put a fire emoji on the word play',
+    'stop making things red',
+    'start making it bigger',
+    'pause the emphasis on that word',
+    'skip the first word',
+    'go to the third line',
+    'make the video bigger',
+    'stop listening',
+    'stop the mic',
+    'undo',
+    'faster captions please',
+  ]
+  check('real edit commands are NOT read as playback', notTransport.every((w) => parseTransportIntent(w) === null), notTransport.filter((w) => parseTransportIntent(w) !== null).map((w) => `${w}=>${t(w)}`).join('; '))
+
+  check('a transport intent has a plain-English description', describeTransport({ type: 'seek', ms: 5000 }, 21170) === 'Jumped to 0:05' && describeTransport({ type: 'play' }, 1000) === 'Playing')
+
+  // The arithmetic a user can SEE go wrong: landing past the end, before the start, or off the speed list.
+  const ctx = { timeMs: 8000, durationMs: 21170, rate: 1 }
+  const seekTo = (i: Parameters<typeof resolveTransport>[0], c = ctx) => resolveTransport(i, c).action
+  check('a skip past the end lands on the end, not beyond it', JSON.stringify(seekTo({ type: 'skip', ms: 60000 })) === JSON.stringify({ kind: 'seek', ms: 21170 }))
+  check('a skip back past the start lands on 0, not negative', JSON.stringify(seekTo({ type: 'skip', ms: -60000 })) === JSON.stringify({ kind: 'seek', ms: 0 }))
+  check('skip is relative to where the playhead is now', JSON.stringify(seekTo({ type: 'skip', ms: 5000 })) === JSON.stringify({ kind: 'seek', ms: 13000 }))
+  check('"go to 90 seconds" on a 21 s clip clamps to the end and says so', JSON.stringify(seekTo({ type: 'seek', ms: 90000 })) === JSON.stringify({ kind: 'seek', ms: 21170 }) && resolveTransport({ type: 'seek', ms: 90000 }, ctx).label === 'Jumped to the end')
+  check('"go to the end" reaches the end', JSON.stringify(seekTo(parseTransportIntent('go to the end')!)) === JSON.stringify({ kind: 'seek', ms: 21170 }))
+  check('restart seeks to 0 AND keeps playing', JSON.stringify(seekTo({ type: 'restart' })) === JSON.stringify({ kind: 'seek', ms: 0, thenPlay: true }))
+  check('faster steps 1x -> 1.5x', JSON.stringify(seekTo({ type: 'rateStep', direction: 1 })) === JSON.stringify({ kind: 'rate', rate: 1.5 }))
+  check('faster at the top speed does nothing and says why', resolveTransport({ type: 'rateStep', direction: 1 }, { ...ctx, rate: 2 }).action.kind === 'none' && resolveTransport({ type: 'rateStep', direction: 1 }, { ...ctx, rate: 2 }).label === 'Already at the fastest speed')
+  check('slower at the bottom speed does nothing and says why', resolveTransport({ type: 'rateStep', direction: -1 }, { ...ctx, rate: 0.5 }).action.kind === 'none')
+  check('a speed that is not on the list still steps to a neighbour', JSON.stringify(seekTo({ type: 'rateStep', direction: 1 }, { ...ctx, rate: 1.25 })) === JSON.stringify({ kind: 'rate', rate: 1.5 }) || JSON.stringify(seekTo({ type: 'rateStep', direction: 1 }, { ...ctx, rate: 1.25 })) === JSON.stringify({ kind: 'rate', rate: 2 }))
+  check('an absurd speed is clamped', JSON.stringify(seekTo({ type: 'rate', rate: 50 })) === JSON.stringify({ kind: 'rate', rate: 4 }))
+}
+
+console.log('\nexport — the exported video applies a preset override exactly as the preview does')
+{
+  // The merge as it was written INLINE in preset-override-context.tsx before it was extracted, kept
+  // here verbatim as the reference. If resolvePreset ever disagrees with it, the export no longer
+  // matches what the user saw.
+  const reference = (basePreset: Preset, merged: PresetOverride): Preset => ({
+    ...basePreset,
+    ...merged,
+    base: merged.baseFontSize ? { ...basePreset.base, fontSize: merged.baseFontSize } : basePreset.base,
+    emphasis: { ...basePreset.emphasis, ...merged.emphasis },
+    emotion: merged.emotion ?? basePreset.emotion,
+  })
+  const overrides: PresetOverride[] = [
+    {},
+    { wordsPerLine: 2 },
+    { baseFontSize: 64 },
+    { emphasisScale: 2.5 },
+    { emphasis: { color: '#ff2d55' } },
+    { emphasis: { color: '#00ff88' }, emphasisScale: 1.4, wordsPerLine: 4, baseFontSize: 40 },
+    { emotion: { angry: { style: { color: '#f00' } } } },
+  ]
+  const ids = Object.keys(PRESETS) as Array<keyof typeof PRESETS>
+  let same = 0
+  const drift: string[] = []
+  for (const id of ids) {
+    for (const [i, o] of overrides.entries()) {
+      if (JSON.stringify(resolvePreset(PRESETS[id], o)) === JSON.stringify(reference(PRESETS[id], o))) same += 1
+      else drift.push(`${id}#${i}`)
+    }
+  }
+  check(`resolvePreset equals the original inline merge for all ${ids.length * overrides.length} preset x override pairs`, drift.length === 0 && same === ids.length * overrides.length, drift.join(','))
+
+  const chamak = PRESETS.chamak
+  check('a base-size override lands inside `base`, not on the preset root', resolvePreset(chamak, { baseFontSize: 64 }).base.fontSize === 64 && resolvePreset(chamak, { baseFontSize: 64 }).base.color === chamak.base.color)
+  check('an emphasis override changes one key and keeps the rest of the emphasis face', resolvePreset(chamak, { emphasis: { color: '#123456' } }).emphasis?.color === '#123456' && resolvePreset(chamak, { emphasis: { color: '#123456' } }).emphasis?.fontFamily === chamak.emphasis?.fontFamily)
+  check('no override leaves the preset untouched', JSON.stringify(resolvePreset(chamak, {})) === JSON.stringify(chamak))
+  check('resolvePreset never mutates its inputs', (() => { const before = JSON.stringify(chamak); resolvePreset(chamak, { emphasis: { color: '#000' }, baseFontSize: 10 }); return JSON.stringify(chamak) === before })())
+}
+
+console.log('\nexport — the flow: starting, rendering, done, and every way it can go wrong')
+{
+  const st = (state: RenderStatus['state'], progress = 0, extra: Partial<RenderStatus> = {}): RenderStatus => ({
+    renderId: 'r1', state, progress, outputUrl: null, error: null, ...extra,
+  })
+  const run = (events: ExportEvent[], from: ExportState = INITIAL_EXPORT) => events.reduce(exportReducer, from)
+
+  let s = run([{ type: 'start' }])
+  check('start moves idle -> starting', s.phase === 'starting')
+  s = run([{ type: 'started', renderId: 'r1' }], s)
+  check('once started it is rendering and still queued', s.phase === 'rendering' && s.queued && s.progress === 0)
+  s = run([{ type: 'status', status: st('rendering', 0.4), now: 1 }], s)
+  check('a rendering status advances progress and clears queued', s.phase === 'rendering' && s.progress === 0.4 && !s.queued)
+  s = run([{ type: 'status', status: st('rendering', 0.25), now: 2 }], s)
+  check('progress never goes backwards', s.phase === 'rendering' && s.progress === 0.4)
+  s = run([{ type: 'status', status: st('done', 1, { outputUrl: 'https://x/y.mp4' }), now: 99 }], s)
+  check('done carries the link and when it became ready', s.phase === 'done' && s.url === 'https://x/y.mp4' && s.readyAt === 99)
+
+  check('a second click while starting is ignored', run([{ type: 'start' }], { phase: 'starting' }).phase === 'starting')
+  const busy: ExportState = { phase: 'rendering', renderId: 'r1', progress: 0.3, queued: false, failedPolls: 0 }
+  check('a second click while rendering does not start another render', run([{ type: 'start' }], busy) === busy)
+  check('a new export can start after done', run([{ type: 'start' }], { phase: 'done', renderId: 'r', url: 'u', readyAt: 0 }).phase === 'starting')
+  check('a new export can start after a failure', run([{ type: 'start' }], { phase: 'failed', message: 'x' }).phase === 'starting')
+
+  check('a late status after done is ignored', run([{ type: 'status', status: st('rendering', 0.5), now: 1 }], { phase: 'done', renderId: 'r', url: 'u', readyAt: 0 }).phase === 'done')
+  check('a status while idle is ignored', run([{ type: 'status', status: st('rendering', 0.5), now: 1 }]).phase === 'idle')
+  check('"done" with no link is a failure, not a success with nothing to click', run([{ type: 'status', status: st('done', 1), now: 1 }], busy).phase === 'failed')
+  const failed = run([{ type: 'status', status: st('failed', 0.3, { error: 'Render took longer than 15 minutes' }), now: 1 }], busy)
+  check('a failed render shows the server\'s own reason', failed.phase === 'failed' && failed.message.includes('15 minutes'))
+  const failedBare = run([{ type: 'status', status: st('failed'), now: 1 }], busy)
+  check('a failed render without a reason still says something useful', failedBare.phase === 'failed' && failedBare.message.length > 10)
+
+  let p = run([{ type: 'pollFailed', message: 'net' }, { type: 'pollFailed', message: 'net' }], busy)
+  check('two failed polls in a row are tolerated', p.phase === 'rendering' && p.failedPolls === 2)
+  p = run([{ type: 'status', status: st('rendering', 0.5), now: 1 }], p)
+  check('a good poll resets the failure count', p.phase === 'rendering' && p.failedPolls === 0)
+  check('three failed polls in a row fail the export', run([{ type: 'pollFailed', message: 'net' }, { type: 'pollFailed', message: 'net' }, { type: 'pollFailed', message: 'gone' }], busy).phase === 'failed')
+
+  check('an error starting the export fails it with the reason', run([{ type: 'fail', message: 'The render server isn\'t running.' }], { phase: 'starting' }).phase === 'failed')
+  check('reset returns to idle from anywhere', run([{ type: 'reset' }], failed).phase === 'idle')
+
+  check('the percentage is never 100 until the export is done', exportPercent(1) === 99 && exportPercent(0.996) === 99)
+  check('the percentage is clamped and survives garbage', exportPercent(-1) === 0 && exportPercent(Number.NaN) === 0 && exportPercent(0.42) === 42)
+  check('status text: queued vs rendering vs done', exportStatusText(run([{ type: 'started', renderId: 'r' }], { phase: 'starting' })) === 'Waiting for the renderer…' && exportStatusText({ ...busy, progress: 0.42 }) === 'Rendering… 42%' && exportStatusText({ phase: 'done', renderId: 'r', url: 'u', readyAt: 0 }) === 'Your video is ready')
+  check('a link is stale only after 45 minutes', !isLinkStale(0, 44 * 60_000) && isLinkStale(0, 45 * 60_000))
+}
+
+console.log('\nplayer — a re-minted presigned link is the same file, so it must not reload the video')
+{
+  const a = 'https://bucket.s3.ap-south-1.amazonaws.com/p4/projects/abc/source.mp4?X-Amz-Signature=111&X-Amz-Date=20260919T010000Z&X-Amz-Expires=3600'
+  const b = 'https://bucket.s3.ap-south-1.amazonaws.com/p4/projects/abc/source.mp4?X-Amz-Signature=999&X-Amz-Date=20260919T020000Z&X-Amz-Expires=3600'
+  check('the same object with a new signature has the same key', mediaKey(a) === mediaKey(b) && mediaKey(a) !== null)
+  check('a different object has a different key', mediaKey(a) !== mediaKey(a.replace('/abc/', '/xyz/')))
+  check('a different bucket has a different key', mediaKey(a) !== mediaKey(a.replace('bucket.', 'other.')))
+  check('no video has no key', mediaKey(null) === null && mediaKey('') === null)
+  check('a local preview URL keeps its own identity', mediaKey('blob:http://localhost:5173/aaa') !== mediaKey('blob:http://localhost:5173/bbb'))
+  check('an unparseable string still yields a stable key', mediaKey('not a url') === 'not a url')
 }
 
 console.log(failures === 0 ? '\nAll checks passed.\n' : `\n${failures} check(s) FAILED.\n`)

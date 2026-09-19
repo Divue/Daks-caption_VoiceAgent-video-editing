@@ -9,7 +9,9 @@ import {
   UNDO_PHRASES,
   isNotACommand,
   mergeUtterances,
+  parseTransportIntent,
 } from '@/lib/voice-intents'
+import type { TransportIntent } from '@/lib/voice-intents'
 import type { Preset } from '@captions/shared'
 import { usePresetOverride } from '@/state/preset-override-context'
 import { useProject } from '@/state/project-context'
@@ -67,7 +69,17 @@ function describePreset(p: Preset): ActivePreset {
   }
 }
 
-export function useAgentCommand(activity: Activity, onStopListening?: () => void) {
+/** What happened when the editor obeyed a playback command — shown as the activity entry. */
+export type TransportOutcome = { ok: boolean; label: string }
+
+export function useAgentCommand(
+  activity: Activity,
+  onStopListening?: () => void,
+  /** Runs a playback command ("play", "go to 5 seconds") against the real player. */
+  onTransport?: (intent: TransportIntent) => Promise<TransportOutcome> | TransportOutcome,
+  /** Whether the video is playing right now — read at send time, not captured at render. */
+  isPlaying?: () => boolean,
+) {
   const { project, dispatch } = useProject()
   const { applyAgentPatches } = useWordPatch()
   // The resolved preset — base + any stored override — so the agent sees the look the user is
@@ -174,6 +186,17 @@ export function useAgentCommand(activity: Activity, onStopListening?: () => void
       if (REDO_PHRASES.test(said)) {
         dispatch({ type: 'REDO' })
         addEntry('Redid the last change', 'ok')
+        return
+      }
+
+      // The video's own controls belong to the editor, not to a model that has no playback tool:
+      // asking Bedrock to "play the video" cost ~8 s and came back "I can't control playback".
+      // Like "stop listening" it touches neither the agent turn in flight nor a pending question,
+      // so it can be said at any moment — including while the agent is still working.
+      const transport = onTransport ? parseTransportIntent(said, { playing: isPlaying?.() }) : null
+      if (transport && onTransport) {
+        const outcome = await onTransport(transport)
+        addEntry(outcome.label, outcome.ok ? 'ok' : 'warn')
         return
       }
 
@@ -325,7 +348,7 @@ export function useAgentCommand(activity: Activity, onStopListening?: () => void
         }
       }
     },
-    [addEntry, updateEntry, applyAgentPatches, dispatch, onStopListening, cancelRequesting, settle],
+    [addEntry, updateEntry, applyAgentPatches, dispatch, onStopListening, onTransport, isPlaying, cancelRequesting, settle],
   )
 
   /** Drop a pending question — the user moved on rather than answering. */

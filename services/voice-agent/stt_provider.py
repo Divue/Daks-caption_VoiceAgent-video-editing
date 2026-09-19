@@ -53,22 +53,69 @@ def get_stt_region() -> str:
     return os.environ.get("AWS_REGION", "ap-south-1")
 
 
-def get_stt_plugin():
-    """Construct the real livekit.plugins.aws.STT instance for worker.py.
+_PROVIDERS = ("aws", "sarvam")
 
-    Deliberately NOT called at import time (no top-level `aws.STT(...)`
-    anywhere in this module) so that importing this module never requires
-    `livekit-agents[aws]` to be installed or AWS credentials to be present —
-    tests exercise get_stt_language()/get_stt_region() directly without ever
-    calling this function (see tests/test_stt_provider.py).
+# Sarvam's defaults for this worker. Saaras v3 is the STT model the batch pipeline already
+# uses (services/api/app/pipeline/run.py); "codemix" keeps Hinglish as spoken (Hindi and
+# English words in one utterance) instead of forcing one script or translating.
+_SARVAM_DEFAULT_MODEL = "saaras:v3"
+_SARVAM_DEFAULT_MODE = "codemix"
 
-    Raises STTConfigurationError if VOICE_STT_LANGUAGE isn't set — never
-    silently defaults to en-US, matching this module's own "fail loud"
-    convention.
+
+def get_stt_provider() -> str:
+    """Read VOICE_STT_PROVIDER: "aws" (the default) or "sarvam".
+
+    Why it exists: AWS Transcribe STREAMING needs the IAM action
+    `transcribe:StartStreamTranscription`, which the shared dev identity is denied (worker
+    log: 403 AccessDeniedException). Sarvam needs only SARVAM_API_KEY, which the batch
+    pipeline already uses. The default stays "aws" so an unset variable behaves exactly as
+    before; an unrecognised value raises instead of silently picking one.
     """
+    provider = (os.environ.get("VOICE_STT_PROVIDER") or "aws").strip().lower()
+    if provider not in _PROVIDERS:
+        raise STTConfigurationError(
+            f"VOICE_STT_PROVIDER must be one of {', '.join(_PROVIDERS)} (got {provider!r})."
+        )
+    return provider
+
+
+def get_sarvam_api_key() -> str:
+    key = (os.environ.get("SARVAM_API_KEY") or "").strip()
+    if not key:
+        raise STTConfigurationError(
+            "VOICE_STT_PROVIDER=sarvam but SARVAM_API_KEY is not set."
+        )
+    return key
+
+
+def get_stt_plugin():
+    """Construct the streaming STT plugin selected by VOICE_STT_PROVIDER.
+
+    Deliberately NOT called at import time (no top-level plugin construction anywhere in
+    this module) so that importing this module never requires the LiveKit plugins to be
+    installed or any credentials to be present — tests exercise the get_* helpers directly
+    without ever calling this function (see tests/test_stt_provider.py).
+
+    Raises STTConfigurationError if VOICE_STT_LANGUAGE isn't set, or the selected provider
+    is missing its key — never silently defaults to en-US, matching this module's own
+    "fail loud" convention.
+    """
+    provider = get_stt_provider()
+    language = get_stt_language()
+
+    if provider == "sarvam":
+        from livekit.plugins import sarvam
+
+        return sarvam.STT(
+            language=language,
+            model=os.environ.get("VOICE_STT_MODEL") or _SARVAM_DEFAULT_MODEL,
+            mode=os.environ.get("VOICE_STT_MODE") or _SARVAM_DEFAULT_MODE,
+            api_key=get_sarvam_api_key(),
+        )
+
     from livekit.plugins import aws
 
     return aws.STT(
-        language=get_stt_language(),
+        language=language,
         region=get_stt_region(),
     )

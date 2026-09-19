@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 import type { ReactNode } from 'react'
 import { PRESETS } from '@captions/shared'
 import type { Preset, PresetId } from '@captions/shared'
+import { resolvePreset } from '@/lib/resolve-preset'
+import type { PresetOverride } from '@/lib/resolve-preset'
 import { useProject } from '@/state/project-context'
 import { useWordPatch } from '@/state/word-patch-context'
 
@@ -25,9 +27,7 @@ import { useWordPatch } from '@/state/word-patch-context'
  * Unconditional look changes (family, size, colour, spacing, effects, position) do NOT come
  * through here — they are written onto every word via `patchStyle` and genuinely persist.
  */
-export type PresetOverride = Partial<
-  Pick<Preset, 'emphasis' | 'emphasisScale' | 'reveal' | 'glowLayers' | 'emotion' | 'stretch' | 'align'>
-> & { wordsPerLine?: number; baseFontSize?: number }
+export type { PresetOverride }
 
 /** The keys that have a home on the Project. Everything else stays session-only. */
 const STORED_KEYS = ['baseFontSize', 'wordsPerLine', 'emphasis', 'emphasisScale', 'reveal', 'emotion'] as const
@@ -109,23 +109,9 @@ export function PresetOverrideProvider({ children }: { children: ReactNode }) {
     [storedOverride, override],
   )
 
-  const preset = useMemo<Preset>(
-    () => ({
-      ...basePreset,
-      ...merged,
-      // A base-size override belongs INSIDE `base`, where the resolver reads it. Putting it on
-      // the preset root would be ignored, and writing it onto every word instead would beat
-      // `emphasisScale` and flatten the emphasis hierarchy — the bug this field exists to fix.
-      base: merged.baseFontSize
-        ? { ...basePreset.base, fontSize: merged.baseFontSize }
-        : basePreset.base,
-      // `emphasis` is a Partial<Style>, so a shallow spread of the override would replace the
-      // whole face instead of changing one of its keys.
-      emphasis: { ...basePreset.emphasis, ...merged.emphasis },
-      emotion: merged.emotion ?? basePreset.emotion,
-    }),
-    [basePreset, merged],
-  )
+  // The merge itself lives in lib/resolve-preset.ts so the exported video applies overrides the
+  // exact same way the preview does.
+  const preset = useMemo<Preset>(() => resolvePreset(basePreset, merged), [basePreset, merged])
 
   const isStoredKey = useCallback(
     (key: keyof PresetOverride) => (STORED_KEYS as readonly string[]).includes(key as string),

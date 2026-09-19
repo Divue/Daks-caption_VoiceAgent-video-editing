@@ -15,6 +15,11 @@ services:
       - ./services/api/scripts:/srv/scripts
       - ./packages/shared/fixtures:/srv/fixtures:ro
       - ~/.aws:/root/.aws:ro
+    # The export render server runs natively on the host (`npm run render-server` in remotion/), so the
+    # API reaches it as host.docker.internal. Docker Desktop provides that name; this line makes it work
+    # on Linux as well.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Note: --reload restarts the process on every save, which kills a running pipeline job.
     # The job then shows as failed ("worker lost") once its heartbeat goes stale.
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app

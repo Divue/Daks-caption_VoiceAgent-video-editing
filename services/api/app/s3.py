@@ -73,6 +73,23 @@ def presigned_get(key: str) -> str:
         "get_object", Params={"Bucket": get_settings().s3_bucket, "Key": key}, ExpiresIn=PLAYBACK_EXPIRES)
 
 
+def presigned_download(key: str, filename: str) -> str:
+    """A presigned GET that makes the browser SAVE the file instead of playing it.
+
+    A plain link to S3 is cross-origin, and browsers ignore the `download` attribute on cross-origin links,
+    so "Download" would just open the video in a tab. Sending `Content-Disposition: attachment` from S3
+    itself is the only thing that reliably triggers a save.
+    """
+    safe = "".join(c if c.isalnum() or c in "-_." else "_" for c in filename)[:120] or "video.mp4"
+    return client().generate_presigned_url(
+        "get_object",
+        Params={"Bucket": get_settings().s3_bucket, "Key": key,
+                "ResponseContentDisposition": f'attachment; filename="{safe}"',
+                "ResponseContentType": "video/mp4"},
+        ExpiresIn=PLAYBACK_EXPIRES,
+    )
+
+
 def exists(key: str) -> bool:
     try:
         client().head_object(Bucket=get_settings().s3_bucket, Key=key)

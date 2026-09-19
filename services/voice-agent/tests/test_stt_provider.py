@@ -19,7 +19,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # services/voice-agent, for `stt_provider`
 
-from stt_provider import STTConfigurationError, get_stt_language, get_stt_region  # noqa: E402
+from stt_provider import (  # noqa: E402
+    STTConfigurationError,
+    get_sarvam_api_key,
+    get_stt_language,
+    get_stt_provider,
+    get_stt_region,
+)
 
 FAILURES: list[str] = []
 
@@ -78,9 +84,77 @@ def test_get_stt_region_defaults_like_the_rest_of_the_agent() -> None:
             os.environ["AWS_REGION"] = original
 
 
+def _with_env(name: str, value: str | None, fn) -> None:
+    """Run fn() with `name` set (or unset when value is None), restoring it afterwards."""
+    original = os.environ.get(name)
+    try:
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
+        fn()
+    finally:
+        if original is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = original
+
+
+def test_get_stt_provider_defaults_to_aws_and_rejects_unknown_values() -> None:
+    _with_env(
+        "VOICE_STT_PROVIDER",
+        None,
+        lambda: check("unset provider defaults to aws, so behaviour is unchanged", get_stt_provider() == "aws"),
+    )
+    _with_env(
+        "VOICE_STT_PROVIDER",
+        "",
+        lambda: check("an empty provider also defaults to aws", get_stt_provider() == "aws"),
+    )
+    _with_env(
+        "VOICE_STT_PROVIDER",
+        " Sarvam ",
+        lambda: check("provider is trimmed and case-insensitive", get_stt_provider() == "sarvam"),
+    )
+    _with_env(
+        "VOICE_STT_PROVIDER",
+        "whisper",
+        lambda: check(
+            "an unknown provider raises instead of silently picking one",
+            raises(STTConfigurationError, get_stt_provider),
+        ),
+    )
+
+
+def test_sarvam_requires_its_own_key() -> None:
+    _with_env(
+        "SARVAM_API_KEY",
+        None,
+        lambda: check(
+            "sarvam without SARVAM_API_KEY raises a configuration error",
+            raises(STTConfigurationError, get_sarvam_api_key),
+        ),
+    )
+    _with_env(
+        "SARVAM_API_KEY",
+        "   ",
+        lambda: check(
+            "a blank SARVAM_API_KEY counts as missing",
+            raises(STTConfigurationError, get_sarvam_api_key),
+        ),
+    )
+    _with_env(
+        "SARVAM_API_KEY",
+        "test-key",
+        lambda: check("a set SARVAM_API_KEY is returned as-is", get_sarvam_api_key() == "test-key"),
+    )
+
+
 def main() -> int:
     test_get_stt_language_requires_explicit_config()
     test_get_stt_region_defaults_like_the_rest_of_the_agent()
+    test_get_stt_provider_defaults_to_aws_and_rejects_unknown_values()
+    test_sarvam_requires_its_own_key()
 
     print()
     if FAILURES:

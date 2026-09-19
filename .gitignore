@@ -14,6 +14,12 @@ __pycache__/
 *.wav
 !packages/shared/fixtures/*.mp4
 
+# terraform: state holds secrets (FALLBACK_AWS_* env vars); the lock file IS committed
+infra/terraform/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
 # bake-off artifacts
 services/api/scripts/stt_bakeoff/audio/*.wav
 services/api/scripts/stt_bakeoff/out/*.json

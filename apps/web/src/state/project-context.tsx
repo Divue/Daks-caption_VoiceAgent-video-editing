@@ -10,6 +10,9 @@ interface ProjectContextValue {
   dispatch: Dispatch<ProjectAction>
   canUndo: boolean
   canRedo: boolean
+  /** The documents undo and redo would move to, so a caller can save the step it takes. */
+  past: readonly Project[]
+  future: readonly Project[]
 }
 
 const ProjectContext = createContext<ProjectContextValue | null>(null)
@@ -32,6 +35,8 @@ export function ProjectProvider({ children, initial }: { children: ReactNode; in
       dispatch,
       canUndo: state.past.length > 0,
       canRedo: state.future.length > 0,
+      past: state.past,
+      future: state.future,
     }),
     [state],
   )

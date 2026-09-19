@@ -1,5 +1,5 @@
 import { Project } from '@captions/shared'
-import type { Overlay, PresetId, PresetOverride, Word } from '@captions/shared'
+import type { LayerItem, Overlay, PresetId, PresetOverride, Word } from '@captions/shared'
 import { applyStyleChange } from '@/lib/style-change'
 import type { StyleChange } from '@/lib/style-change'
 
@@ -19,6 +19,9 @@ export type ProjectAction =
   | { type: 'SET_SETTINGS'; settings: Partial<Project['settings']> }
   | { type: 'SET_PRESET_OVERRIDE'; override: Partial<PresetOverride> | null }
   | { type: 'ADD_OVERLAY'; overlay: Overlay }
+  /** The media layers as the whole list they should now be — a split or a delete has no clean
+   *  per-item expression. `[]` removes the key, so absent and empty stay the same thing. */
+  | { type: 'SET_LAYERS'; layers: LayerItem[] }
   | { type: 'APPLY_AGENT_PATCHES'; patches: AgentPatch[] }
   | { type: 'UNDO' }
   | { type: 'REDO' }
@@ -31,7 +34,9 @@ export type ProjectAction =
  */
 export type AgentPatch = Extract<
   ProjectAction,
-  { type: 'UPDATE_WORD' | 'SET_PRESET' | 'SET_SETTINGS' | 'SET_PRESET_OVERRIDE' | 'ADD_OVERLAY' }
+  {
+    type: 'UPDATE_WORD' | 'SET_PRESET' | 'SET_SETTINGS' | 'SET_PRESET_OVERRIDE' | 'ADD_OVERLAY' | 'SET_LAYERS'
+  }
 >
 
 export function createInitialState(project: Project): ProjectHistoryState {
@@ -65,7 +70,11 @@ function mergePresetOverride(
   current: PresetOverride | undefined,
   change: Partial<PresetOverride> | null,
 ): PresetOverride | undefined {
-  if (change === null) return undefined
+  // `undefined` too, not just null: the key is meant to arrive as an explicit JSON null, and a
+  // serializer that drops it (exactly what `response_model_exclude_none=True` did on the first
+  // version of the agent's reset) would otherwise reach `Object.entries(undefined)` and throw
+  // inside the reducer. Absent and null have the same only real producer, so they mean the same.
+  if (change === null || change === undefined) return undefined
   const merged: Record<string, unknown> = { ...(current ?? {}) }
   for (const [key, value] of Object.entries(change)) {
     if (value === null || value === undefined) delete merged[key]
@@ -103,6 +112,11 @@ export function applyAgentPatch(project: Project, patch: AgentPatch): Project {
     }
     case 'ADD_OVERLAY':
       return { ...project, overlays: [...project.overlays, patch.overlay] }
+    case 'SET_LAYERS': {
+      if (patch.layers.length > 0) return { ...project, layers: patch.layers }
+      const { layers: _dropped, ...rest } = project
+      return rest as Project
+    }
   }
 }
 
@@ -177,7 +191,8 @@ export function projectReducer(state: ProjectHistoryState, action: ProjectAction
       })
     }
 
-    case 'SET_PRESET_OVERRIDE': {
+    case 'SET_PRESET_OVERRIDE':
+    case 'SET_LAYERS': {
       return commit(state, applyAgentPatch(state.present, action))
     }
 

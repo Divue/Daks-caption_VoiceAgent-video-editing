@@ -170,6 +170,23 @@ def test_apply_patches_all_or_nothing(project: Project) -> None:
     check("apply_patches succeeds and returns a changed project when all patches are valid", error_ok is None and result_ok.presetId == good.presetId)
 
 
+def test_a_whole_object_null_override_survives_exclude_none() -> None:
+    """"Go back to the original preset" is a whole-object null, and the routes serialize with
+    `response_model_exclude_none=True`. An ABSENT override is a different instruction from a null
+    one — the reducer clears on `=== null` and throws on `undefined` — so the key must survive.
+    This shipped broken once: the first version put `{"type": "SET_PRESET_OVERRIDE"}` on the wire."""
+    from app.agent.contracts import AgentPresetOverridePatch, SetPresetOverrideAction
+
+    cleared = SetPresetOverrideAction(override=None)
+    dumped = cleared.model_dump(exclude_none=True)
+    check("override survives exclude_none as a real null", "override" in dumped and dumped["override"] is None)
+    check("and as JSON", '"override":null' in cleared.model_dump_json(exclude_none=True).replace(" ", ""))
+
+    kept = SetPresetOverrideAction(override=AgentPresetOverridePatch(wordsPerLine=2))
+    check("a real override is untouched by the serializer",
+          kept.model_dump(exclude_none=True)["override"]["wordsPerLine"] == 2)
+
+
 def main() -> int:
     project = test_fixture_is_schema_valid()
     test_request_response_round_trip(project)
@@ -180,6 +197,7 @@ def main() -> int:
     test_invalid_patch_values_rejected_at_construction(project)
     test_malformed_project_rejected()
     test_apply_patches_all_or_nothing(project)
+    test_a_whole_object_null_override_survives_exclude_none()
 
     print()
     if FAILURES:
@@ -191,3 +209,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

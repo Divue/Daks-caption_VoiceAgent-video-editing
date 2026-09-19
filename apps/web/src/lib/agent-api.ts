@@ -59,6 +59,12 @@ export interface ActivePreset {
   emphasisFontFamily?: string
   emotionColors?: Record<string, string>
   wordsPerLine?: number
+  /**
+   * The base caption size in px at 1080p. Any tool that writes a per-word `fontSize` has to
+   * know what "normal" is: `ramp_caption_size` sizes a growth ramp against it, and without it
+   * the agent was picking absolute pixel sizes out of the air.
+   */
+  baseFontSize?: number
 }
 
 export interface SelectionContext {

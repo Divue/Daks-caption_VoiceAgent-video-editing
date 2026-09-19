@@ -31,6 +31,13 @@ interface WordPatchValue extends PatchState {
   applyAgentPatches: (patches: AgentPatch[]) => Promise<AgentApplyResult>
   /** Preset and settings writes, on the same queue and version counter as word writes. */
   patchProjectFields: (patch: ProjectFieldPatch) => Promise<string | null>
+  /**
+   * Step back / forward through history AND save the document that lands. Use these, never a raw
+   * `dispatch({ type: 'UNDO' })`: that changes only the screen, and the undone edit comes back on
+   * reload and in every export.
+   */
+  undo: (steps?: number) => void
+  redo: (steps?: number) => void
   clearError: () => void
 }
 

@@ -122,3 +122,24 @@ def test_semantics_all_neutral_when_bedrock_is_unusable(monkeypatch):
     monkeypatch.setattr(semantics.aws_fallback, "client", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no creds")))
     sem = semantics.analyze([{"text": "a", "startMs": 0, "endMs": 1}])
     assert sem.tones == ["neutral"] and sem.ok is False
+
+
+def test_sarvam_short_clip_is_one_piece():
+    from app.pipeline import run
+    sr = 16000
+    assert run.chunk_bounds(np.zeros(20 * sr), sr) == [(0, 20 * sr)]
+
+
+def test_sarvam_long_clip_is_cut_under_the_limit_at_a_pause():
+    """Sarvam's sync API rejects > 30 s; a 58 s reel used to lose Sarvam entirely."""
+    from app.pipeline import run
+    sr = 16000
+    rng = np.random.default_rng(0)
+    audio = rng.normal(0, 0.3, 58 * sr)
+    audio[int(27.5 * sr):int(27.7 * sr)] = 0          # a pause inside the first cut's search window
+    bounds = run.chunk_bounds(audio, sr)
+    assert bounds[0][0] == 0 and bounds[-1][1] == len(audio)
+    assert all(a == b for (_, a), (b, _) in zip(bounds, bounds[1:]))   # contiguous, nothing lost
+    assert all((b - a) / sr < run.SARVAM_MAX_S for a, b in bounds)
+    assert 27.5 * sr <= bounds[0][1] <= 27.7 * sr                       # cut in the pause, not mid-word
+    assert len(bounds) == 3

@@ -174,21 +174,31 @@ EXPECTED_ALL_TOOLS = {
     "set_emoji", "shift_timing", "set_position", "update_caption_style",
     "emphasise_peaks",
     # project-level
-    "apply_preset", "set_settings", "set_preset_override",
-    # vision
-    "analyze_frame",
+    "apply_preset", "set_settings", "set_preset_override", "reset_styling",
+    # vision — one frame, and the two that watch a whole range
+    "analyze_frame", "place_sticker", "fit_captions_to_region",
+    # range selection and a size that changes across a run of words
+    "select_word_range", "ramp_caption_size",
+    # media layers — images and clips over the video
+    "get_layers", "update_layer_items", "retime_layer_item", "split_layer_item",
+    "set_layer_track", "duplicate_layer_item", "remove_layer_items",
     # registered but DISABLED — nothing renders an overlay, so it is never offered
     "add_overlay",
 }
 
-# As of Phase 5, every tool in the approved MVP set has a real handler and
-# is ToolStatus.AVAILABLE (Phase 3: the three context tools; Phase 4: the
-# three style tools plus the two project tools; Phase 5: analyze_frame).
+# Every tool in the approved MVP set has a real handler and is
+# ToolStatus.AVAILABLE (Phase 3: the three context tools; Phase 4: the three
+# style tools plus the two project tools; Phase 5: analyze_frame).
 # EXPECTED_PLANNED_TOOLS is now empty — catalog.py's list is empty too (see
-# its module docstring). "AVAILABLE" here means "has a real handler," not
-# "currently usable": analyze_frame fails honestly against every real
-# fixture today, since none has a backend-readable videoUrl (see the Phase
-# 5 audit / test_vision_tools.py).
+# its module docstring).
+#
+# The talk-and-edit phase added five, all AVAILABLE: select_word_range and
+# ramp_caption_size (a range of words, and a size that changes across it),
+# and place_sticker / fit_captions_to_region, which sample the video once a
+# second inside a single call. "AVAILABLE" still means "has a real handler,"
+# not "works on every project": the three vision tools need a project whose
+# videoUrl the backend can read, which the repo fixtures deliberately are
+# not (see test_vision_tools.py).
 EXPECTED_DISABLED_TOOLS = {"add_overlay"}
 EXPECTED_AVAILABLE_TOOLS = EXPECTED_ALL_TOOLS - EXPECTED_DISABLED_TOOLS
 EXPECTED_PLANNED_TOOLS: set[str] = set()

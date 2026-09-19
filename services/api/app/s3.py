@@ -50,6 +50,12 @@ def source_key(project_id: str, filename: str) -> str:
     return f"{project_prefix(project_id)}/source{ext}"
 
 
+def media_key(project_id: str, media_id: str) -> str:
+    """Overlay media (layers). `media_id` must already match schema.MEDIA_ID_PATTERN — that is
+    what keeps this a name under the project's prefix and never a path."""
+    return f"{project_prefix(project_id)}/media/{media_id}"
+
+
 def audio_key(project_id: str) -> str:
     return f"{project_prefix(project_id)}/audio.wav"
 

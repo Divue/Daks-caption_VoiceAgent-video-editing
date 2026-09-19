@@ -374,6 +374,40 @@ def test_a_refusal_discards_any_patches_collected_before_it() -> None:
     check("the partial work is discarded rather than silently applied", response.patches == [])
 
 
+# --- a later tool in a turn sees what the earlier ones did -------------------------------------
+def test_a_later_tool_sees_the_earlier_tools_changes() -> None:
+    """The live agent refused "cut the b-roll at 6 s and bring the second half in front": every tool
+    ran against the turn's STARTING document, so the half the split had just made did not exist for
+    the next tool. Layer tools return the whole list, so it was also silently destructive — a second
+    list computed from the start would have wiped out the first tool's change."""
+    raw = json.loads(DEMO_PROJECT.read_text(encoding="utf-8"))
+    raw["layers"] = [{
+        "id": "L1", "track": 1, "kind": "video", "mediaId": "bbbbbbbbbbbb.mp4", "name": "broll.mp4",
+        "startMs": 0, "endMs": 5000, "trimStartMs": 0, "sourceDurationMs": 9000, "x": 50, "y": 50,
+        "width": 40, "aspect": 1.5, "rotation": 0, "opacity": 1, "muted": True,
+    }]
+    project = Project.model_validate(raw)
+    before = snapshot(project)
+    client = FakeBedrockClient([
+        tool_use_response("split_layer_item", {"itemId": "L1", "atMs": 2000}, tool_use_id="a"),
+        # L2 only exists because of the split above.
+        tool_use_response("set_layer_track", {"itemIds": ["L2"], "track": 2}, tool_use_id="b"),
+        tool_use_response("update_layer_items", {"itemIds": ["L1"], "position": "top-left"}, tool_use_id="c"),
+        end_turn_response("Cut it and moved the second half to the front."),
+    ])
+    response = planner_module.run_agent_command(
+        AgentCommandRequest(command="cut it at 2 s, put the second half in front, first half top left", project=project),
+        client=client,
+    )
+    final = [p for p in response.patches if p.type == "SET_LAYERS"][-1].layers if response.patches else []
+    by_id = {item.id: item for item in final}
+    check("a tool can act on an item an earlier tool in the SAME turn created", response.status == "ok" and "L2" in by_id)
+    check("…and the later lists keep every earlier change (split + restack + move all survive)",
+          by_id.get("L2") is not None and by_id["L2"].track == 2 and by_id["L2"].trimStartMs == 2000
+          and by_id.get("L1") is not None and (by_id["L1"].x, by_id["L1"].y) == (20, 15) and by_id["L1"].endMs == 2000)
+    check("the request's own project is still untouched", snapshot(project) == before)
+
+
 def main() -> int:
     ensure_model_id_configured()
 
@@ -392,6 +426,7 @@ def main() -> int:
     test_missing_model_configuration_short_circuits_before_any_bedrock_call()
     test_unsupported_marker_is_found_after_a_preamble()
     test_a_refusal_discards_any_patches_collected_before_it()
+    test_a_later_tool_sees_the_earlier_tools_changes()
 
     print()
     if FAILURES:

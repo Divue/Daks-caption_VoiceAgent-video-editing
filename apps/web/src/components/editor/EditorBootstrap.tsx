@@ -12,6 +12,7 @@ import { PresetOverrideProvider } from '@/state/preset-override-context'
 import { ProjectProvider } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
 import { WordPatchProvider } from '@/state/word-patch-context'
+import { LayerEditorProvider } from '@/state/layer-editor-context'
 
 type BootstrapState =
   | { k: 'loading' }
@@ -117,7 +118,9 @@ export function EditorBootstrap({ fixture = false }: { fixture?: boolean }) {
           {/* Reads project.presetId, so it mounts inside ProjectProvider. */}
           <PresetOverrideProvider>
             <ProjectLoader onReloaded={reload} />
-            <App />
+            <LayerEditorProvider>
+              <App />
+            </LayerEditorProvider>
           </PresetOverrideProvider>
         </WordPatchProvider>
       </PlaybackProvider>

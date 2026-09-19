@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { AudioLines, Film, Minus, Plus, Type } from 'lucide-react'
+import { AudioLines, Film, Layers, Minus, Plus, Type } from 'lucide-react'
 import type { CaptionBlock, Word } from '@captions/shared'
 import { CaptionRibbon } from './CaptionRibbon'
+import { LayerLane } from './LayerLane'
+import { useLayerEditor } from '@/state/layer-editor-context'
 import { MediaLane } from './MediaLane'
 import { Playhead } from './Playhead'
 import { TimeRuler } from './TimeRuler'
@@ -22,6 +24,8 @@ const ZOOM_STEP = 1.6
 /** Lane heights, shared by the gutter and the lanes so the two stay aligned. */
 const CAPTIONS_H = 52
 const MEDIA_H = 26
+/** Overlay lanes are grabbed and dragged, so they are taller than the passive video/audio lanes. */
+const LAYER_H = 30
 
 interface TimelineProps {
   durationMs: number
@@ -36,6 +40,8 @@ interface TimelineProps {
   onSelectWord: (wordId: string) => void
   /** Set when a caption row is clicked, so the timeline can scroll that block into view. */
   revealBlockId: string | null
+  /** Selecting a layer item also brings its properties forward, which the timeline cannot do. */
+  onSelectLayer: (id: string) => void
 }
 
 /**
@@ -43,10 +49,12 @@ interface TimelineProps {
  *
  * It owns zoom and scroll and nothing else; time comes from PlaybackContext.
  *
- * Three lanes: captions (the one that matters), then the video and audio the captions sit on.
- * What it does NOT have is the part that was actually ugly — an eight-button editing toolbar for
- * operations that are out of scope, and a header gutter of mute/lock/visibility controls that did
- * nothing and squeezed the lane names down to "C." / "V." / "A.".
+ * Lanes, top to bottom in the order things are DRAWN: captions (the one that matters), the two
+ * media layers (images and clips over the video — Layer 2 on top of Layer 1), then the video and
+ * audio underneath. Layer items are real clips: select, drag, trim by an edge, split with the
+ * toolbar or Ctrl/Cmd+B. The main video lane is still one clip — it is not cut. What this does NOT
+ * have is a header gutter of mute/lock/visibility controls that did nothing and squeezed the lane
+ * names down to "C." / "V." / "A.".
  */
 export function Timeline({
   durationMs,
@@ -59,8 +67,10 @@ export function Timeline({
   selectedWordId,
   onSelectWord,
   revealBlockId,
+  onSelectLayer,
 }: TimelineProps) {
   const { timeMs, isPlaying, seek } = usePlayback()
+  const layerEditor = useLayerEditor()
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [viewportWidth, setViewportWidth] = useState(0)
   const [pxPerMs, setPxPerMs] = useState<number | null>(null)
@@ -132,7 +142,7 @@ export function Timeline({
   return (
     <div className="flex min-h-0 shrink-0 flex-col border-t border-border/60 bg-card">
       <div className="flex h-9 shrink-0 items-center justify-between gap-3 border-b border-border/40 px-2">
-        <EditorToolbar />
+        <EditorToolbar onSelectLayer={onSelectLayer} />
         <div className="flex shrink-0 items-center gap-2">
           <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
             {formatTimestamp(timeMs)}
@@ -170,6 +180,9 @@ export function Timeline({
           {/* No block count here: the captions panel already shows it, and squeezing it in is
               what truncated the lane name to "Ca…" — the exact failure this rebuild was fixing. */}
           <TrackHeader name="Captions" icon={Type} height={CAPTIONS_H} />
+          {/* Top to bottom in DRAWING order: captions over layer 2, over layer 1, over the video. */}
+          <TrackHeader name="Layer 2" icon={Layers} height={LAYER_H} />
+          <TrackHeader name="Layer 1" icon={Layers} height={LAYER_H} />
           <TrackHeader name="Video" icon={Film} height={MEDIA_H} />
           <TrackHeader name="Audio" icon={AudioLines} height={MEDIA_H} />
         </div>
@@ -196,6 +209,22 @@ export function Timeline({
               onSelectWord={onSelectWord}
               onSeek={handleSeek}
             />
+            {([2, 1] as const).map((track) => (
+              <LayerLane
+                key={track}
+                track={track}
+                items={layerEditor.layers.filter((item) => item.track === track)}
+                allItems={layerEditor.layers}
+                durationMs={durationMs}
+                pxPerMs={effectiveZoom}
+                height={LAYER_H}
+                playheadMs={timeMs}
+                selectedId={layerEditor.selectedLayerId}
+                onSelect={onSelectLayer}
+                onChange={layerEditor.update}
+                onSeek={handleSeek}
+              />
+            ))}
             <MediaLane
               durationMs={durationMs}
               pxPerMs={effectiveZoom}

@@ -23,6 +23,10 @@ import type { TransportIntent } from '@/lib/voice-intents'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
 import { findBlockIndexAt, useCaptionBlocks } from '@/hooks/useCaptionBlocks'
 import { useSelection } from '@/hooks/useSelection'
+import { LayerHandles } from '@/components/preview/LayerHandles'
+import { LayerStage } from '@/components/preview/LayerStage'
+import { LayerPanel } from '@/components/inspector/LayerPanel'
+import { useLayerEditor } from '@/state/layer-editor-context'
 import { useUndoRedoShortcuts } from '@/hooks/useUndoRedoShortcuts'
 import type { SelectionContext } from '@/lib/agent-api'
 import { usePlayback } from '@/state/playback-context'
@@ -35,10 +39,11 @@ import { useWordPatch } from '@/state/word-patch-context'
 const DUCK_RELEASE_MS = 900
 
 function App() {
-  const { project, dispatch } = useProject()
+  const { project } = useProject()
   const { localPreviewUrl, projectId } = useSync()
   const playback = usePlayback()
   const { timeMs, isPlaying, seek } = playback
+  const layerEditor = useLayerEditor()
   // The player's newest state, readable from callbacks that must not be re-created 60 times a
   // second (the playhead is state). Assigned in an effect for the same reason as stopVoiceRef.
   const playbackRef = useRef(playback)
@@ -48,7 +53,7 @@ function App() {
   const { selectedWordId, select } = useSelection()
   const activity = useAgentActivity()
   const { entries, addEntry } = activity
-  const { patch: patchWord, patchWords } = useWordPatch()
+  const { patch: patchWord, patchWords, undo } = useWordPatch()
   const { preset } = usePresetOverride()
 
   // A view preference, not project data: local state, never Project.settings (a schema
@@ -102,8 +107,9 @@ function App() {
         p.setRate(action.rate)
         return { ok: true, label }
       case 'mute':
-        p.setMuted(action.muted)
-        return { ok: true, label }
+        return p.setMuted(action.muted)
+          ? { ok: true, label }
+          : { ok: false, label: 'No video loaded yet' }
       case 'none':
         return { ok: true, label }
     }
@@ -206,7 +212,12 @@ function App() {
         target &&
         (target.isContentEditable ||
           /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName) ||
-          target.closest('[role="tab"],[role="slider"],[role="switch"],[role="checkbox"]'))
+          // Radix renders its menus and selects as divs, so the tagName test above misses them:
+          // with a Select open, Space is how you pick the focused option, not play/pause.
+          target.closest(
+            '[role="tab"],[role="slider"],[role="switch"],[role="checkbox"],' +
+              '[role="listbox"],[role="option"],[role="combobox"],[role="menu"],[role="menuitem"],[role="dialog"]',
+          ))
       ) {
         return
       }
@@ -255,6 +266,42 @@ function App() {
   // a voice-first product you are not looking at the panel when you start talking. Switching
   // on the first turn only: after that the user's own choice of tab is theirs to keep.
   const [rightTab, setRightTab] = useState('inspector')
+
+  // Selecting a layer item is asking to edit it, so its properties come forward.
+  const { selectLayer, selectedLayerId, splitAtPlayhead, remove: removeLayerItem } = layerEditor
+  const selectLayerItem = useCallback(
+    (id: string | null) => {
+      selectLayer(id)
+      if (id) setRightTab('layers')
+    },
+    [selectLayer],
+  )
+
+  // The usual editor shortcuts: Delete removes, Ctrl/Cmd+B cuts at the playhead (CapCut's and Final
+  // Cut Pro's binding), Esc lets go. Ignored while typing, like Space.
+  const layerKeysRef = useRef({ selectedLayerId, splitAtPlayhead, removeLayerItem, selectLayer })
+  useEffect(() => {
+    layerKeysRef.current = { selectedLayerId, splitAtPlayhead, removeLayerItem, selectLayer }
+  })
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const { selectedLayerId: id, splitAtPlayhead: split, removeLayerItem: remove, selectLayer: select } = layerKeysRef.current
+      if (!id) return
+      const target = event.target as HTMLElement | null
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault()
+        remove(id)
+      } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'b') {
+        event.preventDefault()
+        split()
+      } else if (event.key === 'Escape') {
+        select(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   const hasShownAgent = useRef(false)
   useEffect(() => {
     if (agent.busy && !hasShownAgent.current) {
@@ -263,12 +310,9 @@ function App() {
     }
   }, [agent.busy])
 
-  const handleUndoTurn = useCallback(
-    (steps: number) => {
-      for (let i = 0; i < steps; i += 1) dispatch({ type: 'UNDO' })
-    },
-    [dispatch],
-  )
+  // One call for the whole turn, so it is one save: the history steps back `steps` entries and the
+  // server is sent the document it lands on.
+  const handleUndoTurn = useCallback((steps: number) => undo(steps), [undo])
 
   // Emotion is stored per WORD; a "line emotion" is just the same value written onto every
   // word of that line. There is no lines[] in the schema (blocks are derived), so this is the
@@ -348,6 +392,28 @@ function App() {
                 getFreshSrc={getFreshVideoUrl}
                 width={project.width}
                 height={project.height}
+                mediaLayer={(frameWidth, frameHeight) => (
+                  <LayerStage
+                    layers={layerEditor.layers}
+                    timeMs={timeMs}
+                    isPlaying={isPlaying}
+                    rate={playback.rate}
+                    frameWidth={frameWidth}
+                    frameHeight={frameHeight}
+                    urlOf={layerEditor.urlOf}
+                  />
+                )}
+                editLayer={(frameWidth, frameHeight) => (
+                  <LayerHandles
+                    layers={layerEditor.layers}
+                    timeMs={timeMs}
+                    frameWidth={frameWidth}
+                    frameHeight={frameHeight}
+                    selectedId={layerEditor.selectedLayerId}
+                    onSelect={selectLayerItem}
+                    onChange={layerEditor.update}
+                  />
+                )}
                 captionLayer={(frameWidth) => (
                   <CaptionRenderer
                     blocks={blocks}
@@ -381,12 +447,13 @@ function App() {
                   {[
                     ['inspector', 'Style'],
                     ['presets', 'Presets'],
+                    ['layers', 'Layers'],
                     ['agent', 'Activity'],
                   ].map(([value, label]) => (
                     <TabsTrigger
                       key={value}
                       value={value}
-                      className="eyebrow h-9 rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+                      className="eyebrow h-9 rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
                     >
                       {label}
                     </TabsTrigger>
@@ -398,6 +465,9 @@ function App() {
                 </TabsContent>
                 <TabsContent value="presets" className="min-h-0 flex-1 overflow-y-auto">
                   <PresetPicker />
+                </TabsContent>
+                <TabsContent value="layers" className="min-h-0 flex-1 overflow-y-auto">
+                  <LayerPanel onSelect={selectLayerItem} />
                 </TabsContent>
                 <TabsContent value="agent" className="min-h-0 flex-1 overflow-y-auto">
                   <AgentActivityPanel
@@ -422,6 +492,7 @@ function App() {
             selectedWordId={selectedWordId}
             onSelectWord={select}
             revealBlockId={revealBlockId}
+            onSelectLayer={selectLayerItem}
           />
         </main>
 

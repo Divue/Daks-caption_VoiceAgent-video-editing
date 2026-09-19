@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Project } from '@captions/shared'
-import type { PresetId, PresetOverride, Word } from '@captions/shared'
+import type { LayerItem, PresetId, PresetOverride, Word } from '@captions/shared'
 import { getProject, isApiError, patchProject, patchWord, patchWordsBulk } from '@/lib/api'
 import type { ApiError, BulkWordPatch, WordPatch } from '@/lib/api'
+import { overrideDelta } from '@/lib/override-delta'
+import { diffProjects } from '@/lib/project-diff'
+import { applyAgentPatch } from '@/state/project-reducer'
 import type { AgentPatch } from '@/state/project-reducer'
 import type { StyleChange } from '@/lib/style-change'
 import { useProject } from '@/state/project-context'
@@ -19,6 +22,8 @@ export interface ProjectFieldPatch {
   settings?: Partial<Project['settings']>
   /** Merges per key; an explicit null on a key removes that one override. */
   presetOverride?: Partial<PresetOverride> | null
+  /** The media layers as the whole list they should now be. `[]` clears them. */
+  layers?: LayerItem[]
 }
 
 /** What actually happened to one agent turn, so the activity log can be honest about it. */
@@ -58,9 +63,22 @@ export function useWordPatchState(): PatchState & {
   patchStyle: (wordIds: string[], change: StyleChange) => void
   applyAgentPatches: (patches: AgentPatch[]) => Promise<AgentApplyResult>
   patchProjectFields: (patch: ProjectFieldPatch) => Promise<string | null>
+  /** Step back / forward through history AND save the result. Use these, never a raw UNDO. */
+  undo: (steps?: number) => void
+  redo: (steps?: number) => void
   clearError: () => void
 } {
-  const { dispatch } = useProject()
+  const { project, dispatch, past, future } = useProject()
+  const historyRef = useRef({ past, future })
+  useEffect(() => {
+    historyRef.current = { past, future }
+  }, [past, future])
+  // Read at write time: an agent turn diffs the override it produced against the one it started
+  // from, and that has to be the document as it stood a moment ago, not as of the last render.
+  const projectRef = useRef(project)
+  useEffect(() => {
+    projectRef.current = project
+  }, [project])
   const { projectId, version, setVersion } = useSync()
 
   const [saving, setSaving] = useState(false)
@@ -206,17 +224,20 @@ export function useWordPatchState(): PatchState & {
       if (!projectId) return
 
       enqueue(async () => {
-        for (const wordId of wordIds) {
-          const { version: next } = await patchWord(
-            projectId,
-            wordId,
-            { style: change },
-            versionRef.current,
-            controllerRef.current?.signal,
-          )
-          versionRef.current = next
-        }
-        setVersion(versionRef.current)
+        // ONE bulk write, not a PATCH per word. The per-word loop that was here sent 94 sequential
+        // requests for one click on a 94-word reel, and closing the tab part-way left the project
+        // half-changed (measured: 6 of 94 had landed). The bulk route is all-or-nothing.
+        const { version: next } =
+          wordIds.length === 1
+            ? await patchWord(projectId, wordIds[0], { style: change }, versionRef.current, controllerRef.current?.signal)
+            : await patchWordsBulk(
+                projectId,
+                wordIds.map((wordId) => ({ wordId, style: change })),
+                versionRef.current,
+                controllerRef.current?.signal,
+              )
+        versionRef.current = next
+        setVersion(next)
       })
     },
     [projectId, dispatch, setVersion, enqueue],
@@ -238,14 +259,22 @@ export function useWordPatchState(): PatchState & {
     async (patches: AgentPatch[]): Promise<AgentApplyResult> => {
       if (patches.length === 0) return { applied: 0, total: 0, error: null, resynced: false }
 
+      const before = projectRef.current
       dispatch({ type: 'APPLY_AGENT_PATCHES', patches })
       setError(null)
       if (!projectId) return { applied: patches.length, total: patches.length, error: null, resynced: false }
+      // The document this turn produces — the same fold the reducer just committed.
+      const after = patches.reduce(applyAgentPatch, before)
 
       // Collapse repeated edits to the same word so the bulk body carries one entry per word,
       // last write winning — the same result the folded optimistic commit produced.
       const wordPatches = new Map<string, BulkWordPatch>()
-      let projectPatch: { presetId?: PresetId; settings?: Partial<Project['settings']> } = {}
+      let projectPatch: {
+        presetId?: PresetId
+        settings?: Partial<Project['settings']>
+        presetOverride?: Partial<PresetOverride> | null
+        layers?: LayerItem[]
+      } = {}
       let unpersistable = 0
 
       for (const patch of patches) {
@@ -265,6 +294,17 @@ export function useWordPatchState(): PatchState & {
               ...projectPatch,
               settings: { ...(projectPatch.settings ?? {}), ...patch.settings },
             }
+            break
+          // These two used to be missing from this switch entirely: the edit showed on screen and
+          // was never saved, and nothing said so. "Fewer words per line", "angry words shake
+          // harder" and "go back to the original preset" all vanished on reload. Both are sent as
+          // the END STATE the turn produced (below), not replayed patch by patch, because a turn
+          // can clear everything and then set one key, which no single merge can express.
+          case 'SET_PRESET_OVERRIDE':
+            projectPatch = { ...projectPatch, presetOverride: overrideDelta(before.presetOverride, after.presetOverride) }
+            break
+          case 'SET_LAYERS':
+            projectPatch = { ...projectPatch, layers: after.layers ?? [] }
             break
           case 'ADD_OVERLAY':
             // No endpoint exists for overlays, so this cannot be saved. Counted and reported
@@ -322,6 +362,45 @@ export function useWordPatchState(): PatchState & {
   )
 
   /**
+   * Undo / redo that SAVE. The reducer moves between two whole documents; this also sends the
+   * server whatever it takes to hold the one we moved to (`diffProjects`), on the same queue as
+   * every other write. Before this, Ctrl+Z changed only the screen — the undone change survived on
+   * the server, came back on reload, and was in every export.
+   *
+   * `steps` exists for the agent panel's "Undo that" on a turn that took two history entries.
+   */
+  const stepHistory = useCallback(
+    (direction: 'undo' | 'redo', steps = 1) => {
+      const { past: back, future: ahead } = historyRef.current
+      const available = direction === 'undo' ? back.length : ahead.length
+      const count = Math.min(steps, available)
+      if (count === 0) return
+      const before = projectRef.current
+      const after = direction === 'undo' ? back[back.length - count] : ahead[count - 1]
+      for (let i = 0; i < count; i += 1) dispatch({ type: direction === 'undo' ? 'UNDO' : 'REDO' })
+      setError(null)
+      if (!projectId) return
+
+      const { words, project: fields } = diffProjects(before, after)
+      if (words.length === 0 && Object.keys(fields).length === 0) return
+      enqueue(async () => {
+        if (words.length > 0) {
+          const { version: next } = await patchWordsBulk(projectId, words, versionRef.current, controllerRef.current?.signal)
+          versionRef.current = next
+        }
+        if (Object.keys(fields).length > 0) {
+          const { version: next } = await patchProject(projectId, fields, versionRef.current, controllerRef.current?.signal)
+          versionRef.current = next
+        }
+        setVersion(versionRef.current)
+      })
+    },
+    [projectId, dispatch, setVersion, enqueue],
+  )
+  const undo = useCallback((steps?: number) => stepHistory('undo', steps), [stepHistory])
+  const redo = useCallback((steps?: number) => stepHistory('redo', steps), [stepHistory])
+
+  /**
    * Project-level fields (preset, settings) on the SAME queue as word writes.
    *
    * These used to be written by PresetPicker with its own `patchProject` call, which is a second
@@ -336,6 +415,7 @@ export function useWordPatchState(): PatchState & {
       if (patch.settings !== undefined) dispatch({ type: 'SET_SETTINGS', settings: patch.settings })
       if (patch.presetOverride !== undefined)
         dispatch({ type: 'SET_PRESET_OVERRIDE', override: patch.presetOverride })
+      if (patch.layers !== undefined) dispatch({ type: 'SET_LAYERS', layers: patch.layers })
       setError(null)
       if (!projectId) return Promise.resolve(null)
 
@@ -355,7 +435,7 @@ export function useWordPatchState(): PatchState & {
 
   const clearError = useCallback(() => setError(null), [])
 
-  return { saving, error, patch, patchWords, patchStyle, applyAgentPatches, patchProjectFields, clearError }
+  return { saving, error, patch, patchWords, patchStyle, applyAgentPatches, patchProjectFields, undo, redo, clearError }
 }
 
 /**

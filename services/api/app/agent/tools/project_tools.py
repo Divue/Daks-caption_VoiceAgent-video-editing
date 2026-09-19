@@ -24,13 +24,19 @@ import uuid
 
 from app.schema import Overlay, Project
 
+from ..preset_catalog import describe_for_tool
+
 from ..contracts import (
     AddOverlayAction,
     AgentPresetOverridePatch,
+    AgentStylePatch,
     SetPresetAction,
     SetPresetOverrideAction,
     SetSettingsAction,
     SettingsPatch,
+    UpdateWordAction,
+    WordPatch,
+    _STYLE_KEYS,
 )
 from ..validation import PatchError, apply_patch
 from .errors import ToolExecutionError
@@ -40,6 +46,8 @@ from .schemas import (
     AddOverlayResult,
     ApplyPresetArgs,
     ApplyPresetResult,
+    ResetStylingArgs,
+    ResetStylingResult,
     SetPresetOverrideArgs,
     SetPresetOverrideResult,
     SetSettingsArgs,
@@ -112,6 +120,7 @@ def set_preset_override(args: SetPresetOverrideArgs, project: Project) -> SetPre
         key: value
         for key, value in (
             ("baseFontSize", args.baseFontSize),
+            ("base", args.base),
             ("wordsPerLine", args.wordsPerLine),
             ("emphasis", args.emphasis),
             ("emphasisScale", args.emphasisScale),
@@ -122,7 +131,7 @@ def set_preset_override(args: SetPresetOverrideArgs, project: Project) -> SetPre
     }
     if not set_fields and not args.clearKeys:
         raise ToolExecutionError(
-            "nothing to do: set wordsPerLine/emphasis/emphasisScale/reveal/emotion, "
+            "nothing to do: set baseFontSize/base/wordsPerLine/emphasis/emphasisScale/reveal/emotion, "
             "or name keys in `clearKeys`, or both"
         )
 
@@ -141,6 +150,50 @@ def set_preset_override(args: SetPresetOverrideArgs, project: Project) -> SetPre
     except PatchError as exc:
         raise ToolExecutionError(str(exc)) from exc
     return SetPresetOverrideResult(patch=patch)
+
+
+def reset_styling(args: ResetStylingArgs, project: Project) -> ResetStylingResult:
+    """Put the look back to the preset as it ships.
+
+    "Go back to the original preset" means two different layers, and a creator saying it means
+    both: the preset OVERRIDE (emphasis face, emotion styling, reveal, words per line, base size)
+    and every per-word style override. They are cleared by two different mechanisms — a whole-object
+    null for the first, an explicit null per style key for the second — which is why this exists as
+    one tool instead of asking the model to orchestrate it.
+
+    It does NOT change which preset is selected: switching preset is `apply_preset`, and someone
+    who says "back to normal" almost never means "and also change the preset".
+    """
+    patches: list = []
+
+    if args.scope in ("preset_tweaks", "everything"):
+        # A whole-object null. `mergePresetOverride` in the reducer reads it as "drop everything".
+        patches.append(SetPresetOverrideAction(override=None))
+
+    if args.scope in ("word_styles", "everything"):
+        wanted = set(args.wordIds)
+        targets = [w for w in project.words if not wanted or w.id in wanted]
+        if wanted:
+            missing = sorted(wanted - {w.id for w in targets})
+            if missing:
+                raise ToolExecutionError(f"no such word id(s): {', '.join(missing)}")
+        # Only words that actually carry an override — clearing the rest would be a no-op write
+        # per word, and on a 94-word reel that is 94 pointless patches in the undo step.
+        styled = [w for w in targets if w.style and w.style.model_dump(exclude_none=True)]
+        cleared = AgentStylePatch(cleared=sorted(_STYLE_KEYS))
+        patches.extend(
+            UpdateWordAction(wordId=w.id, patch=WordPatch(style=cleared)) for w in styled
+        )
+
+    if not patches:
+        raise ToolExecutionError("nothing to reset: the captions are already the preset's own look")
+
+    for patch in patches:
+        try:
+            apply_patch(project, patch)
+        except PatchError as exc:
+            raise ToolExecutionError(str(exc)) from exc
+    return ResetStylingResult(patches=patches)
 
 
 def add_overlay(args: AddOverlayArgs, project: Project) -> AddOverlayResult:
@@ -176,7 +229,12 @@ def add_overlay(args: AddOverlayArgs, project: Project) -> AddOverlayResult:
 default_registry.register(
     ToolSpec(
         name="apply_preset",
-        description="Set the project's active preset.",
+        description=(
+            "Set the project's active preset — the whole caption look. Match the user's vibe "
+            "words ('trendy', 'subtle', 'loud', 'classy') to a preset using the <presets> "
+            "catalogue in your instructions, which describes what each one looks like."
+            + describe_for_tool()
+        ),
         input_model=ApplyPresetArgs,
         output_model=ApplyPresetResult,
         reads=False,
@@ -237,7 +295,12 @@ default_registry.register(
             "own value. `baseFontSize` is the BASE caption size in px at 1080p — this is what "
             "'make the captions bigger/smaller' means. Do NOT answer that by writing fontSize "
             "onto every word: a per-word size is final and overrides the emphasis scale, so it "
-            "shrinks the emphasised words and flattens the hierarchy. "
+            "shrinks the emphasised words and flattens the hierarchy. `base` is the same rule for "
+            "every other key — 'make the captions blue/white', 'use Poppins for the captions', "
+            "'put the captions at the top', 'add an outline to the captions' all go in `base`. "
+            "Writing that colour onto every word with update_caption_style instead turns the "
+            "emphasised and angry words that colour too, erasing the preset's hierarchy. Use "
+            "update_caption_style only for SPECIFIC words. "
             "Use this for 'fewer words per line', 'make the emphasised words bigger', "
             "'make angry words shake harder' and 'reveal the words one at a time'. IMPORTANT: "
             "'make every word Anton' is update_caption_style over all word ids; 'make the "
@@ -254,4 +317,33 @@ default_registry.register(
         ),
     ),
     set_preset_override,
+)
+
+
+default_registry.register(
+    ToolSpec(
+        name="reset_styling",
+        description=(
+            "Put the captions back to the preset's own look, undoing styling edits. Use it for "
+            "'go back to the original preset', 'reset the captions', 'undo all my styling', "
+            "'remove everything I changed', 'back to normal'. `scope` picks how much: "
+            "'everything' (the default — both layers, which is what people mean), "
+            "'preset_tweaks' (only the conditional layers: emphasis face, emotion styling, "
+            "reveal, words per line, base size), or 'word_styles' (only per-word style "
+            "overrides). Pass `wordIds` to reset just those words ('put that word back to "
+            "normal'); leave it empty for all of them. This does NOT change which preset is "
+            "selected — use apply_preset for that. It is a normal edit, so one Ctrl+Z undoes it."
+        ),
+        input_model=ResetStylingArgs,
+        output_model=ResetStylingResult,
+        reads=True,
+        writes=True,
+        status=ToolStatus.AVAILABLE,
+        notes=(
+            "Emits SET_PRESET_OVERRIDE with a whole-object null (the reducer's "
+            "`mergePresetOverride(current, null)` clears everything) plus one UPDATE_WORD per "
+            "word that actually carries a style override, each clearing every style key."
+        ),
+    ),
+    reset_styling,
 )

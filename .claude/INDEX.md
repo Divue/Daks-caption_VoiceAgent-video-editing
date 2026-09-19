@@ -52,6 +52,12 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | — | `audits/ai-agent/phase-17-e2e-voice-and-editor.md` | Sarvam speech-to-text provider for the voice worker; voice + editor tested end to end in a real browser (P4) | Live voice not transcribing (AWS Transcribe streaming is denied), or `VOICE_STT_PROVIDER` / `VOICE_STT_LANGUAGE` |
 | — | `audits/ai-agent/phase-18-voice-video-fixes.md` | Voice controls the video; the player no longer restarts/freezes; loading, layout, feedback; the "no sound" regression (P3 folder, flagged) | `lib/voice-intents.ts`, `VideoStage.tsx`, `playback-context.tsx`, video ducking, or the mis-heard word "pause" |
 | — | `audits/ai-agent/phase-19-export.md` | Export: Remotion composition + local render server, API render route, editor Export button; the shared-renderer word-gap fix (P2 + P1 + P3) | Anything under `remotion/`, `services/api/app/routers/render.py`, `ExportButton.tsx`, or a change to `CaptionRenderer` (the export reuses it) |
+| — | `talk-and-edit/phase-07-playback-vs-editing.md` | Playback commands were eating editing commands: a bare "stop" before a pause took the video AND half the sentence; one-word answers to the agent's questions were stolen; the Space guard missed Radix menus (P3) | Anything in `voice-intents.ts`, `useAgentCommand.ts`, or a new locally-handled voice command. Read it before adding one — the rule is that an opener carrying no object is provisional. |
+| — | `talk-and-edit/phase-08-scope-colour-and-reset.md` | Three ways the editor did the opposite of what was asked: an unresolvable restriction was widened to all 94 words; a per-word colour was invisible under a gradient-emphasis preset; "go back to the original preset" could not be expressed (P3 + P4 folders, flagged) | Before changing `resolveWordStyle`'s precedence, the planner's asking rules, `find_words`, or anything that emits SET_PRESET_OVERRIDE. Read it if a write "succeeds" but nothing changes on screen. |
+| — | `talk-and-edit/phase-09-all-captions-is-the-base-face.md` | "All captions" stamped every word and buried the preset's emphasis/tone colours; now it edits `presetOverride.base`. Also: agent override edits were never saved; per-word style writes went one request per word | Before touching the style panel's scope, `resolvePreset`, or anything that writes a style to every word. Read if a colour "disappears" or a change is lost on reload. |
+| — | `layers/phase-01-media-layers.md` | Media layers: two tracks of images/clips over the video — schema, upload/serve, editor (move/scale/rotate/trim/split), export, 7 agent tools. Also: undo now SAVES (it never reached the server), and tools in one agent turn now see each other's changes | Anything touching `layers`, `lib/layers.ts`, `layer_tools.py`, the timeline lanes, undo/redo, or the planner's tool loop. Pair with `LAYERS.md`. |
+| — | `audits/ai-agent/phase-20-video-aware-editing.md` | The agent can now SEE the video: stickers placed on a face, captions fitted to a hand, word ranges, and a size that ramps across words. Also a real bug — `analyze_frame(target="face")` returned the PERSON box (P1 + P4 folders, flagged) | Before touching `vision_tools.py`, `scene_tools.py`, the preset catalogue, or anything that places a `LayerItem` from a detection. Read it if you need to know what Rekognition can and cannot detect here, or why a fitted caption size is an estimate. |
+| — | `export/phase-01-containerised-render.md` | Export could not work on Linux and could not be deployed; the render server is now a container. Also: App Runner is closed to new customers (P1 + P2 folders, flagged) | Anything under `remotion/`, `routers/render.py`, or the compose `render` service. Pair with `DEPLOYING-EXPORT.md` at the repo root. |
 
 Documents 09 and 10 both originate from a single commit (`628a3e6`) that
 combined an editor redesign with a new landing page. They are split by file
@@ -149,10 +155,24 @@ Things Claude must preserve when working in `apps/web`:
   explicit `null`. `undefined` is dropped by `JSON.stringify` and the removal
   never reaches the server. Use `patchStyle`/`StyleChange`, never a whole-object
   `style` write (audit 15 §4).
-- The bottom strip is a CAPTION RIBBON, not a timeline: one lane, no Video/Audio
-  tracks, no track headers, no editing toolbar. `CLAUDE.md` puts cutting,
-  layering and mixing out of scope, so any UI implying them is a picture of a
-  product we are not building (audit 16 §1). Do not re-add them.
+- The bottom strip IS a timeline now, but a narrow one (repo-owner decision, 2026-09-19,
+  superseding audit 16 §1): captions, two media-layer lanes, then the main video and audio.
+  Layer items are real clips — select, move, trim by an edge, split, delete. The MAIN video is
+  never cut, trimmed or re-timed, and the toolbar's transitions/effects/music/speed stay INERT
+  and look it. Nothing may imply an operation that does not happen (see `LAYERS.md`).
+- Every layer edit is ONE write of the whole `layers` list through `patchProjectFields` — one save,
+  one Ctrl+Z. The arithmetic (placement vs source trim vs transform, split, trim) lives ONLY in
+  `apps/web/src/lib/layers.ts`, mirrored in `services/api/app/agent/tools/layer_tools.py`; both
+  suites test the same numbers. Change one, change both.
+- Undo and redo SAVE: use `useWordPatch().undo/redo`, never `dispatch({ type: 'UNDO' })`, which
+  changes only the screen — the undone edit came back on reload and in every export.
+- Inside one agent turn, each tool sees what the earlier tools did (`planner.py`'s `working`).
+  Tools that return a finished list (layers) depend on it; never pass `request.project` to a tool.
+- NEVER write a style onto every word to change "all the captions". A per-word value beats the
+  emphasis and tone layers, so it erases the preset's hierarchy and switching preset cannot bring
+  it back. All-captions changes go to `presetOverride.base` (size: `baseFontSize`) — the inspector's
+  "All captions" scope and the agent's `set_preset_override` both do this. Per-word styles are for
+  words the user named (phase 9; the size version of this bug was fixed first, in phase 3/4).
 - Orange has a budget: the playhead, the primary action, and the current
   selection. Everything else uses the warm neutral scale (audit 16 §3.3).
 - Emphasis promoted by the rhythm rule is drawn OUTLINED, never filled — filled

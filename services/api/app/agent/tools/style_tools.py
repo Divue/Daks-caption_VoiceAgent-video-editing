@@ -22,12 +22,14 @@ from ..contracts import AgentStylePatch, WordPatch
 from .errors import ToolExecutionError
 from .registry import ToolSpec, ToolStatus, default_registry
 from .schemas import (
+    RampCaptionSizeArgs,
+    RampCaptionSizeResult,
     SetPositionArgs,
     SetPositionResult,
     UpdateCaptionStyleArgs,
     UpdateCaptionStyleResult,
 )
-from .word_targets import build_word_patches
+from .word_targets import build_word_patches, resolve_words
 
 # `Style.y` is a percentage of frame height (0-100), per root CLAUDE.md.
 # Chosen to sit inside a safe margin at both ends and to bracket the
@@ -79,6 +81,45 @@ def set_position(args: SetPositionArgs, project: Project) -> SetPositionResult:
     return SetPositionResult(patches=patches)
 
 
+def ramp_caption_size(args: RampCaptionSizeArgs, project: Project) -> RampCaptionSizeResult:
+    """Grow (or shrink) the words across a run, first to last.
+
+    "Each word bigger than the one before" is not expressible with update_caption_style,
+    whose `patch` is ONE value written to every id. The sizes are interpolated linearly over
+    `wordIds` IN THE ORDER GIVEN — which is playback order when the ids came from
+    select_word_range — so the first word lands exactly on `startFontSize` and the last
+    exactly on `endFontSize`.
+
+    A single id is legal and simply gets `startFontSize`; interpolating over one point has
+    no meaningful answer and guessing one would be worse than the obvious behaviour.
+
+    Per-word fontSize is FINAL: it beats the preset's emphasis scale, which is the intended
+    effect here (a deliberate ramp should not be re-sorted by which words happen to be
+    emphasised) and the reason the system prompt keeps per-word sizing away from "make all
+    the captions bigger".
+    """
+    count = len(args.wordIds)
+    span = args.endFontSize - args.startFontSize
+    sizes = [
+        round(args.startFontSize + (span * index / (count - 1) if count > 1 else 0), 1)
+        for index in range(count)
+    ]
+    # Zip against the RESOLVED ids rather than args.wordIds: build_word_patches collapses
+    # duplicates, so a repeated id would otherwise slide every later word onto the wrong size.
+    resolved = [word.id for word in resolve_words(project, args.wordIds)]
+    if len(resolved) != count:
+        sizes = [
+            round(args.startFontSize + (span * index / (len(resolved) - 1) if len(resolved) > 1 else 0), 1)
+            for index in range(len(resolved))
+        ]
+    by_id = dict(zip(resolved, sizes))
+
+    patches = build_word_patches(
+        project, resolved, lambda word: WordPatch(style=AgentStylePatch(fontSize=by_id[word.id]))
+    )
+    return RampCaptionSizeResult(patches=patches, fontSizes=sizes)
+
+
 default_registry.register(
     ToolSpec(
         name="update_caption_style",
@@ -117,4 +158,26 @@ default_registry.register(
         notes=f"Maps to Style.y = {POSITION_Y} (percent of frame height).",
     ),
     set_position,
+)
+
+default_registry.register(
+    ToolSpec(
+        name="ramp_caption_size",
+        description=(
+            "Give a run of words a size that CHANGES word by word — 'each word bigger than the "
+            "last', 'make them grow', 'start small and get huge'. Sizes are px at 1080p and "
+            "interpolate linearly from startFontSize (first id) to endFontSize (last id), so pass "
+            "the ids in playback order — select_word_range already returns them that way. Read the "
+            "preset's baseFontSize from <active_preset> to choose sensible ends; a growth ramp "
+            "usually starts at about the base size and finishes 2-3x it. update_caption_style "
+            "cannot do this: its patch writes ONE size to every word."
+        ),
+        input_model=RampCaptionSizeArgs,
+        output_model=RampCaptionSizeResult,
+        reads=True,
+        writes=True,
+        status=ToolStatus.AVAILABLE,
+        notes="Linear interpolation over the resolved ids; per-word fontSize overrides emphasisScale.",
+    ),
+    ramp_caption_size,
 )

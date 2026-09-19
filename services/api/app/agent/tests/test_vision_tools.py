@@ -276,19 +276,74 @@ def test_analyze_frame_not_found_case_via_injected_doubles() -> None:
     check("boxes is empty when nothing is found", result.boxes == [])
 
 
-def test_face_target_is_treated_as_person_by_design() -> None:
-    """Documented design decision (see vision_tools.py's module docstring):
-    real face-specific detection is out of scope, so target="face" uses the
-    same Person-label lookup as target="person" rather than inventing
-    behavior for a label this pipeline was never decided to produce."""
+def test_face_target_uses_real_face_detection() -> None:
+    """REVERSED DECISION. This used to assert that target="face" returned the PERSON box,
+    on the reasoning that DetectLabels has no reliable face box. That reasoning was right
+    about DetectLabels and wrong about Rekognition: DetectFaces is a separate API that
+    returns real face boxes, verified live on a frame from this repo's own test project
+    (one face, 100% confidence, while DetectLabels' "Face" label carried zero Instances).
+
+    Returning the body when asked for the face was not a harmless approximation — an emoji
+    placed on it covered the whole person. So face now means face, and this test pins that
+    the PERSON detector is not what answers it.
+    """
     project = project_with_video(PRESIGNED_URL)
+    faces = [{"BoundingBox": {"Left": 0.4, "Top": 0.2, "Width": 0.2, "Height": 0.25}, "Confidence": 99.9}]
+
+    def _person_detector_must_not_run(frame_bytes):
+        raise AssertionError("target='face' must not fall back to the Person label")
+
     result = analyze_frame(
         AnalyzeFrameArgs(atMs=0, target="face"),
         project,
         grab_frame=_fake_grab_frame,
-        detect_labels=lambda frame_bytes: _FAKE_LABELS_WITH_PERSON,
+        detect_labels=_person_detector_must_not_run,
+        detect_faces=lambda frame_bytes: faces,
     )
-    check("target='face' currently resolves via the same Person-label lookup as target='person'", result.found is True and result.boxes[0].label == "Person")
+    check("target='face' returns a real face box from DetectFaces", result.found is True)
+    check("…labelled 'face', not 'Person'", result.boxes[0].label == "face")
+    check("…at the face's own coordinates, not the body's",
+          (result.boxes[0].x, result.boxes[0].width) == (40.0, 20.0))
+
+
+def test_low_confidence_face_is_discarded() -> None:
+    """A weak detection must not become a sticker placement. Rekognition will happily
+    report a doubtful face; placing an emoji on it is worse than finding nothing, because
+    finding nothing is reported honestly and a wrong box is not."""
+    project = project_with_video(PRESIGNED_URL)
+    faces = [{"BoundingBox": {"Left": 0.4, "Top": 0.2, "Width": 0.2, "Height": 0.25}, "Confidence": 51.0}]
+    result = analyze_frame(
+        AnalyzeFrameArgs(atMs=0, target="face"), project,
+        grab_frame=_fake_grab_frame, detect_faces=lambda frame_bytes: faces,
+    )
+    check("a face below the confidence floor is not returned", result.found is False)
+
+
+def test_hand_target_uses_the_vision_fallback() -> None:
+    """Rekognition has no hand detector, so "hand" is the one target routed to Claude vision
+    on Bedrock — the fallback root CLAUDE.md's Stack section names. Its boxes arrive as
+    PERCENT, unlike Rekognition's 0-1 fractions, and must not be scaled a second time."""
+    project = project_with_video(PRESIGNED_URL)
+    result = analyze_frame(
+        AnalyzeFrameArgs(atMs=0, target="hand"), project,
+        grab_frame=_fake_grab_frame,
+        detect_vision=lambda frame_bytes, target: [{"x": 10, "y": 30, "width": 45, "height": 65}],
+    )
+    check("target='hand' returns the vision model's box", result.found is True)
+    check("…already in percent, not multiplied by 100 again", result.boxes[0].width == 45.0)
+    check("…labelled with the target", result.boxes[0].label == "hand")
+
+
+def test_unparseable_vision_reply_yields_nothing() -> None:
+    """The vision model answering in prose, or with a box missing a key, must produce NO
+    box. A fabricated position would put a sticker somewhere arbitrary and report success."""
+    project = project_with_video(PRESIGNED_URL)
+    result = analyze_frame(
+        AnalyzeFrameArgs(atMs=0, target="hand"), project,
+        grab_frame=_fake_grab_frame,
+        detect_vision=lambda frame_bytes, target: [{"x": 10, "y": 30}],  # no width/height
+    )
+    check("a malformed vision box is dropped, not repaired", result.found is False)
 
 
 def test_out_of_frame_box_is_clamped_not_crashed() -> None:
@@ -375,7 +430,10 @@ def main() -> int:
     test_seek_formatting()
     test_analyze_frame_found_case_via_injected_doubles()
     test_analyze_frame_not_found_case_via_injected_doubles()
-    test_face_target_is_treated_as_person_by_design()
+    test_face_target_uses_real_face_detection()
+    test_low_confidence_face_is_discarded()
+    test_hand_target_uses_the_vision_fallback()
+    test_unparseable_vision_reply_yields_nothing()
     test_out_of_frame_box_is_clamped_not_crashed()
     test_real_ffmpeg_frame_grab_from_a_local_clip()
     test_production_defaults_are_the_real_implementations()

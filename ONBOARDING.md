@@ -28,6 +28,10 @@ cp .env.example .env
 docker compose up -d --build
 curl localhost:8010/health         # {"ok":true}
 
+# Export (optional, and slow the first time — the image carries a headless Chrome).
+# Skip it unless you're working on Export; without it the Export button says how to start it.
+docker compose --profile export up -d --build
+
 # Frontend
 nvm use && npm install
 cd apps/web && npm run dev
@@ -67,18 +71,18 @@ never commit them, never paste them in chat.
 ## 2. Check it actually works
 
 ```bash
-# The agent's own test suite (plain check() scripts, not pytest) — expect 324 checks
+# The agent's own test suite (plain check() scripts, not pytest)
 for t in test_contracts test_tool_registry test_context_tools test_mutation_tools test_word_tools \
          test_vision_tools test_bedrock_client test_tool_config test_planner test_voice test_router \
-         test_livekit_token; do
+         test_livekit_token test_layer_tools; do
   docker compose exec -T api python -m app.agent.tests.$t | tail -1
 done
 
-# The API's pytest suite — expect 95 passed
+# The API's pytest suite — expect 128 passed
 docker compose exec api python -m pytest tests/ -q -p no:warnings
 
-# The editor — expect "All checks passed." twice, then a clean build
-cd apps/web && npx tsc -b && npm run check:agent && npm run check:captions && npm run build
+# The editor — expect "All checks passed." three times, then a clean build
+cd apps/web && npx tsc -b && npm run check:agent && npm run check:captions && npm run check:layers && npm run build
 
 # The agent against REAL Bedrock, graded easy → hard (costs real API calls)
 docker compose exec api python scripts/agent_demo.py --list          # free, prints the catalogue
@@ -104,6 +108,7 @@ docker compose exec -T voice-agent python scripts/check_voice_e2e.py
 | Activity says "Listening (browser speech recognition)" | LiveKit isn't reachable, so the editor fell back on purpose — check `docker compose ps` for `livekit` and `voice-agent` |
 | `POST /agent/livekit-token` → 503 | `LIVEKIT_*` missing from `.env` — copy them from `.env.example` |
 | Port 8000 already in use | `API_PORT` is 8010 in `.env.example`; change it if that clashes too |
+| Export says the render server isn't running | you didn't start it: `docker compose --profile export up -d`. **Don't** set `RENDER_HOST=0.0.0.0` — that endpoint has no auth |
 
 ---
 
@@ -130,7 +135,9 @@ rather than rediscovering it.
 | **Agent history (P4's build log)** | `.claude/audits/ai-agent/phase-01` → `phase-08`. Read `phase-05-vision.md`'s correction banner first — its original conclusion is out of date. |
 | **The editor UI** | audits `00`, `09`, `15`, `16` (the design rules: orange has a budget, no fake features), `07` (undo), `13` (why every write goes through one queue) |
 | **Pipeline / API** | audits `11` (speech-to-text + prosody), `12` (persistence and the write contract), and `services/api/README.md` (every endpoint) |
-| **Deploying** | section 4 below, then `services/api/Dockerfile` and `services/voice-agent/README.md` |
+| **Media layers** (images/clips over the video) | `LAYERS.md` — the model, the workflow, the agent's tools — then `.claude/audits/layers/phase-01-media-layers.md`. The arithmetic lives only in `apps/web/src/lib/layers.ts` and `services/api/app/agent/tools/layer_tools.py`; change both together. |
+| **Export / rendering** | `.claude/audits/export/phase-01-containerised-render.md`, then `remotion/README.md`. `DEPLOYING-EXPORT.md` for the licence and the AWS options. |
+| **Deploying** | `DEPLOYING-EXPORT.md` first (App Runner is closed to new customers — that changes the API's target too), then section 4 below, `services/api/Dockerfile`, `services/voice-agent/README.md` |
 
 **Don't trust these as current:**
 - `.claude/next-session-prompt.md` — a consumed prompt. Pasting it rebuilds shipped work.
@@ -146,11 +153,11 @@ Nothing is deployed from this repo yet. The intended targets (`CLAUDE.md`) and t
 
 | Part | Target | State |
 |---|---|---|
-| API | App Runner | `services/api/Dockerfile` is production-ready (runs `uvicorn` on `$PORT`, skips dev deps). **No App Runner config in the repo.** |
+| API | ~~App Runner~~ → **undecided** | `services/api/Dockerfile` is production-ready. **AWS closed App Runner to new customers**, so the target written in `CLAUDE.md` may not be available to us — AWS points at ECS Express Mode. Lead decision; see `DEPLOYING-EXPORT.md` §2. |
 | Editor | Amplify | `npm run build` works. **No `amplify.yml`.** |
 | Voice worker | an always-on host | **Undecided (P1).** App Runner is not a fit — it's a long-running process that joins rooms, not an HTTP server. |
 | LiveKit | LiveKit Cloud, or self-hosted | Locally it's `livekit-server --dev`. **Production needs real credentials.** |
-| Export | Remotion Lambda | Not built — `/projects/{id}/render` returns 501 (P2). |
+| Export | Remotion Lambda, or the container | **Works locally.** `remotion/Dockerfile` is the deployable artifact; nothing is deployed. Licence costs us $0 today. See `DEPLOYING-EXPORT.md`. |
 
 **Fix these before anything is reachable from the internet:**
 1. `POST /agent/livekit-token` has **no auth** — anyone who can reach the API can mint a room token.
@@ -170,7 +177,7 @@ Nothing is deployed from this repo yet. The intended targets (`CLAUDE.md`) and t
 | Issue | Where | Why it matters |
 |---|---|---|
 | **The timeline toolbar contradicts a written invariant.** `INDEX.md` says no editing toolbar; the app shows Split, Trim, Transitions, Effects, Music, Speed. All inert, all refused by the agent. | `components/toolbar/EditorToolbar.tsx`, timeline tracks | A judge who sees scissors will ask for a cut. Needs a lead decision: rewrite the invariant, or remove the toolbar. |
-| **Saving isn't tested end to end.** In demo mode there is no server project, so nothing saves. The bulk-save endpoint has tests, but "agent edits a real uploaded project → reload → edits are still there" has never been checked. | `useWordPatch.applyAgentPatches`, `PATCH /projects/{id}/words` | Edits could be lost on reload and nobody would know. |
+| ~~Saving isn't tested end to end.~~ **Closed.** Driven in a real browser against project `d8cb55cadb89`: "make the word god bright green" → one `PATCH /projects/{id}/words` → 200 → `style.color = "#00FF00"` on the server, version 2→3. The test edit was reverted. | `useWordPatch.applyAgentPatches` | Was the biggest unknown: edits could have been lost on reload and nobody would have known. |
 | **Nobody has spoken to it.** Voice is proven with synthesised speech only. | voice path | Real mics, real accents, real pauses. |
 | **Hinglish speech is untested.** The worker uses `VOICE_STT_LANGUAGE=en-IN`; `hi-IN` hasn't been tried. | `.env` | The product is for Hinglish creators. |
 | **"Stop making things red" varies.** It usually turns off the tone layer and sometimes recolours words instead. Both remove the red; only the first is what the catalogue checks. | agent prompt | Mildly flaky demo prompt. |

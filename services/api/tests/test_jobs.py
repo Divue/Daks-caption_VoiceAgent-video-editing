@@ -139,4 +139,4 @@ def test_long_clip_rejected_before_any_paid_call(aws, monkeypatch):
     _upload(body)
     c.post(f"/projects/{body['projectId']}/process")
     status = c.get(f"/projects/{body['projectId']}/status").json()
-    assert status["state"] == "failed" and "limit is 60s" in status["error"] and not called
+    assert status["state"] == "failed" and "limit is 90s" in status["error"] and not called

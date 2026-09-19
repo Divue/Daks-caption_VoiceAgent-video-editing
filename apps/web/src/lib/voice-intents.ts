@@ -166,8 +166,13 @@ function parseTimeExpression(expr: string): number | null {
 /**
  * The transport command in `text`, or null when it is anything else (an edit, a question, noise).
  * `ctx.playing` lets the parser read a garbled one-word "pause" for what it almost certainly was.
+ * `ctx.misheard` opts into that guessing at all: it compensates for a SPEECH recogniser, so it must
+ * be off for typed text, where "pass" is exactly the word the person meant to type.
  */
-export function parseTransportIntent(text: string, ctx?: { playing?: boolean }): TransportIntent | null {
+export function parseTransportIntent(
+  text: string,
+  ctx?: { playing?: boolean; misheard?: boolean },
+): TransportIntent | null {
   const s = normalise(text)
   if (!s) return null
 
@@ -230,13 +235,34 @@ export function parseTransportIntent(text: string, ctx?: { playing?: boolean }):
   // and "House" — three tries, never once "pause" — and the video kept playing. One short word is
   // the hardest thing for a recogniser to get right, and "pause" is the command people say most.
   // A BARE "pass"/"paws" means nothing else to a video editor, so it always counts.
-  if (/^(?:pass|paws|pores)$/.test(s)) return { type: 'pause' }
+  if (ctx?.misheard && /^(?:pass|paws|pores)$/.test(s)) return { type: 'pause' }
   // While the video is PLAYING, any other bare word that sounds like "pause" is far more likely a
   // mis-heard pause than a real command: a wrong guess costs one "play", a miss makes the app feel
   // dead. Deliberately not applied when paused, and never to a word inside a longer sentence.
-  if (ctx?.playing && /^(?:pours|pose|house|hours|force|cause|paused|pausing)$/.test(s)) return { type: 'pause' }
+  if (ctx?.misheard && ctx?.playing && /^(?:pours|pose|house|hours|force|cause|paused|pausing)$/.test(s)) {
+    return { type: 'pause' }
+  }
 
   return null
+}
+
+/**
+ * A transport phrase that could equally be the FIRST HALF of a longer instruction.
+ *
+ * "stop the video" is unambiguous. A bare "stop" is not: the recogniser ends a sentence at a
+ * mid-sentence pause, so "stop… making things red" arrives as two finals, and acting on the first
+ * one pauses the video AND sends the agent half a command. `useAgentCommand` therefore treats a
+ * bare opener as provisional — it acts, but keeps the words so the next final can continue them
+ * (`mergeUtterances`) and put the player back.
+ *
+ * Deliberately a closed list of single words. Anything carrying its own object ("stop the video")
+ * or argument ("go to 5 seconds", "1.5x") cannot be half a sentence and is not listed.
+ */
+const BARE_TRANSPORT =
+  /^(?:play|resume|unpause|continue|start|pause|stop|freeze|halt|hold|hold on|restart|replay|rewind|faster|slower|speed up|speed it up|slow down|slow it down|double|twice|mute|silence|unmute|skip|go|jump|move|seek|back|forward|fast forward|pass|paws|pores|pours|pose|house|hours|force|cause|paused|pausing)$/
+
+export function isBareTransport(text: string): boolean {
+  return BARE_TRANSPORT.test(normalise(text))
 }
 
 /** `0:05`, for the activity log. Local on purpose: this file has no imports. */

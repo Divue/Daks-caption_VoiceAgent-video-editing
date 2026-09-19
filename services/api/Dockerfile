@@ -13,6 +13,8 @@ ARG INSTALL_DEV=false
 RUN if [ "$INSTALL_DEV" = "true" ]; then pip install --no-cache-dir -r requirements-dev.txt; fi
 
 COPY app ./app
+# The built-in emoji sticker set the agent places on faces (assets/emoji/*.png).
+COPY assets ./assets
 COPY pytest.ini ./
 
 ENV PORT=8000

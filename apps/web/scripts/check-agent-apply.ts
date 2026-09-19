@@ -25,6 +25,7 @@ import {
   STOP_LISTENING,
   UNDO_PHRASES,
   describeTransport,
+  isBareTransport,
   mergeUtterances,
   parseTransportIntent,
   resolveTransport,
@@ -183,6 +184,15 @@ console.log('\nagent apply — preset overrides')
     patches: [{ type: 'SET_PRESET_OVERRIDE', override: null }],
   })
   check('a whole-object null clears every override', all.present.presetOverride === undefined)
+
+  // The null has to make it across the wire to get here. It is written by a serializer that runs
+  // after `response_model_exclude_none=True`, and the first version of the agent's reset lost it:
+  // the client received `{type:'SET_PRESET_OVERRIDE'}` with no key at all. Don't throw on that.
+  const absent = projectReducer(merged, {
+    type: 'APPLY_AGENT_PATCHES',
+    patches: [{ type: 'SET_PRESET_OVERRIDE' } as never],
+  })
+  check('a MISSING override clears too, rather than throwing', absent.present.presetOverride === undefined)
   check('the project still validates with no override key at all', Project.safeParse(all.present).success)
 }
 
@@ -359,16 +369,29 @@ console.log('\nvoice — the video obeys "play", "pause", "go to 5 seconds" with
   const pauses = ['pause', 'Pause the video', 'pause it', 'stop the video', 'hold on', 'freeze', 'ruko', 'video rok do']
   check('pause phrases', pauses.every((w) => is(w, { type: 'pause' })), pauses.filter((w) => !is(w, { type: 'pause' })).map((w) => `${w}=>${t(w)}`).join('; '))
 
-  // Sarvam heard a spoken "pause" as "Pass" — recogniser errors that would otherwise leave the video playing.
-  check('a recogniser\'s "Pass" for "pause" still pauses', is('Pass.', { type: 'pause' }) && is('pass', { type: 'pause' }) && is('paws', { type: 'pause' }))
-  check('"pass" inside a real sentence is NOT a pause', parseTransportIntent('pass the emphasis to the next word') === null && parseTransportIntent('make it pass') === null)
+  // Sarvam heard a spoken "pause" as "Pass" — recogniser errors that would otherwise leave the video
+  // playing. They apply to SPEECH only: `misheard` must be passed, and the editor passes it for voice
+  // and never for typing, where "pass" is the word the person meant.
+  const heard = { misheard: true }
+  check('a recogniser\'s "Pass" for "pause" still pauses', ['Pass.', 'pass', 'paws'].every((w) => JSON.stringify(parseTransportIntent(w, heard)) === JSON.stringify({ type: 'pause' })))
+  check('a TYPED "pass" is not a pause — it reaches the agent', ['pass', 'paws', 'pores'].every((w) => parseTransportIntent(w) === null))
+  check('"pass" inside a real sentence is NOT a pause', parseTransportIntent('pass the emphasis to the next word', heard) === null && parseTransportIntent('make it pass', heard) === null)
   // Sarvam also returned "House" for a spoken "pause". Only while the video is playing is that read as a pause.
-  const playing = { playing: true }
+  const playing = { playing: true, misheard: true }
   check('"House" while PLAYING is read as a mis-heard pause', JSON.stringify(parseTransportIntent('House.', playing)) === JSON.stringify({ type: 'pause' }) && JSON.stringify(parseTransportIntent('hours', playing)) === JSON.stringify({ type: 'pause' }))
-  check('"House" while PAUSED is left alone, for the agent', parseTransportIntent('House.', { playing: false }) === null && parseTransportIntent('House.') === null)
+  check('a TYPED "house" while playing is left alone', parseTransportIntent('House.', { playing: true }) === null)
+  check('"House" while PAUSED is left alone, for the agent', parseTransportIntent('House.', { playing: false, misheard: true }) === null && parseTransportIntent('House.') === null)
   check('the playing-only aliases never fire inside a longer sentence', ['house of cards', 'make the house red', 'force it bigger'].every((w) => parseTransportIntent(w, playing) === null))
   check('edit words are not stolen while playing', ['bigger', 'red', 'undo', 'yellow'].every((w) => parseTransportIntent(w, playing) === null))
   check('real transport words keep their own meaning while playing', parseTransportIntent('faster', playing)?.type === 'rateStep' && parseTransportIntent('mute', playing)?.type === 'mute' && parseTransportIntent('restart', playing)?.type === 'restart')
+
+  // A bare opener is exactly what a mid-sentence pause looks like to the recogniser, so it is acted
+  // on PROVISIONALLY: `useAgentCommand` keeps the words so the rest of the sentence can claim them
+  // back, and puts the player where it was. Without this, "stop… making things red" pauses the video
+  // and sends the agent half a command.
+  check('bare openers are flagged as provisional', ['stop', 'play', 'pause', 'speed up', 'faster', 'double', 'mute', 'Stop.', 'hold on'].every((w) => isBareTransport(w)))
+  check('a transport command carrying its own object is NOT provisional', ['stop the video', 'play the clip', 'go to 5 seconds', '1.5x', 'normal speed', 'skip 10 seconds'].every((w) => !isBareTransport(w)))
+  check('a bare opener plus its continuation merges back into the real edit', ['stop|making things red|stop making things red', 'play|the word bekaar in red|play the word bekaar in red', 'speed up|the reveal|speed up the reveal'].every((row) => { const [a, b, want] = row.split('|'); return mergeUtterances(a, b) === want && parseTransportIntent(want, playing) === null }))
 
   const restarts = ['restart', 'start over', 'play from the beginning', 'replay', 'go to the start', 'play it again', 'rewind to the beginning']
   check('restart phrases', restarts.every((w) => is(w, { type: 'restart' })), restarts.filter((w) => !is(w, { type: 'restart' })).map((w) => `${w}=>${t(w)}`).join('; '))

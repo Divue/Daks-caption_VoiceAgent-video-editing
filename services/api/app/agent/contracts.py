@@ -14,7 +14,7 @@ from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, Field, SerializeAsAny, field_serializer, field_validator, model_serializer
 
-from app.schema import Overlay, PresetId, PresetOverride, Signals, StylePatch, Project
+from app.schema import LayerItem, Overlay, PresetId, PresetOverride, Signals, StylePatch, Project
 
 # The sentinel a patch carries for "remove this key", for fields whose real
 # type has no spare value to mean it (`single: bool | None`). `emoji` uses
@@ -187,7 +187,24 @@ class SetPresetOverrideAction(BaseModel):
     """
 
     type: Literal["SET_PRESET_OVERRIDE"] = "SET_PRESET_OVERRIDE"
-    override: AgentPresetOverridePatch
+    #: `None` means "clear every override, put it back to the preset" — the whole-object null the
+    #: reducer's `mergePresetOverride(current, null)` has always understood. The contract simply
+    #: could not say it until now, so "go back to the original preset" had no single expression.
+    override: AgentPresetOverridePatch | None
+
+    @model_serializer(mode="wrap")
+    def _keep_a_whole_object_null(self, handler) -> dict[str, Any]:
+        """Put `override: null` back after exclusion, the same trick `cleared` uses above.
+
+        `response_model_exclude_none=True` would otherwise drop the key entirely, and an ABSENT
+        override is not the same instruction as a null one: the reducer clears on `=== null` and
+        would throw on `undefined`. Verified on the wire, not assumed — the first version of this
+        shipped `{"type": "SET_PRESET_OVERRIDE"}` with the null silently stripped.
+        """
+        data = handler(self)
+        if self.override is None:
+            data["override"] = None
+        return data
 
 
 class AddOverlayAction(BaseModel):
@@ -205,12 +222,22 @@ class AddOverlayAction(BaseModel):
 # ADD_OVERLAY stays in the union (the shape is still valid and
 # validation.py still applies it) even though `add_overlay` is no longer
 # offered to the model — see tools/project_tools.py for why.
+class SetLayersAction(BaseModel):
+    """Mirrors apps/web's `{ type: 'SET_LAYERS', layers }` action: the media layers as the whole
+    list they should now be. A split or a delete has no clean per-item expression, and the list is
+    small (≤ MAX_LAYER_ITEMS), so every layer tool returns the finished list. `[]` removes them."""
+
+    type: Literal["SET_LAYERS"] = "SET_LAYERS"
+    layers: list[LayerItem]
+
+
 AgentPatch = Union[
     UpdateWordAction,
     SetPresetAction,
     SetSettingsAction,
     SetPresetOverrideAction,
     AddOverlayAction,
+    SetLayersAction,
 ]
 DiscriminatedAgentPatch = Annotated[AgentPatch, Field(discriminator="type")]
 
@@ -297,6 +324,10 @@ class ActivePreset(BaseModel):
     # tone -> the colour that tone paints, e.g. {"angry": "#FF5C3A"}.
     emotionColors: dict[str, str] = Field(default_factory=dict)
     wordsPerLine: int | None = None
+    # The BASE caption size in px at 1080p. Needed by any tool that writes a per-word
+    # fontSize — ramp_caption_size has to know what "bigger than normal" is a multiple OF,
+    # and the preset's own size lives in TypeScript like the rest of `Preset`.
+    baseFontSize: float | None = None
 
 
 class AgentCommandRequest(BaseModel):

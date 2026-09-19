@@ -50,7 +50,7 @@ interface PlaybackContextValue {
   setRate: (rate: number) => void
   setVolume: (volume: number) => void
   toggleMute: () => void
-  setMuted: (muted: boolean) => void
+  setMuted: (muted: boolean) => boolean
   /** Turn the video down (true) or back up (false), remembering the user's own volume. */
   duck: (on: boolean) => void
 }
@@ -228,7 +228,16 @@ export function PlaybackProvider({
 
       // A remounted element may already be mid-load; sync now rather than wait for an event.
       onLoaded()
-      onVolume()
+      // A remount WHILE THE MIC IS OPEN — which the expired-link recovery can now cause — hands us
+      // a fresh element at full volume, and `onVolume` refuses to touch the volume while ducked.
+      // Left alone, the clip plays at full blast into the open microphone and the later un-duck
+      // writes back a stale figure. Re-apply the duck to the new element, from its own volume.
+      if (duckingRef.current) {
+        userVolumeRef.current = el.volume
+        el.volume = el.volume * DUCK_FACTOR
+      } else {
+        onVolume()
+      }
       onData()
       publishTime()
       if (!el.paused) onPlay()
@@ -334,11 +343,13 @@ export function PlaybackProvider({
     setVolumeState(next)
   }, [])
 
+  /** Returns false when there is no video to mute, so the caller can say so instead of lying. */
   const setMutedTo = useCallback((next: boolean) => {
     const video = videoRef.current
-    if (!video) return
+    if (!video) return false
     video.muted = next
     setMuted(next)
+    return true
   }, [])
 
   const toggleMute = useCallback(() => {

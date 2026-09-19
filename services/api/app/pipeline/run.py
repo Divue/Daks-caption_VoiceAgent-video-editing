@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 
 import soundfile
@@ -23,26 +24,80 @@ SARVAM_MODEL = "saaras:v3"
 WORD_SPLIT = re.compile(r"[^\w'ऀ-ॿ]+")
 
 
-def sarvam_text(wav_path: str, audio_seconds: float = 0.0) -> str:
-    """Sarvam Saaras v3 in translit mode: Hinglish in Roman script, ~2s."""
+# Sarvam's synchronous API rejects audio over 30 s ("use the batch API for longer audio files").
+# Longer clips are cut into pieces: the first as close to 30 s as is safe, the rest ~28 s, each cut
+# made at the quietest moment before the limit so no word is split between two pieces.
+SARVAM_MAX_S = 30.0
+FIRST_CHUNK_S = 29.5   # just under the limit: the API measures duration itself
+NEXT_CHUNK_S = 28.0
+CUT_SEARCH_S = 3.0     # look this far back from the target for a pause to cut at
+
+
+def chunk_bounds(samples, sr: int) -> list[tuple[int, int]]:
+    """Sample ranges, each under Sarvam's 30 s limit, cut at the quietest 20 ms before the target."""
+    import numpy as np
+
+    total = len(samples)
+    if total <= FIRST_CHUNK_S * sr:
+        return [(0, total)]
+    frame = max(1, int(0.02 * sr))
+    bounds, start, target_s = [], 0, FIRST_CHUNK_S
+    while total - start > target_s * sr:
+        hi = start + int(target_s * sr)
+        lo = max(start + frame, hi - int(CUT_SEARCH_S * sr))
+        window = np.asarray(samples[lo:hi], dtype="float64")
+        n = len(window) // frame
+        energy = (window[: n * frame].reshape(n, frame) ** 2).mean(axis=1)
+        cut = lo + int(energy.argmin()) * frame + frame // 2
+        bounds.append((start, cut))
+        start, target_s = cut, NEXT_CHUNK_S
+    bounds.append((start, total))
+    return bounds
+
+
+def _sarvam_request(path: str, audio_seconds: float) -> str:
+    """One synchronous Saaras call on a file of at most 30 s."""
     import requests
 
     key = get_settings().sarvam_api_key
-    if not key:
-        raise RuntimeError("SARVAM_API_KEY not set")
     with cost_event(stage="sarvam", service="sarvam", model_id=SARVAM_MODEL) as ev:
         ev.audio(audio_seconds)
-        with open(wav_path, "rb") as fh:
+        with open(path, "rb") as fh:
             resp = requests.post(
                 "https://api.sarvam.ai/speech-to-text",
                 headers={"api-subscription-key": key},
                 data={"model": SARVAM_MODEL, "mode": "translit"},
-                files={"file": (os.path.basename(wav_path), fh, "audio/wav")},
+                files={"file": (os.path.basename(path), fh, "audio/wav")},
                 timeout=300,
             )
         if not resp.ok:  # keep Sarvam's own message; raise_for_status drops the body
             raise RuntimeError(f"sarvam HTTP {resp.status_code}: {resp.text[:300]}")
     return resp.json().get("transcript", "")
+
+
+def sarvam_text(wav_path: str, audio_seconds: float = 0.0) -> str:
+    """Sarvam Saaras v3 in translit mode: Hinglish in Roman script, ~2s per piece.
+
+    A clip over 30 s is sent as several pieces at once and their text joined in order. If any
+    piece fails the whole call fails: text with a hole in it would misalign every word after it.
+    """
+    if not get_settings().sarvam_api_key:
+        raise RuntimeError("SARVAM_API_KEY not set")
+    samples, sr = soundfile.read(wav_path)
+    bounds = chunk_bounds(samples, sr)
+    if len(bounds) == 1:
+        return _sarvam_request(wav_path, audio_seconds)
+
+    with tempfile.TemporaryDirectory(prefix="sarvam-") as tmp:
+        paths = []
+        for index, (a, b) in enumerate(bounds):
+            path = os.path.join(tmp, f"piece{index}.wav")
+            soundfile.write(path, samples[a:b], sr, subtype="PCM_16")
+            paths.append((path, (b - a) / sr))
+        with ThreadPoolExecutor(max_workers=min(4, len(paths))) as pool:
+            jobs = [jobctx.submit(pool, _sarvam_request, path, secs) for path, secs in paths]
+            texts = [job.result() for job in jobs]
+    return " ".join(t.strip() for t in texts if t.strip())
 
 
 def _sarvam_stage(wav_path: str, audio_seconds: float) -> str:
@@ -53,13 +108,14 @@ def _sarvam_stage(wav_path: str, audio_seconds: float) -> str:
     jobctx.report("sarvam", "running")
     try:
         text = sarvam_text(wav_path, audio_seconds)
-    except Exception as exc:  # Sarvam down, out of quota, or clip too long for the sync API
+    except Exception as exc:  # Sarvam down, out of quota, or one piece rejected
         print(f"sarvam failed ({exc}); falling back to Transcribe text")
         jobctx.report("sarvam", "failed", error=str(exc)[:300],
                       detail="falling back to Transcribe text romanised by Bedrock")
         return ""
-    jobctx.report("sarvam", "done" if text else "failed",
-                  error=None if text else "empty transcript")
+    pieces = len(chunk_bounds(*soundfile.read(wav_path))) if audio_seconds > FIRST_CHUNK_S else 1
+    jobctx.report("sarvam", "done" if text else "failed", error=None if text else "empty transcript",
+                  detail=f"{pieces} pieces under {SARVAM_MAX_S:.0f}s" if pieces > 1 else None)
     return text
 
 

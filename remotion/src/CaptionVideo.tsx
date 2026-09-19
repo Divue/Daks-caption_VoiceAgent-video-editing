@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
-import { AbsoluteFill, OffthreadVideo, useCurrentFrame, useVideoConfig } from 'remotion'
+import { AbsoluteFill, Img, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig } from 'remotion'
 import { MIN_BLOCK_MS, PRESETS, Project, deriveBlocks, resolveEmphasis } from '@captions/shared'
-import type { CaptionBlock, Word } from '@captions/shared'
+import type { CaptionBlock, LayerItem, Word } from '@captions/shared'
 import { CaptionRenderer } from '@/components/preview/CaptionRenderer'
+import { layerBoxStyle } from '@/lib/layers'
 import { resolvePreset } from '@/lib/resolve-preset'
 import type { PresetOverride } from '@/lib/resolve-preset'
 import { collectFontFamilies, useCaptionFonts } from './fonts'
@@ -14,6 +15,8 @@ export interface CaptionVideoProps {
   /** A URL Chromium can fetch: the presigned GET of the source video. */
   videoUrl: string
   fps: number
+  /** mediaId -> a URL Chromium can fetch, for every file the project's layers use. */
+  mediaUrls?: Record<string, string>
 }
 
 /**
@@ -26,9 +29,9 @@ export interface CaptionVideoProps {
  * the editor reads `video.currentTime`, this reads the frame Remotion is rendering, so a frame is a
  * pure function of its number and the output is identical however fast or slow the machine is.
  */
-export function CaptionVideo({ project: rawProject, videoUrl }: CaptionVideoProps) {
+export function CaptionVideo({ project: rawProject, videoUrl, mediaUrls = {} }: CaptionVideoProps) {
   const frame = useCurrentFrame()
-  const { fps, width } = useVideoConfig()
+  const { fps, width, height } = useVideoConfig()
 
   // Validate once: a malformed project should fail the render with a readable error, not draw nonsense.
   const project = useMemo(() => Project.parse(rawProject), [rawProject])
@@ -57,6 +60,7 @@ export function CaptionVideo({ project: rawProject, videoUrl }: CaptionVideoProp
   return (
     <AbsoluteFill style={{ backgroundColor: '#000' }}>
       <OffthreadVideo src={videoUrl} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+      <MediaLayers items={project.layers ?? []} mediaUrls={mediaUrls} fps={fps} width={width} height={height} />
       <CaptionRenderer
         blocks={timeline.blocks}
         wordsOf={timeline.wordsOf}
@@ -70,3 +74,59 @@ export function CaptionVideo({ project: rawProject, videoUrl }: CaptionVideoProp
     </AbsoluteFill>
   )
 }
+
+/**
+ * The media layers, between the video and the captions — the same order the editor draws.
+ *
+ * Each item is a <Sequence> placed at its OUTPUT time, so Remotion mounts it only while it is on
+ * screen. A clip's SOURCE trim is `trimBefore` (Remotion 4's name; `startFrom` is deprecated), so the
+ * frame shown at the item's first frame is `trimStartMs` into the file — the same rule as
+ * `sourceTimeMs` in the editor. The box is `layerBoxStyle`, imported from the editor, so a sticker
+ * sits in the same place in the preview and in the MP4 by construction, not by keeping two copies in
+ * step.
+ */
+function MediaLayers({
+  items,
+  mediaUrls,
+  fps,
+  width,
+  height,
+}: {
+  items: readonly LayerItem[]
+  mediaUrls: Record<string, string>
+  fps: number
+  width: number
+  height: number
+}) {
+  const frames = (ms: number) => Math.round((ms / 1000) * fps)
+  const ordered = items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => a.item.track - b.item.track || a.index - b.index)
+    .map(({ item }) => item)
+  return (
+    <>
+      {ordered.map((item) => {
+        const src = mediaUrls[item.mediaId]
+        // A file the API could not sign is left out rather than failing the whole export on it.
+        if (!src) return null
+        const style = layerBoxStyle(item, width, height)
+        return (
+          <Sequence
+            key={item.id}
+            from={frames(item.startMs)}
+            durationInFrames={Math.max(1, frames(item.endMs) - frames(item.startMs))}
+            layout="none"
+            name={item.name ?? item.id}
+          >
+            {item.kind === 'image' ? (
+              <Img src={src} style={{ ...style, objectFit: 'fill' }} />
+            ) : (
+              <OffthreadVideo src={src} trimBefore={frames(item.trimStartMs)} muted={item.muted} style={{ ...style, objectFit: 'fill' }} />
+            )}
+          </Sequence>
+        )
+      })}
+    </>
+  )
+}
+

@@ -27,7 +27,7 @@ class Settings:
     bedrock_model_id: str
     sarvam_api_key: str | None
     cors_origins: tuple[str, ...]
-    max_clip_seconds: int = 60           # checked after ffprobe, before any paid call
+    max_clip_seconds: int = 90           # checked after ffprobe, before any paid call
     max_upload_bytes: int = 200 * 1024 * 1024
     stale_job_seconds: int = 120         # a running job with an older heartbeat is "worker lost"
 
@@ -54,5 +54,5 @@ def get_settings() -> Settings:
         cors_origins=tuple(
             o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()
         ),
-        max_clip_seconds=int(os.environ.get("MAX_CLIP_SECONDS", "60")),
+        max_clip_seconds=int(os.environ.get("MAX_CLIP_SECONDS", "90")),
     )

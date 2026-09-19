@@ -10,6 +10,10 @@ Importing this package populates `default_registry` with:
 - the real project-level tools (project_tools.py) — Phase 4, plus the
   DISABLED `add_overlay` (registered, never offered to the model)
 - the real, available vision tool (vision_tools.py) — Phase 5
+- the media-layer tools (layer_tools.py): images and clips over the video
+- the time-range vision tools (scene_tools.py): place_sticker,
+  fit_captions_to_region — these WATCH the video, sampling a frame per
+  second inside one call
 
 Nothing here calls Bedrock, boto3, ffmpeg, or any tool handler; import-time
 registration only attaches callables, it doesn't invoke them.
@@ -18,7 +22,9 @@ from __future__ import annotations
 
 from . import catalog  # noqa: F401  (import triggers planned-tool registration)
 from . import context_tools  # noqa: F401  (import triggers Phase 3 tool registration)
+from . import layer_tools  # noqa: F401  (media layers: images and clips over the video)
 from . import project_tools  # noqa: F401  (import triggers Phase 4 tool registration)
+from . import scene_tools  # noqa: F401  (place_sticker, fit_captions_to_region — sample frames over a range)
 from . import style_tools  # noqa: F401  (import triggers Phase 4 tool registration)
 from . import vision_tools  # noqa: F401  (import triggers Phase 5 tool registration)
 from . import word_tools  # noqa: F401  (import triggers per-word content tool registration)

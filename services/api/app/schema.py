@@ -75,6 +75,35 @@ class Overlay(BaseModel):
     style: StylePatch
 
 
+#: Mirrors MEDIA_ID_PATTERN in project.ts. A server-minted name under the project's own prefix,
+#: never a path: the pattern is what makes `f"{prefix}/media/{mediaId}"` safe to build.
+MEDIA_ID_PATTERN = r"^[0-9a-f]{12}\.(png|jpe?g|webp|gif|mp4|mov|webm)$"
+MAX_LAYER_ITEMS = 40
+
+
+class LayerItem(BaseModel):
+    """Mirrors `LayerItem` in packages/shared/src/project.ts — read its comment for the model:
+    PLACEMENT (startMs..endMs, output time), SOURCE TRIM (trimStartMs, source time), TRANSFORM
+    (x/y centre and width as % of the frame, height from aspect). They change together."""
+
+    id: str = Field(min_length=1)
+    track: Literal[1, 2]
+    kind: Literal["image", "video"]
+    mediaId: str = Field(pattern=MEDIA_ID_PATTERN)
+    name: Optional[str] = Field(default=None, max_length=120)
+    startMs: int = Field(ge=0)
+    endMs: int = Field(ge=0)
+    trimStartMs: int = Field(ge=0)
+    sourceDurationMs: Optional[int] = Field(default=None, gt=0)
+    x: float = Field(ge=-50, le=150)
+    y: float = Field(ge=-50, le=150)
+    width: float = Field(gt=0, le=400)
+    aspect: float = Field(gt=0)
+    rotation: float = Field(ge=-360, le=360)
+    opacity: float = Field(ge=0, le=1)
+    muted: bool
+
+
 class Settings(BaseModel):
     emojis: bool
     emotionLayer: bool
@@ -103,6 +132,9 @@ class PresetOverride(BaseModel):
     # See project.ts: 'bigger' must move the BASE size, never every word's own size,
     # or the emphasis hierarchy collapses.
     baseFontSize: Optional[float] = Field(default=None, gt=0)
+    # The preset's BASE face — what "All captions" edits. See project.ts: a colour stamped onto
+    # every word beats the emphasis and emotion layers and flattens them; here they stay on top.
+    base: Optional[StylePatch] = None
     wordsPerLine: Optional[int] = Field(default=None, ge=1, le=8)
     emphasis: Optional[StylePatch] = None
     emphasisScale: Optional[float] = Field(default=None, gt=0)
@@ -122,4 +154,6 @@ class Project(BaseModel):
     presetOverride: Optional[PresetOverride] = None
     words: list[Word]
     overlays: list[Overlay]
+    # Optional and additive, like presetOverride: stored documents parse unchanged.
+    layers: Optional[list[LayerItem]] = Field(default=None, max_length=MAX_LAYER_ITEMS)
     settings: Settings

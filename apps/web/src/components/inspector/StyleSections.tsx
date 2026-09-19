@@ -107,7 +107,22 @@ function FillFields({ scope }: { scope: StyleScope }) {
   const color = scopeValue(scope, 'color') ?? '#FFFFFF'
   const gradient = scopeValue(scope, 'gradient')
   const stops = scopeValue(scope, 'gradientStops')
-  const mode = stops ? 'stops' : gradient ? 'gradient' : 'solid'
+  // Read the mode from the NARROWEST signal that is set. An emphasised word under Hinglish Bold or
+  // Chamak inherits a gradient from the preset's emphasis layer; if that alone decided the mode,
+  // the Colour row never rendered and the word could not be recoloured at all — the reported bug.
+  // Its own colour wins in `resolveWordStyle`, so it must win here too or the panel contradicts
+  // the picture.
+  const mode = scope.override.gradientStops
+    ? 'stops'
+    : scope.override.gradient
+      ? 'gradient'
+      : scope.override.color
+        ? 'solid'
+        : stops
+          ? 'stops'
+          : gradient
+            ? 'gradient'
+            : 'solid'
 
   return (
     <>
@@ -119,7 +134,10 @@ function FillFields({ scope }: { scope: StyleScope }) {
           { value: 'gradient', label: 'Gradient' },
         ]}
         onChange={(value) => {
-          if (value === 'solid') scope.write({ gradient: null, gradientStops: null })
+          // Clearing is not enough to mean "solid": a null only removes THIS scope's override, so
+          // an inherited gradient would come straight back and the click would do nothing visible.
+          // Writing the colour explicitly is what actually makes the fill solid.
+          if (value === 'solid') scope.write({ gradient: null, gradientStops: null, color })
           else if (!gradient && !stops) scope.write({ gradient: [color, '#000000'] })
         }}
       />

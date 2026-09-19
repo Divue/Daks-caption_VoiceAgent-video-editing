@@ -19,6 +19,7 @@ from app.schema import Emotion, EmotionOverride, PresetId, Settings, StylePatch
 
 from ..contracts import (
     AddOverlayAction,
+    SetLayersAction,
     SetPresetAction,
     SetPresetOverrideAction,
     SetSettingsAction,
@@ -96,8 +97,13 @@ class GetTimelineResult(BaseModel):
 
 # --- find_words --------------------------------------------------------------
 class FindWordsArgs(BaseModel):
+    """`fuzzy` exists because every command may arrive through a speech recogniser. Hinglish
+    words and names are mangled constantly ("birthday" came back as "but the two"), so a target
+    that is not in the transcript verbatim usually means it was MISHEARD, not that the user meant
+    something else."""
+
     query: str = Field(min_length=1)
-    matchType: Literal["exact", "contains"] = "contains"
+    matchType: Literal["exact", "contains", "fuzzy"] = "contains"
 
 
 class FindWordsResult(BaseModel):
@@ -250,6 +256,16 @@ class SetPresetOverrideArgs(BaseModel):
         float | None,
         Field(default=None, gt=0, description="The BASE caption size in px at 1080p."),
     ]
+    base: Annotated[
+        StylePatch | None,
+        Field(
+            default=None,
+            description=(
+                "The BASE face every word starts from: colour, font, weight, position, stroke, "
+                "glow. Emphasised and toned words keep their own layers on top of it."
+            ),
+        ),
+    ]
     wordsPerLine: Annotated[int | None, Field(default=None, ge=1, le=8)]
     emphasis: Annotated[
         StylePatch | None,
@@ -277,6 +293,27 @@ class SetPresetOverrideResult(BaseModel):
     patch: SetPresetOverrideAction
 
 
+# --- reset_styling -----------------------------------------------------------
+class ResetStylingArgs(BaseModel):
+    """Put the look back to the preset as it ships.
+
+    Two independent layers can hold edits, and "go back to the original" almost always means
+    both: the preset OVERRIDE (the conditional layers) and every per-word style override.
+    Clearing them one key and one word at a time is possible but takes many calls and is easy to
+    leave half-done, which is worse than not offering it.
+    """
+
+    scope: Literal["preset_tweaks", "word_styles", "everything"] = "everything"
+    #: Limit the word half to these words ("put THAT word back to normal"). Empty means all of them.
+    wordIds: list[str] = Field(default_factory=list)
+
+
+class ResetStylingResult(BaseModel):
+    #: Spelled out rather than reusing `AgentPatch`: this module deliberately imports the concrete
+    #: action types, and a forward reference to the union would leave the model undefined here.
+    patches: list[SetPresetOverrideAction | UpdateWordAction]
+
+
 # --- add_overlay -------------------------------------------------------------
 class AddOverlayArgs(BaseModel):
     text: str
@@ -294,7 +331,7 @@ class AddOverlayResult(BaseModel):
 # --- analyze_frame -----------------------------------------------------------
 class AnalyzeFrameArgs(BaseModel):
     atMs: int = Field(ge=0)
-    target: Literal["person", "face"] = "person"
+    target: Literal["person", "face", "hand"] = "person"
 
 
 class BoundingBox(BaseModel):
@@ -312,3 +349,121 @@ class BoundingBox(BaseModel):
 class AnalyzeFrameResult(BaseModel):
     found: bool
     boxes: list[BoundingBox] = Field(default_factory=list)
+
+
+# --- select_word_range ---------------------------------------------------------
+class SelectWordRangeArgs(BaseModel):
+    """"From the word X to the word Y" — a contiguous run of words.
+
+    This exists because the alternative is the model COUNTING, which the system prompt
+    forbids and which fails on a real transcript: two find_words calls give the endpoints,
+    and everything between them would have to be enumerated by eye from a 132-word timeline.
+    One call resolves both ends and returns every id in between, in playback order.
+
+    `fromNearMs`/`toNearMs` disambiguate a repeated word. "The word 'like' near 27 seconds"
+    is a real request on a real transcript where 'like' occurs four times; without the hint
+    the first occurrence wins, which is usually not the one meant.
+    """
+
+    fromText: str = Field(min_length=1, description="The text of the FIRST word in the range.")
+    toText: str = Field(min_length=1, description="The text of the LAST word in the range (inclusive).")
+    fromNearMs: int | None = Field(
+        default=None, ge=0, description="Roughly when the first word is said, if the user said so."
+    )
+    toNearMs: int | None = Field(
+        default=None, ge=0, description="Roughly when the last word is said, if the user said so."
+    )
+
+
+class SelectWordRangeResult(BaseModel):
+    wordIds: list[str]
+    words: list[TimelineWord]
+    fromWordId: str
+    toWordId: str
+
+
+# --- ramp_caption_size ---------------------------------------------------------
+class RampCaptionSizeArgs(BaseModel):
+    """A size that CHANGES across a run of words — "each word bigger than the last".
+
+    update_caption_style cannot express this: its `patch` is one value applied to every id.
+    Sizes are px at 1080p, the same unit as Style.fontSize and the preset's baseFontSize
+    (which <active_preset> gives you). The ramp is linear across `wordIds` in the order
+    given, first word exactly `startFontSize`, last exactly `endFontSize`.
+    """
+
+    wordIds: WordIds
+    startFontSize: float = Field(gt=0, le=400, description="Size of the FIRST word, px at 1080p.")
+    endFontSize: float = Field(gt=0, le=400, description="Size of the LAST word, px at 1080p.")
+
+
+class RampCaptionSizeResult(WordPatchesResult):
+    #: What each word ended up at, so the planner can report it honestly rather than guess.
+    fontSizes: list[float]
+
+
+# --- place_sticker -------------------------------------------------------------
+class PlaceStickerArgs(BaseModel):
+    """Put a built-in emoji sticker onto something in the video, over a time range.
+
+    The sticker FOLLOWS the target: the frame is analysed once per `everyMs` and one layer
+    item is produced per sample, each positioned and sized on that sample's box. Five
+    seconds at the default step is five items, which is how a static-transform layer
+    approximates tracking without the schema growing keyframes.
+    """
+
+    emoji: str = Field(min_length=1, description="Which sticker, by name or the emoji character.")
+    fromMs: int = Field(ge=0)
+    toMs: int = Field(ge=0)
+    target: Literal["face", "person", "hand"] = "face"
+    everyMs: int = Field(default=1000, ge=200, le=5000, description="How often to re-find the target.")
+    scale: float = Field(
+        default=1.0, gt=0, le=4, description="Size relative to the detected box (1 = cover it)."
+    )
+
+
+class StickerSample(BaseModel):
+    """One analysed moment — reported so the planner can say what it actually found."""
+
+    atMs: int
+    found: bool
+    x: float | None = None
+    y: float | None = None
+    width: float | None = None
+
+
+class PlaceStickerResult(BaseModel):
+    patch: SetLayersAction
+    emoji: str
+    samples: list[StickerSample]
+    placed: int
+
+
+# --- fit_captions_to_region -----------------------------------------------------
+class FitCaptionsToRegionArgs(BaseModel):
+    """Move and resize the captions in a time range so they sit inside something in the
+    frame — "put the captions on my hand and make them fit".
+
+    Per-word, because that is the only thing that can be written: a caption line's anchor
+    comes from its first word, so every word in range is given the same x/y (whichever word
+    leads a line then carries the right anchor) and a fontSize computed to fit the box.
+    """
+
+    fromMs: int = Field(ge=0)
+    toMs: int = Field(ge=0)
+    target: Literal["face", "person", "hand"] = "hand"
+    everyMs: int = Field(default=1000, ge=200, le=5000)
+    wordsPerLine: int = Field(
+        default=3, ge=1, le=8,
+        description="The preset's words per line — <active_preset> carries it. Decides how wide a line is.",
+    )
+    fillRatio: float = Field(
+        default=0.9, gt=0, le=1, description="How much of the box's width the text should use."
+    )
+
+
+class FitCaptionsToRegionResult(WordPatchesResult):
+    samples: list[StickerSample]
+    #: wordId -> the px size it was given, for an honest summary.
+    fontSizes: dict[str, float]
+

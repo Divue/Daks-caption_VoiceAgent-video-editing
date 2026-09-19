@@ -277,6 +277,11 @@
   /* Atmospheric hero glow (LandingPage.tsx): a near-imperceptible ambient
      breathing, not a pulse — see .hero-glow below for the gradient itself. */
   --animate-hero-glow-breathe: hero-glow-breathe 6.5s ease-in-out infinite;
+
+  /* Density pass's second dust layer (LandingBackground.tsx): a slow drift,
+     never a pulse/twinkle — each dot overrides duration/delay inline for a
+     staggered phase, same pattern as --animate-twinkle above. */
+  --animate-dust-drift: dust-drift 40s ease-in-out infinite;
 }
 
 @keyframes pulse-ring {
@@ -360,6 +365,12 @@
   0%, 100% { opacity: 0.85; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.035); }
 }
+/* Barely-there drift for the second dust layer — a couple of pixels over a
+   very long cycle, never opacity, so it never reads as twinkling. */
+@keyframes dust-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(3px, -4px); }
+}
 
 /* Not a themeable Tailwind v4 namespace, so plain utility classes instead of @theme. */
 /* Hero black grid + dots background (LandingBackground.tsx) — restores the
@@ -373,11 +384,53 @@
 .landing-background-root {
   background-color: #05060a;
 }
+/* Two superimposed grids, not one: a 220px "major" layer at a slightly
+   higher alpha than the original 44px "minor" layer, so the grid reads as a
+   deliberate measurement system (major lines every 5 cells) rather than
+   uniform wallpaper. Both share the one mask below. */
 .landing-grid {
   background-image:
+    linear-gradient(to right, rgba(245, 245, 247, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 245, 247, 0.1) 1px, transparent 1px),
     linear-gradient(to right, rgba(245, 245, 247, 0.06) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(245, 245, 247, 0.06) 1px, transparent 1px);
-  background-size: 44px 44px;
+  background-size: 220px 220px, 220px 220px, 44px 44px, 44px 44px;
+  mask-image: radial-gradient(70% 65% at 50% 42%, transparent 0%, transparent 26%, black 60%, black 78%, transparent 100%);
+  -webkit-mask-image: radial-gradient(70% 65% at 50% 42%, transparent 0%, transparent 26%, black 60%, black 78%, transparent 100%);
+}
+/* Density pass (LandingBackground.tsx): scattered "+" marks at grid
+   intersections, weighted toward the left/right thirds (see the component
+   for why) and biased away from the centre. One flat SVG background rather
+   than 12-18 DOM nodes. Reuses the grid's own centre mask so it fades out
+   in the same place the grid does. */
+.landing-crosshairs {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600'%3E%3Cpath d='M84 80L96 80M90 74L90 86 M214 150L226 150M220 144L220 156 M54 260L66 260M60 254L60 266 M274 340L286 340M280 334L280 346 M134 430L146 430M140 424L140 436 M234 520L246 520M240 514L240 526 M754 60L766 60M760 54L760 66 M894 140L906 140M900 134L900 146 M814 230L826 230M820 224L820 236 M954 320L966 320M960 314L960 326 M714 400L726 400M720 394L720 406 M874 480L886 480M880 474L880 486 M794 560L806 560M800 554L800 566' stroke='rgba(245,245,247,0.12)' stroke-width='1.4' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  mask-image: radial-gradient(70% 65% at 50% 42%, transparent 0%, transparent 26%, black 60%, black 78%, transparent 100%);
+  -webkit-mask-image: radial-gradient(70% 65% at 50% 42%, transparent 0%, transparent 26%, black 60%, black 78%, transparent 100%);
+}
+/* Density pass: fine ruler ticks + a few coordinate labels along the hero's
+   left/right edges. Matches the corner captions' voice (font-mono, small,
+   ink-tertiary, tracked-out) but is new markup local to this component, not
+   a reuse of SphereCornerCaptions. Two mirrored SVGs (ticks toward the
+   content side, labels next to them) rather than one mirrored asset, since
+   flipping an SVG containing text would also flip the text. */
+.landing-edge-tick-left {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 400'%3E%3Cg stroke='rgba(107,107,117,0.4)' stroke-width='1' stroke-linecap='round'%3E%3Cline x1='20' y1='20' x2='29' y2='20'/%3E%3Cline x1='20' y1='70' x2='29' y2='70'/%3E%3Cline x1='20' y1='120' x2='29' y2='120'/%3E%3Cline x1='20' y1='170' x2='29' y2='170'/%3E%3Cline x1='20' y1='220' x2='29' y2='220'/%3E%3Cline x1='20' y1='270' x2='29' y2='270'/%3E%3Cline x1='20' y1='320' x2='29' y2='320'/%3E%3Cline x1='20' y1='370' x2='29' y2='370'/%3E%3C/g%3E%3Cg font-family='JetBrains Mono, monospace' font-size='9' letter-spacing='1.5' fill='%236b6b75'%3E%3Ctext x='4' y='74'%3E014%3C/text%3E%3Ctext x='4' y='224'%3E148%3C/text%3E%3Ctext x='4' y='374'%3E282%3C/text%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+.landing-edge-tick-right {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 400'%3E%3Cg stroke='rgba(107,107,117,0.4)' stroke-width='1' stroke-linecap='round'%3E%3Cline x1='3' y1='20' x2='12' y2='20'/%3E%3Cline x1='3' y1='70' x2='12' y2='70'/%3E%3Cline x1='3' y1='120' x2='12' y2='120'/%3E%3Cline x1='3' y1='170' x2='12' y2='170'/%3E%3Cline x1='3' y1='220' x2='12' y2='220'/%3E%3Cline x1='3' y1='270' x2='12' y2='270'/%3E%3Cline x1='3' y1='320' x2='12' y2='320'/%3E%3Cline x1='3' y1='370' x2='12' y2='370'/%3E%3C/g%3E%3Cg font-family='JetBrains Mono, monospace' font-size='9' letter-spacing='1.5' fill='%236b6b75' text-anchor='end'%3E%3Ctext x='28' y='74'%3E031%3C/text%3E%3Ctext x='28' y='224'%3E165%3C/text%3E%3Ctext x='28' y='374'%3E299%3C/text%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+/* Second dust layer's mask (LandingBackground.tsx's SecondaryDust) — the
+   same centre-clearing radial gradient as the grid/crosshairs, applied to
+   the dust's own wrapper so the added density still leaves the sphere and
+   headline area clean. */
+.landing-dust-secondary {
   mask-image: radial-gradient(70% 65% at 50% 42%, transparent 0%, transparent 26%, black 60%, black 78%, transparent 100%);
   -webkit-mask-image: radial-gradient(70% 65% at 50% 42%, transparent 0%, transparent 26%, black 60%, black 78%, transparent 100%);
 }
@@ -411,8 +464,10 @@
     opacity: 1 !important;
     transform: none !important;
   }
-  .animate-twinkle {
+  .animate-twinkle,
+  .animate-dust-drift {
     animation: none !important;
+    transform: none !important;
   }
   .animate-navbar-enter,
   .animate-eyebrow-reveal,

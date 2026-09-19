@@ -32,3 +32,40 @@ export function isNotACommand(transcript: string): boolean {
   const words = transcript.replace(/[.,!?]/g, '').trim()
   return words.length < MIN_VOICE_CHARS || FILLER.test(words)
 }
+
+/**
+ * Two things said with a pause between them, as the one instruction the user meant.
+ *
+ * People pause mid-sentence — "increase the size of the white font … from 10 s to 12 s" — and
+ * the recogniser, which only hears the silence, emits the first half as a finished sentence.
+ * That half reaches the agent, the agent starts, and the second half arrives as a new command.
+ * Treating it as a replacement threw the first instruction away; this treats it as what it was.
+ *
+ * Handles the recogniser's own habits:
+ * - it ends a fragment with "." just because the speaker paused — that period is dropped, so the
+ *   halves read as one sentence;
+ * - it sometimes emits the same final twice — a repeat is ignored;
+ * - some engines re-send the whole utterance so far — a fragment that already CONTAINS the
+ *   previous one replaces it rather than doubling it.
+ */
+export function mergeUtterances(previous: string, next: string): string {
+  const prev = previous.trim()
+  const cur = next.trim()
+  if (!prev) return cur
+  if (!cur) return prev
+
+  const norm = (text: string) =>
+    text
+      .toLowerCase()
+      .replace(/[.,!?…]+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  const p = norm(prev)
+  const c = norm(cur)
+
+  if (c === p || p.endsWith(c)) return prev // a repeat of what we already have
+  if (c.startsWith(p)) return cur // the engine re-sent the whole utterance, extended
+
+  // Only the recogniser's pause-period is dropped: "!" and "?" were said on purpose.
+  return `${prev.replace(/\.+$/, '')} ${cur}`
+}

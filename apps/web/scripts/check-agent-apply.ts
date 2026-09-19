@@ -18,7 +18,7 @@ import { Project, deriveBlocks } from '@captions/shared'
 import { applyAgentPatch, createInitialState, projectReducer } from '../src/state/project-reducer'
 import type { AgentPatch, ProjectHistoryState } from '../src/state/project-reducer'
 import { summarisePatches, summariseTurn } from '../src/lib/agent-summary'
-import { FILLER, MIN_VOICE_CHARS, STOP_LISTENING, UNDO_PHRASES } from '../src/lib/voice-intents'
+import { FILLER, MIN_VOICE_CHARS, STOP_LISTENING, UNDO_PHRASES, mergeUtterances } from '../src/lib/voice-intents'
 import { DEFAULT_CHIPS, DEMO_PROMPTS, isRefusalPrompt } from '../src/lib/demo-prompts'
 import { formatTimecode } from '../src/lib/format'
 
@@ -297,6 +297,33 @@ console.log('\nvoice — what never reaches the agent')
   const undos = ['undo', 'undo that', 'take that back', 'never mind']
   check('undo phrases are recognised locally', undos.every((w) => UNDO_PHRASES.test(w)), undos.filter((w) => !UNDO_PHRASES.test(w)).join(','))
   check('"undo the red on that word" is NOT a bare undo', !UNDO_PHRASES.test('undo the red on that word'))
+}
+
+console.log('\nvoice — a pause is not the end of an instruction')
+{
+  const merged = mergeUtterances('Hey, increase the size of the white font.', 'From 10 s marker to 12 s.')
+  check(
+    'the reported case keeps BOTH halves',
+    merged.includes('increase the size of the white font') && merged.includes('From 10 s marker to 12 s'),
+    merged,
+  )
+  check('the pause-period between the halves is dropped', !merged.includes('font. From'), merged)
+
+  check('a repeated final is not doubled', mergeUtterances('make it red', 'Make it red.') === 'make it red')
+  check(
+    'an engine re-sending the whole utterance, extended, replaces rather than doubles',
+    mergeUtterances('make it red', 'make it red and bigger') === 'make it red and bigger',
+  )
+  check(
+    'a question mark said on purpose survives',
+    mergeUtterances('can you make it red?', 'and bigger').startsWith('can you make it red?'),
+  )
+  check('an empty first half yields the second', mergeUtterances('', 'bigger') === 'bigger')
+  check('an empty second half yields the first', mergeUtterances('make it red', '  ') === 'make it red')
+  check(
+    'three fragments accumulate in order',
+    mergeUtterances(mergeUtterances('make the word pagal', 'blue'), 'and shake it') === 'make the word pagal blue and shake it',
+  )
 }
 
 console.log(failures === 0 ? '\nAll checks passed.\n' : `\n${failures} check(s) FAILED.\n`)

@@ -19,7 +19,7 @@ from app.agent.tools import ToolNotImplementedError, ToolStatus, default_registr
 from app.agent.tools.context_tools import find_words, get_project_context, get_timeline  # noqa: E402
 from app.agent.tools.errors import ToolExecutionError  # noqa: E402
 from app.agent.tools.schemas import FindWordsArgs, GetProjectContextArgs, GetTimelineArgs  # noqa: E402
-from app.schema import Project  # noqa: E402
+from app.schema import Project, StylePatch  # noqa: E402
 
 from app.agent.tests._fixtures import fixtures_dir  # noqa: E402
 
@@ -136,6 +136,27 @@ def test_find_words_blank_query_raises(project: Project) -> None:
 
 
 # --- registry integration -----------------------------------------------------
+def test_timeline_exposes_what_decides_appearance(project: Project) -> None:
+    """Targeting by look ("the white words", "the red ones") needs these. Without them the
+    agent resized every word in a time range, including ones that render red."""
+    words = get_timeline(GetTimelineArgs(), project).words
+    by_id = {w.id: w for w in project.words}
+    check("every timeline word carries emphasis", all(t.emphasis == by_id[t.wordId].emphasis for t in words))
+    check("every timeline word carries emotion", all(t.emotion == by_id[t.wordId].emotion for t in words))
+
+    styled = project.model_copy(update={"words": [
+        project.words[0].model_copy(update={"style": StylePatch(color="#00FF00", fontSize=90)}),
+        *project.words[1:],
+    ]})
+    first = get_timeline(GetTimelineArgs(), styled).words[0]
+    check("a word's own colour override is exposed", first.colorOverride == "#00FF00")
+    check("a word's own size override is exposed", first.fontSizeOverride == 90)
+    check("a word with no override reports none", get_timeline(GetTimelineArgs(), styled).words[1].colorOverride is None)
+
+    matches = find_words(FindWordsArgs(query=project.words[0].text), project).matches
+    check("find_words results carry the same appearance fields", all(hasattr(m, "emotion") for m in matches))
+
+
 def test_tools_are_registered_as_available() -> None:
     for name in ("get_project_context", "get_timeline", "find_words"):
         spec = default_registry.get_spec(name)
@@ -161,6 +182,7 @@ def main() -> int:
     test_find_words_exact_does_not_partial_match(project)
     test_find_words_zero_matches_is_not_an_error(project)
     test_find_words_blank_query_raises(project)
+    test_timeline_exposes_what_decides_appearance(project)
     test_tools_are_registered_as_available()
 
     print()

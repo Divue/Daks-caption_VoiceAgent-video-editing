@@ -3,14 +3,20 @@ import { describeError, isApiError } from '@/lib/api'
 import { submitTextCommand, submitVoiceTranscript } from '@/lib/agent-api'
 import type { ActivePreset, ClarificationTurn, SelectionContext } from '@/lib/agent-api'
 import { summarisePatches, summariseTurn } from '@/lib/agent-summary'
-import { REDO_PHRASES, STOP_LISTENING, UNDO_PHRASES, isNotACommand } from '@/lib/voice-intents'
+import {
+  REDO_PHRASES,
+  STOP_LISTENING,
+  UNDO_PHRASES,
+  isNotACommand,
+  mergeUtterances,
+} from '@/lib/voice-intents'
+import type { Preset } from '@captions/shared'
 import { usePresetOverride } from '@/state/preset-override-context'
 import { useProject } from '@/state/project-context'
 import { useWordPatch } from '@/state/word-patch-context'
 import type { useAgentActivity } from '@/hooks/useAgentActivity'
 
 type Activity = ReturnType<typeof useAgentActivity>
-
 
 export interface AgentTurnState {
   /** A turn is in flight. The agent may take many tool rounds, so this can last seconds. */
@@ -23,6 +29,42 @@ export interface AgentTurnState {
    * finally do the whole thing instead of half of it.
    */
   awaitingAnswer: ClarificationTurn | null
+}
+
+/**
+ * One agent turn, as a small state machine.
+ *
+ * `requesting` — waiting on the agent. Nothing has been written, so the turn can be replaced
+ *   safely: the agent is stateless and only RETURNS patches, which is exactly what makes
+ *   aborting it harmless.
+ * `applying` — the agent answered and its patches are going onto the project. This stage must
+ *   run to completion; aborting a client fetch does not cancel a server-side write, and doing so
+ *   mid-chain 409s every write after it (audit 13 §5).
+ */
+interface Turn {
+  id: number
+  entryId: string
+  command: string
+  stage: 'requesting' | 'applying'
+  controller: AbortController
+  /** Resolves when the turn is over, whatever the outcome. The next turn waits on it. */
+  done: Promise<void>
+}
+
+function describePreset(p: Preset): ActivePreset {
+  return {
+    presetId: p.id,
+    name: p.name,
+    baseColor: p.base.color,
+    emphasisColor: p.emphasis?.color,
+    emphasisFontFamily: p.emphasis?.fontFamily,
+    emotionColors: Object.fromEntries(
+      Object.entries(p.emotion ?? {})
+        .map(([tone, value]) => [tone, value?.style?.color])
+        .filter((pair): pair is [string, string] => typeof pair[1] === 'string'),
+    ),
+    wordsPerLine: p.wordsPerLine,
+  }
 }
 
 export function useAgentCommand(activity: Activity, onStopListening?: () => void) {
@@ -42,7 +84,15 @@ export function useAgentCommand(activity: Activity, onStopListening?: () => void
   // between the render that set it and the keystroke that answers it.
   const awaitingRef = useRef<ClarificationTurn | null>(null)
   const historyRef = useRef<ClarificationTurn[]>([])
-  const controllerRef = useRef<AbortController | null>(null)
+
+  /**
+   * The ONE turn that is current. Every update a turn makes to state or to its history entry is
+   * guarded by "am I still the current turn?", so a turn that was replaced or cancelled goes
+   * silent instead of overwriting its successor — which is how an aborted turn used to set
+   * `busy: false` while the turn that replaced it was still running.
+   */
+  const turnRef = useRef<Turn | null>(null)
+  const nextId = useRef(1)
 
   // The project is read at send time, not at render time, so a turn always posts the newest
   // document even if several commands are fired in a row.
@@ -56,110 +106,149 @@ export function useAgentCommand(activity: Activity, onStopListening?: () => void
     presetRef.current = preset
   }, [preset])
 
-  useEffect(() => () => controllerRef.current?.abort(), [])
+  useEffect(() => () => turnRef.current?.controller.abort(), [])
+
+  const settle = useCallback(() => {
+    setState((current) =>
+      current.awaitingAnswer
+        ? { ...current, busy: false, pendingCommand: null }
+        : { busy: false, pendingCommand: null, awaitingAnswer: null },
+    )
+  }, [])
 
   /**
-   * Cancels the in-flight REQUEST only. It deliberately does not cancel the write queue: aborting
-   * a client fetch does not cancel a server-side write, and doing so mid-chain sends a version the
-   * server has already moved past, which 409s every write after it (audit 13 §5). Patches already
-   * enqueued finish and are reported.
+   * Stops a turn that has not written anything yet. Returns false when there was nothing to stop
+   * — including a turn that is already applying, which must be allowed to finish.
    */
+  const cancelRequesting = useCallback(
+    (reason: string) => {
+      const turn = turnRef.current
+      if (!turn || turn.stage !== 'requesting') return false
+      turnRef.current = null
+      turn.controller.abort()
+      updateEntry(turn.entryId, {
+        status: 'info',
+        message: reason,
+        command: turn.command,
+      })
+      settle()
+      return true
+    },
+    [updateEntry, settle],
+  )
+
+  /** The Cancel button. Same rules as saying "never mind" out loud. */
   const cancel = useCallback(() => {
-    controllerRef.current?.abort()
-    controllerRef.current = null
-  }, [])
+    cancelRequesting('Cancelled — nothing was changed')
+  }, [cancelRequesting])
 
   const run = useCallback(
     async (rawCommand: string, selection: SelectionContext, source: 'text' | 'voice' = 'text') => {
-      const command = rawCommand.trim()
-      if (!command) return
+      const said = rawCommand.trim()
+      if (!said) return
 
-      // A live mic produces speech that was never aimed at us. Filter it here rather than
-      // letting the model puzzle over it: each one is a round trip, a history entry and a
-      // few seconds of the user watching a spinner for something they did not say.
+      // A live mic produces speech that was never aimed at us. Filter it BEFORE anything else,
+      // so throat-clearing mid-turn can neither start a turn nor interrupt the one running.
       if (source === 'voice') {
-        if (isNotACommand(command)) {
-          addEntry(`Ignored “${command}” — that did not sound like a command`, 'info')
+        if (isNotACommand(said)) {
+          addEntry(`Ignored “${said}” — that did not sound like a command`, 'info')
           return
         }
-        if (STOP_LISTENING.test(command.replace(/[.,!?]/g, '').trim())) {
+        // Stops the microphone, not the agent: the turn in flight still finishes.
+        if (STOP_LISTENING.test(said.replace(/[.,!?]/g, '').trim())) {
           onStopListening?.()
           addEntry('Stopped listening', 'info')
           return
         }
       }
 
-      if (UNDO_PHRASES.test(command)) {
+      // "Never mind" while the agent is still working means STOP THAT — not "revert my last
+      // finished edit". Dispatching UNDO here used to throw away the previous change and then let
+      // the in-flight one land anyway: the opposite of both things the user wanted.
+      if (UNDO_PHRASES.test(said)) {
+        if (cancelRequesting('Cancelled — nothing was changed')) return
         dispatch({ type: 'UNDO' })
         addEntry('Undid the last change', 'ok')
         return
       }
-      if (REDO_PHRASES.test(command)) {
+      if (REDO_PHRASES.test(said)) {
         dispatch({ type: 'REDO' })
         addEntry('Redid the last change', 'ok')
         return
       }
 
-      // A new utterance supersedes whatever is still in flight — barge-in.
-      controllerRef.current?.abort()
-      const controller = new AbortController()
-      controllerRef.current = controller
+      // --- who owns this utterance? ---------------------------------------------------------
+      // A turn that is APPLYING has an answer and is writing it; it cannot be merged into and
+      // must not be aborted. Wait for it, then decide — on top of the document it produced. The
+      // decision is made only AFTER the wait, with no await between it and claiming the turn,
+      // so two utterances that both arrived during one write end up as one merged turn rather
+      // than two racing turns, one of which would leave its entry stuck on "pending" forever.
+      for (let busyTurn = turnRef.current; busyTurn?.stage === 'applying'; busyTurn = turnRef.current) {
+        await busyTurn.done
+      }
 
-      // If the agent asked something, this utterance is the answer to it. History accumulates:
-      // an agent may need two rounds to pin down a moment ("when?" then "where in the frame?"),
-      // and round three has to see both or it is answering in the dark.
+      const previous = turnRef.current
+      let command = said
+      let entryId: string
+
+      if (previous && previous.stage === 'requesting') {
+        // Barge-in while the agent is still thinking. The earlier words were NOT a finished
+        // command — the user paused, the recogniser called it a sentence, and the agent started.
+        // Replacing it with only the new words threw the first instruction away ("increase the
+        // white font" was lost and only "from 10 s to 12 s" reached the agent). Continue it.
+        command = mergeUtterances(previous.command, said)
+        entryId = previous.entryId
+        turnRef.current = null // the old turn goes silent from here on
+        previous.controller.abort()
+        updateEntry(entryId, { message: command, command, status: 'pending' })
+      } else {
+        entryId = addEntry(said, 'pending')
+        updateEntry(entryId, { command: said })
+      }
+
       const history: ClarificationTurn[] = [...historyRef.current]
-
-      const entryId = addEntry(command, 'pending')
-      updateEntry(entryId, { command })
-      setState({ busy: true, pendingCommand: command, awaitingAnswer: null })
+      const controller = new AbortController()
+      let finish: () => void = () => {}
+      const done = new Promise<void>((resolve) => {
+        finish = resolve
+      })
+      const turn: Turn = { id: nextId.current++, entryId, command, stage: 'requesting', controller, done }
+      turnRef.current = turn
       awaitingRef.current = null
+      setState({ busy: true, pendingCommand: command, awaitingAnswer: null })
+
+      const isCurrent = () => turnRef.current === turn
 
       try {
         const request = source === 'voice' ? submitVoiceTranscript : submitTextCommand
-        const p = presetRef.current
-        const activePreset: ActivePreset = {
-          presetId: p.id,
-          name: p.name,
-          baseColor: p.base.color,
-          emphasisColor: p.emphasis?.color,
-          emphasisFontFamily: p.emphasis?.fontFamily,
-          emotionColors: Object.fromEntries(
-            Object.entries(p.emotion ?? {})
-              .map(([tone, value]) => [tone, value?.style?.color])
-              .filter((pair): pair is [string, string] => typeof pair[1] === 'string'),
-          ),
-          wordsPerLine: p.wordsPerLine,
-        }
-
         const response = await request(
           command,
           projectRef.current,
           selection,
           history,
-          activePreset,
+          describePreset(presetRef.current),
           controller.signal,
         )
+        // Replaced or cancelled while the agent was answering: its answer is to a question the
+        // user no longer asked.
+        if (!isCurrent()) return
 
         // The backend's log is three different things in one list: an echo of the command, one
         // line per tool call, and the agent's own closing sentence. Showing them undifferentiated
-        // buried the actual REPLY as a numbered step — the user could see that six tools ran but
-        // not what the agent said it did. Split them here.
-        const steps = response.log
-          .map((entry) => entry.message)
-          .filter((message) => message.startsWith("Tool '"))
-        const reply = response.log
-          .map((entry) => entry.message)
+        // buried the actual REPLY as a numbered step. Split them here.
+        const messages = response.log.map((entry) => entry.message)
+        const steps = messages.filter((message) => message.startsWith("Tool '"))
+        const reply = messages
           .filter((message) => !message.startsWith("Tool '") && !message.startsWith('Command received:'))
           .at(-1)
 
         if (response.status === 'needs_input' && response.question) {
-          // The agent is asking rather than guessing. Remember what it was asked about, so
-          // the reply carries the original request with it — otherwise the answer arrives as
-          // a standalone command ("at 22 seconds") that means nothing on its own.
+          // The agent is asking rather than guessing. Remember what it was asked about, so the
+          // reply carries the original request with it.
           const asked: ClarificationTurn = { command, question: response.question }
           historyRef.current = [...history, asked]
           awaitingRef.current = asked
+          turnRef.current = null
           setState({ busy: false, pendingCommand: null, awaitingAnswer: asked })
           updateEntry(entryId, { status: 'question', message: response.question, trace: steps })
           return
@@ -181,17 +270,16 @@ export function useAgentCommand(activity: Activity, onStopListening?: () => void
         }
 
         if (response.patches.length === 0) {
-          updateEntry(entryId, {
-            status: 'warn',
-            message: reply ?? 'Nothing changed.',
-            trace: steps,
-          })
+          updateEntry(entryId, { status: 'warn', message: reply ?? 'Nothing changed.', trace: steps })
           return
         }
 
         // The exchange is over: the next utterance starts a fresh conversation.
         historyRef.current = []
 
+        // From here the turn is writing. It can no longer be replaced or cancelled — the next
+        // utterance will wait for it instead.
+        turn.stage = 'applying'
         const lines = summarisePatches(response.patches, projectRef.current)
         const result = await applyAgentPatches(response.patches)
 
@@ -210,9 +298,7 @@ export function useAgentCommand(activity: Activity, onStopListening?: () => void
         }
 
         updateEntry(entryId, {
-          // The agent's own sentence is the reply; the mechanical count is a subtitle. Showing
-          // "51 words changed" as the headline and hiding "Done! …" in the trace told the user
-          // what happened to the data but not what the agent thought it did.
+          // The agent's own sentence is the reply; the mechanical count is a subtitle.
           status: 'ok',
           message: reply ?? summariseTurn(response.patches),
           summary: summariseTurn(response.patches),
@@ -221,24 +307,25 @@ export function useAgentCommand(activity: Activity, onStopListening?: () => void
           undoSteps: 1,
         })
       } catch (cause) {
-        if (cause instanceof DOMException && cause.name === 'AbortError') {
-          updateEntry(entryId, { status: 'info', message: `${command} — cancelled` })
-          return
-        }
+        // An abort is always deliberate — a merge or a cancel — and whoever aborted already
+        // wrote the entry. Saying "cancelled" here was a false history for a continued turn.
+        if (cause instanceof DOMException && cause.name === 'AbortError') return
+        if (!isCurrent()) return
         updateEntry(entryId, {
           status: 'error',
           message: isApiError(cause) ? describeError(cause) : String(cause),
         })
       } finally {
-        if (controllerRef.current === controller) controllerRef.current = null
-        setState((current) =>
-          current.awaitingAnswer
-            ? { ...current, busy: false, pendingCommand: null }
-            : { busy: false, pendingCommand: null, awaitingAnswer: null },
-        )
+        finish()
+        // Only the CURRENT turn may say the agent is idle. A replaced turn reaching this line
+        // used to clear `busy` while its successor was still running.
+        if (isCurrent()) {
+          turnRef.current = null
+          settle()
+        }
       }
     },
-    [addEntry, updateEntry, applyAgentPatches, dispatch, onStopListening],
+    [addEntry, updateEntry, applyAgentPatches, dispatch, onStopListening, cancelRequesting, settle],
   )
 
   /** Drop a pending question — the user moved on rather than answering. */

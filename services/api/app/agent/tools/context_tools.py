@@ -25,6 +25,21 @@ from .schemas import (
 )
 
 
+
+def _timeline_word(w) -> TimelineWord:
+    """One word as the agent sees it — including what decides how it looks."""
+    style = w.style
+    return TimelineWord(
+        wordId=w.id,
+        text=w.text,
+        startMs=w.startMs,
+        endMs=w.endMs,
+        emphasis=w.emphasis,
+        emotion=w.emotion,
+        colorOverride=style.color if style is not None else None,
+        fontSizeOverride=style.fontSize if style is not None else None,
+    )
+
 def get_project_context(args: GetProjectContextArgs, project: Project) -> GetProjectContextResult:
     """Summarize the project: duration, dimensions, preset, settings, word count."""
     return GetProjectContextResult(
@@ -59,7 +74,7 @@ def get_timeline(args: GetTimelineArgs, project: Project) -> GetTimelineResult:
         words = [w for w in words if w.startMs < args.toMs]
 
     return GetTimelineResult(
-        words=[TimelineWord(wordId=w.id, text=w.text, startMs=w.startMs, endMs=w.endMs) for w in words]
+        words=[_timeline_word(w) for w in words]
     )
 
 
@@ -90,7 +105,7 @@ def find_words(args: FindWordsArgs, project: Project) -> FindWordsResult:
         matched = [w for w in project.words if query in w.text.lower()]
 
     return FindWordsResult(
-        matches=[TimelineWord(wordId=w.id, text=w.text, startMs=w.startMs, endMs=w.endMs) for w in matched]
+        matches=[_timeline_word(w) for w in matched]
     )
 
 

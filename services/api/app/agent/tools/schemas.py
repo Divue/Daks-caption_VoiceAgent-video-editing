@@ -43,14 +43,31 @@ class WordPatchesResult(BaseModel):
 
 
 class TimelineWord(BaseModel):
-    """A word as returned by a read-only context tool — enough to target a
-    later mutation tool, not the full Word (which also carries emphasis,
-    emotion, stretch, style, signals that a targeting step doesn't need)."""
+    """A word as returned by a read-only context tool: enough to TARGET a later
+    mutation, including targeting by how it looks.
+
+    This used to omit emphasis and emotion on the theory that "a targeting step
+    doesn't need" them. It does. "Make the WHITE words bigger" and "change the
+    red ones" select by rendered appearance, and a word's colour comes from its
+    own override, the preset's emphasis face if it is emphasised, and the tone
+    tint if it is angry or excited. Without these fields the agent could not
+    tell which words were white: asked to resize "the white font from 10 to
+    12 s" it resized all six words in range, three of which render red.
+
+    Still deliberately not the full Word — no `signals`, no full `style`.
+    Combine these with <active_preset> to work out what a word looks like.
+    """
 
     wordId: str
     text: str
     startMs: int = Field(ge=0)
     endMs: int = Field(ge=0)
+    emphasis: bool = False
+    emotion: str = "neutral"
+    # The word's OWN colour override, if it has one. Absent means it takes its
+    # colour from the preset (base, emphasis face, or tone tint).
+    colorOverride: str | None = None
+    fontSizeOverride: float | None = None
 
 
 # --- get_project_context ---------------------------------------------------

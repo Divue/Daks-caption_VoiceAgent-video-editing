@@ -255,6 +255,16 @@ class SetPresetOverrideArgs(BaseModel):
         float | None,
         Field(default=None, gt=0, description="The BASE caption size in px at 1080p."),
     ]
+    base: Annotated[
+        StylePatch | None,
+        Field(
+            default=None,
+            description=(
+                "The BASE face every word starts from: colour, font, weight, position, stroke, "
+                "glow. Emphasised and toned words keep their own layers on top of it."
+            ),
+        ),
+    ]
     wordsPerLine: Annotated[int | None, Field(default=None, ge=1, le=8)]
     emphasis: Annotated[
         StylePatch | None,

@@ -1,5 +1,6 @@
-import type { Preset, Project, Style, Word } from '@captions/shared'
+import type { Preset, PresetOverride, Project, Style, Word } from '@captions/shared'
 import { resolvePresetLayers } from '@/lib/caption-style'
+import { applyStyleChange } from '@/lib/style-change'
 import type { StyleChange } from '@/lib/style-change'
 
 /**
@@ -45,39 +46,41 @@ export function isOverridden(scope: StyleScope, key: keyof Style): boolean {
 }
 
 /**
- * The preset scope's "current" value for a key.
+ * "All captions" edits the preset's BASE face — `presetOverride.base` (and `baseFontSize` for size) —
+ * never a copy of the key on every word.
  *
- * It is an override only when EVERY word carries the same one — otherwise the words disagree and
- * the honest answer is the preset's own value, with the control showing un-overridden. Claiming a
- * single value for a key that differs word to word would make the next drag silently flatten them.
+ * It used to write every key onto every word. That is not the same thing: a per-word value beats
+ * the emphasis and emotion layers (`resolveWordStyle`), so picking a colour here turned the
+ * emphasised words and the angry words that colour too, flattening the exact hierarchy the preset
+ * exists to draw — and it did it as one PATCH per word, 94 round trips for one click. Writing the
+ * base keeps the layers on top, and is one project write.
+ *
+ * `fallback` is the preset as it SHIPS, so a control shows what it is departing from.
  */
-function sharedOverride(words: Word[]): Partial<Style> {
-  const withStyle = words.filter((word) => word.style)
-  if (withStyle.length === 0 || withStyle.length !== words.length) return {}
-
-  const first = withStyle[0].style as Partial<Style>
-  const shared: Partial<Style> = {}
-  for (const key of Object.keys(first) as (keyof Style)[]) {
-    const value = JSON.stringify(first[key])
-    if (withStyle.every((word) => JSON.stringify(word.style?.[key]) === value)) {
-      Object.assign(shared, { [key]: first[key] })
-    }
-  }
-  return shared
-}
-
 export function presetScope(
-  project: Project,
-  preset: Preset,
-  write: (wordIds: string[], change: StyleChange) => void,
+  stored: PresetOverride | undefined,
+  basePreset: Preset,
+  wordIds: string[],
+  writeOverride: (patch: Record<string, unknown>) => void,
 ): StyleScope {
-  const wordIds = project.words.map((word) => word.id)
+  const base = stored?.base ?? {}
+  const override: Partial<Style> = {
+    ...base,
+    ...(stored?.baseFontSize !== undefined ? { fontSize: stored.baseFontSize } : {}),
+  }
   return {
     kind: 'preset',
     wordIds,
-    override: sharedOverride(project.words),
-    fallback: preset.base,
-    write: (change) => write(wordIds, change),
+    override,
+    fallback: basePreset.base,
+    write: (change) => {
+      const { fontSize, ...rest } = change as Record<string, unknown>
+      const patch: Record<string, unknown> = {}
+      // Size has one home, the same one the agent writes, so the two can never disagree.
+      if ('fontSize' in change) patch.baseFontSize = fontSize ?? null
+      if (Object.keys(rest).length > 0) patch.base = applyStyleChange(base, rest) ?? null
+      if (Object.keys(patch).length > 0) writeOverride(patch)
+    },
   }
 }
 

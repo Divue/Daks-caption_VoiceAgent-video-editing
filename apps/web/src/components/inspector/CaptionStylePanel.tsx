@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { Emotion } from '@captions/shared'
-import type { Word } from '@captions/shared'
+import type { PresetOverride, Word } from '@captions/shared'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { EMOTION_DOT } from '@/lib/emotion'
@@ -44,8 +44,8 @@ type Scope = 'preset' | 'word'
  */
 export function CaptionStylePanel({ selectedWordId }: { selectedWordId: string | null }) {
   const { project } = useProject()
-  const { preset, setOverride, reset, isOverridden } = usePresetOverride()
-  const { saving, error, patch, patchStyle, clearError } = useWordPatch()
+  const { preset, basePreset, setOverride, reset, isOverridden } = usePresetOverride()
+  const { saving, error, patch, patchStyle, patchProjectFields, clearError } = useWordPatch()
   const [scope, setScope] = useState<Scope>('preset')
 
   // Selecting a word IS the gesture that means "I want to change this one". Leaving the panel
@@ -62,10 +62,29 @@ export function CaptionStylePanel({ selectedWordId }: { selectedWordId: string |
     ? project.words.find((candidate) => candidate.id === selectedWordId)
     : undefined
 
+  const allWordIds = useMemo(() => project.words.map((candidate) => candidate.id), [project.words])
   const presetTarget = useMemo(
-    () => presetScope(project, preset, patchStyle),
-    [project, preset, patchStyle],
+    () =>
+      presetScope(project.presetOverride, basePreset, allWordIds, (change) => {
+        void patchProjectFields({ presetOverride: change as Partial<PresetOverride> })
+      }),
+    [project.presetOverride, basePreset, allWordIds, patchProjectFields],
   )
+
+  // Words that carry their OWN style keys — from a per-word edit, or from before "All captions"
+  // stopped stamping every word. Those keys beat the base face, so a base change would look like
+  // it did nothing on them; say so, and offer the one click that hands them back to the preset.
+  const ownStyled = useMemo(
+    () => project.words.filter((candidate) => candidate.style && Object.keys(candidate.style).length > 0),
+    [project.words],
+  )
+  const clearOwnStyles = () => {
+    const keys = new Set(ownStyled.flatMap((candidate) => Object.keys(candidate.style ?? {})))
+    patchStyle(
+      ownStyled.map((candidate) => candidate.id),
+      Object.fromEntries([...keys].map((key) => [key, null])),
+    )
+  }
   const wordTarget = useMemo(
     () => (word ? wordScope(word, preset, project.settings, patchStyle) : null),
     [word, preset, project.settings, patchStyle],
@@ -126,6 +145,18 @@ export function CaptionStylePanel({ selectedWordId }: { selectedWordId: string |
           </div>
         </div>
       </div>
+
+      {scope === 'preset' && ownStyled.length > 0 && (
+        <div className="mx-3 mt-3 flex shrink-0 items-start justify-between gap-3 rounded-md border border-border/70 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground" data-own-styled>
+          <span>
+            {ownStyled.length === project.words.length ? 'Every word has' : `${ownStyled.length} ${ownStyled.length === 1 ? 'word has' : 'words have'}`}{' '}
+            its own style, which these controls don’t reach — and it hides the preset’s emphasis and tone colours.
+          </span>
+          <button type="button" onClick={clearOwnStyles} className="shrink-0 font-medium text-foreground underline underline-offset-2">
+            Clear
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mx-4 mt-3 shrink-0 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">

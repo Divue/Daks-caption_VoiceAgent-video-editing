@@ -30,7 +30,7 @@ import { useWordPatch } from '@/state/word-patch-context'
 export type { PresetOverride }
 
 /** The keys that have a home on the Project. Everything else stays session-only. */
-const STORED_KEYS = ['baseFontSize', 'wordsPerLine', 'emphasis', 'emphasisScale', 'reveal', 'emotion'] as const
+const STORED_KEYS = ['baseFontSize', 'base', 'wordsPerLine', 'emphasis', 'emphasisScale', 'reveal', 'emotion'] as const
 
 function splitOverride(patch: PresetOverride): { stored: PresetOverride; session: PresetOverride } {
   const stored: Record<string, unknown> = {}

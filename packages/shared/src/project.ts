@@ -97,6 +97,54 @@ export const Overlay = z.object({
 export type Overlay = z.infer<typeof Overlay>
 
 /**
+ * An uploaded image or video placed ON TOP of the main clip — a sticker, a logo, a B-roll cut, a
+ * reaction image. Up to two tracks; track 2 draws over track 1, both draw under the captions.
+ *
+ * Three independent things, deliberately never mixed (this is where editors go wrong):
+ *   - PLACEMENT, in OUTPUT time: `startMs`..`endMs` is when it is on screen in the finished video.
+ *   - SOURCE TRIM, in SOURCE time: a video item shows its source from `trimStartMs` onward, for
+ *     exactly `endMs - startMs`. There is no separate "trim end" — it is derived, so the two can
+ *     never disagree. Splitting at T makes two items sharing one source with adjacent trims.
+ *     Images ignore it.
+ *   - TRANSFORM, in FRAME space: `x`/`y` are the item's CENTRE as a percentage of the frame (the
+ *     same convention captions use), `width` is a percentage of the frame's width, and the height
+ *     follows from `aspect` — so it can never be stretched out of shape. -50..150 lets an item sit
+ *     partly off-frame, which is how a slide-in or a corner sticker is framed.
+ *
+ * `mediaId` names a file under the project's own S3 prefix; the server mints it and the pattern
+ * pins it, so it can never be a path. `aspect` and `sourceDurationMs` are measured by the browser
+ * at upload, because neither the renderer nor the agent can afford to go and measure the file.
+ */
+export const MEDIA_ID_PATTERN = /^[0-9a-f]{12}\.(png|jpe?g|webp|gif|mp4|mov|webm)$/
+export const LAYER_TRACKS = [1, 2] as const
+/** A generous cap that still keeps a project far inside the store's 350 KB document limit. */
+export const MAX_LAYER_ITEMS = 40
+
+export const LayerItem = z.object({
+  id: z.string().min(1),
+  track: z.union([z.literal(1), z.literal(2)]),
+  kind: z.enum(['image', 'video']),
+  mediaId: z.string().regex(MEDIA_ID_PATTERN),
+  /** The uploaded file's name — what a person (or the agent) calls it: "the logo". */
+  name: z.string().max(120).optional(),
+  startMs: z.number().int().min(0),
+  endMs: z.number().int().min(0),
+  trimStartMs: z.number().int().min(0),
+  /** Video only: the source's own length, so a trim can never run past its end. */
+  sourceDurationMs: z.number().int().positive().optional(),
+  x: z.number().min(-50).max(150),
+  y: z.number().min(-50).max(150),
+  width: z.number().gt(0).max(400),
+  /** Source width / height. */
+  aspect: z.number().positive(),
+  rotation: z.number().min(-360).max(360),
+  opacity: z.number().min(0).max(1),
+  /** Video only. Off by default: an overlay's own audio fighting the narration is rarely wanted. */
+  muted: z.boolean(),
+})
+export type LayerItem = z.infer<typeof LayerItem>
+
+/**
  * Persisted tweaks to the ACTIVE preset's CONDITIONAL layers.
  *
  * `Preset` itself is deliberately NOT stored (see presets.ts's header and INDEX.md): only
@@ -126,6 +174,17 @@ export const PresetOverride = z.object({
    * the emphasised word from 33.5px down to 18.3px while every other word grew.
    */
   baseFontSize: z.number().positive().optional(),
+  /**
+   * The preset's BASE face — what "All captions" means: colour, font, weight, position, effects.
+   *
+   * Same bug, same fix as `baseFontSize` above, for every other key. Writing a colour onto every
+   * word looks equivalent and is not: a per-word colour beats the emphasis and emotion layers, so
+   * "make the captions blue" turned the red emphasised words and the orange angry words blue too,
+   * and switching preset could not bring them back. Measured on a Rangmanch reel: emphasis
+   * #E2452A and angry #FF5C3A both became #33CCFF. Here the base changes and the layers still sit
+   * on top of it. Size stays in `baseFontSize`, which the agent already uses.
+   */
+  base: Style.partial().optional(),
   wordsPerLine: z.number().int().min(1).max(8).optional(),
   /** Layered onto emphasised words only — a full face, not a weight bump (see Preset.emphasis). */
   emphasis: Style.partial().optional(),
@@ -151,6 +210,9 @@ export const Project = z.object({
   presetOverride: PresetOverride.optional(),
   words: z.array(Word),
   overlays: z.array(Overlay),
+  // Optional and additive, like presetOverride above: stored documents parse unchanged, so no
+  // migration and no SCHEMA_VERSION bump. Absent and [] mean the same thing.
+  layers: z.array(LayerItem).max(MAX_LAYER_ITEMS).optional(),
   settings: z.object({
     emojis: z.boolean(),
     emotionLayer: z.boolean(),

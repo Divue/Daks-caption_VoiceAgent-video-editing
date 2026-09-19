@@ -157,6 +157,9 @@ class ProjectPatch(BaseModel):
     # Merges key-by-key like `settings`, but a null KEY removes that one override and a null
     # OBJECT clears them all — see store/projects.patch_project.
     presetOverride: Optional[dict] = None
+    # The overlay media, as the whole list it should now be (store/projects.patch_project).
+    # Items are validated as part of the resulting Project, so a bad one is a 422, not a write.
+    layers: Optional[list[dict]] = None
     version: Optional[int] = None
 
 

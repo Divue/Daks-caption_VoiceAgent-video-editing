@@ -54,6 +54,7 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | — | `audits/ai-agent/phase-19-export.md` | Export: Remotion composition + local render server, API render route, editor Export button; the shared-renderer word-gap fix (P2 + P1 + P3) | Anything under `remotion/`, `services/api/app/routers/render.py`, `ExportButton.tsx`, or a change to `CaptionRenderer` (the export reuses it) |
 | — | `talk-and-edit/phase-07-playback-vs-editing.md` | Playback commands were eating editing commands: a bare "stop" before a pause took the video AND half the sentence; one-word answers to the agent's questions were stolen; the Space guard missed Radix menus (P3) | Anything in `voice-intents.ts`, `useAgentCommand.ts`, or a new locally-handled voice command. Read it before adding one — the rule is that an opener carrying no object is provisional. |
 | — | `talk-and-edit/phase-08-scope-colour-and-reset.md` | Three ways the editor did the opposite of what was asked: an unresolvable restriction was widened to all 94 words; a per-word colour was invisible under a gradient-emphasis preset; "go back to the original preset" could not be expressed (P3 + P4 folders, flagged) | Before changing `resolveWordStyle`'s precedence, the planner's asking rules, `find_words`, or anything that emits SET_PRESET_OVERRIDE. Read it if a write "succeeds" but nothing changes on screen. |
+| — | `talk-and-edit/phase-09-all-captions-is-the-base-face.md` | "All captions" stamped every word and buried the preset's emphasis/tone colours; now it edits `presetOverride.base`. Also: agent override edits were never saved; per-word style writes went one request per word | Before touching the style panel's scope, `resolvePreset`, or anything that writes a style to every word. Read if a colour "disappears" or a change is lost on reload. |
 | — | `export/phase-01-containerised-render.md` | Export could not work on Linux and could not be deployed; the render server is now a container. Also: App Runner is closed to new customers (P1 + P2 folders, flagged) | Anything under `remotion/`, `routers/render.py`, or the compose `render` service. Pair with `DEPLOYING-EXPORT.md` at the repo root. |
 
 Documents 09 and 10 both originate from a single commit (`628a3e6`) that
@@ -156,6 +157,11 @@ Things Claude must preserve when working in `apps/web`:
   tracks, no track headers, no editing toolbar. `CLAUDE.md` puts cutting,
   layering and mixing out of scope, so any UI implying them is a picture of a
   product we are not building (audit 16 §1). Do not re-add them.
+- NEVER write a style onto every word to change "all the captions". A per-word value beats the
+  emphasis and tone layers, so it erases the preset's hierarchy and switching preset cannot bring
+  it back. All-captions changes go to `presetOverride.base` (size: `baseFontSize`) — the inspector's
+  "All captions" scope and the agent's `set_preset_override` both do this. Per-word styles are for
+  words the user named (phase 9; the size version of this bug was fixed first, in phase 3/4).
 - Orange has a budget: the playhead, the primary action, and the current
   selection. Everything else uses the warm neutral scale (audit 16 §3.3).
 - Emphasis promoted by the rhythm rule is drawn OUTLINED, never filled — filled

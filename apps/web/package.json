@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "check:captions": "jiti scripts/check-caption-style.ts",
-    "check:agent": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\"}\" jiti scripts/check-agent-apply.ts"
+    "check:agent": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\"}\" jiti scripts/check-agent-apply.ts",
+    "check:layers": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\"}\" jiti scripts/check-layers.ts"
   },
   "dependencies": {
     "@captions/shared": "*",

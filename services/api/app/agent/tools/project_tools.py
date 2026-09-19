@@ -118,6 +118,7 @@ def set_preset_override(args: SetPresetOverrideArgs, project: Project) -> SetPre
         key: value
         for key, value in (
             ("baseFontSize", args.baseFontSize),
+            ("base", args.base),
             ("wordsPerLine", args.wordsPerLine),
             ("emphasis", args.emphasis),
             ("emphasisScale", args.emphasisScale),
@@ -128,7 +129,7 @@ def set_preset_override(args: SetPresetOverrideArgs, project: Project) -> SetPre
     }
     if not set_fields and not args.clearKeys:
         raise ToolExecutionError(
-            "nothing to do: set wordsPerLine/emphasis/emphasisScale/reveal/emotion, "
+            "nothing to do: set baseFontSize/base/wordsPerLine/emphasis/emphasisScale/reveal/emotion, "
             "or name keys in `clearKeys`, or both"
         )
 
@@ -287,7 +288,12 @@ default_registry.register(
             "own value. `baseFontSize` is the BASE caption size in px at 1080p — this is what "
             "'make the captions bigger/smaller' means. Do NOT answer that by writing fontSize "
             "onto every word: a per-word size is final and overrides the emphasis scale, so it "
-            "shrinks the emphasised words and flattens the hierarchy. "
+            "shrinks the emphasised words and flattens the hierarchy. `base` is the same rule for "
+            "every other key — 'make the captions blue/white', 'use Poppins for the captions', "
+            "'put the captions at the top', 'add an outline to the captions' all go in `base`. "
+            "Writing that colour onto every word with update_caption_style instead turns the "
+            "emphasised and angry words that colour too, erasing the preset's hierarchy. Use "
+            "update_caption_style only for SPECIFIC words. "
             "Use this for 'fewer words per line', 'make the emphasised words bigger', "
             "'make angry words shake harder' and 'reveal the words one at a time'. IMPORTANT: "
             "'make every word Anton' is update_caption_style over all word ids; 'make the "

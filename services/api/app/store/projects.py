@@ -309,7 +309,7 @@ def patch_words(project_id: str, patches: list[tuple[str, dict]], expected_versi
 
 
 def patch_project(project_id: str, patch: dict, expected_version: int | None):
-    """presetId, settings and/or presetOverride (the latter two merge key-by-key).
+    """presetId, settings, presetOverride (the latter two merge key-by-key) and/or layers.
 
     `presetOverride` follows the style rule (`_merge_style`): a key with an explicit null is
     REMOVED, and an override emptied of every key is dropped entirely rather than stored as `{}`.
@@ -328,6 +328,15 @@ def patch_project(project_id: str, patch: dict, expected_version: int | None):
                 doc.pop("presetOverride", None)
             else:
                 doc["presetOverride"] = merged
+        if "layers" in patch:
+            # Whole-list replace, not a merge: a layer edit is a move, a trim, a split or a
+            # delete, and the only unambiguous way to say "split item A into A and B" is the list
+            # as it should now be. It is small (≤40 items) and validated as part of the Project.
+            value = patch["layers"]
+            if value:
+                doc["layers"] = value
+            else:
+                doc.pop("layers", None)
         return lambda project: project
     return _edit(project_id, expected_version, change)
 

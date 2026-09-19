@@ -5,7 +5,7 @@
 //   { detail: [ {...} ] }         FastAPI 422 request validation
 //   { detail: "Not Found" }       unknown route
 // A thrown TypeError (server down, CORS, DNS) becomes code 'network'.
-import type { Emotion, PresetId, PresetOverride, Project, Style, Word } from '@captions/shared'
+import type { Emotion, LayerItem, PresetId, PresetOverride, Project, Style, Word } from '@captions/shared'
 
 // The repo-root .env supplies this via vite.config.ts `envDir`. The fallback keeps a
 // missed envDir degrading to "works on the dev machine" rather than fetching undefined/projects.
@@ -132,6 +132,38 @@ export function createProject(
   signal?: AbortSignal,
 ): Promise<CreateProjectResponse> {
   return request<CreateProjectResponse>('/projects', { method: 'POST', body: input, signal })
+}
+
+// ---------------------------------------------------------------------------
+// Layer media — images and clips placed over the main video
+// ---------------------------------------------------------------------------
+
+/** The types the API accepts for a layer (services/api/app/routers/media.py `EXTENSIONS`). */
+export const LAYER_MEDIA_TYPES = [
+  'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime', 'video/webm',
+] as const
+
+export interface CreateMediaResponse {
+  mediaId: string
+  kind: 'image' | 'video'
+  upload: { url: string; fields: Record<string, string> }
+  expiresInSec: number
+}
+
+export function createMedia(
+  projectId: string,
+  input: { filename: string; contentType: string },
+  signal?: AbortSignal,
+): Promise<CreateMediaResponse> {
+  return request<CreateMediaResponse>(`/projects/${projectId}/media`, { method: 'POST', body: input, signal })
+}
+
+/**
+ * Where a layer's file is served. The API answers with a redirect to a fresh presigned GET, so this
+ * is a stable `src` for an <img> or <video> that never expires the way a presigned URL does.
+ */
+export function mediaUrl(projectId: string, mediaId: string): string {
+  return `${API_BASE}/projects/${projectId}/media/${mediaId}`
 }
 
 /**
@@ -305,6 +337,8 @@ export function patchProject(
     settings?: Partial<Project['settings']>
     /** Merges per key; an explicit null on a key removes that one override. */
     presetOverride?: Partial<PresetOverride> | null
+    /** Whole-list replace. `[]` clears them. */
+    layers?: LayerItem[]
   },
   version: number | undefined,
   signal?: AbortSignal,

@@ -277,18 +277,6 @@
   /* Atmospheric hero glow (LandingPage.tsx): a near-imperceptible ambient
      breathing, not a pulse — see .hero-glow below for the gradient itself. */
   --animate-hero-glow-breathe: hero-glow-breathe 6.5s ease-in-out infinite;
-
-  /* Hero background orbit (LandingBackground.tsx): only the main orbit ring
-     gets this — the secondary orbit and partial arcs stay fully static, so
-     the background has one very quiet point of motion, not several. */
-  --animate-orbit-breathe: orbit-breathe 14s ease-in-out infinite;
-
-  /* Nebula depth drift (LandingBackground.tsx): the far blob layer drifts
-     slower and slightly scales, the mid layer drifts a bit faster and only
-     translates — two different rates read as depth, not just "two things
-     moving the same way." */
-  --animate-nebula-drift-slow: nebula-drift-slow 26s ease-in-out infinite;
-  --animate-nebula-drift: nebula-drift 17s ease-in-out infinite;
 }
 
 @keyframes pulse-ring {
@@ -372,107 +360,26 @@
   0%, 100% { opacity: 0.85; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.035); }
 }
-/* Even quieter than hero-glow-breathe (0.85→1 vs. flat here at 0.82→1) and
-   much slower (14s vs 6.5s) — this is the background, it should read as
-   "alive" only if you stare at it. */
-@keyframes orbit-breathe {
-  0%, 100% { opacity: 0.82; }
-  50% { opacity: 1; }
-}
-@keyframes nebula-drift-slow {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-1.5%, 2%) scale(1.03); }
-}
-@keyframes nebula-drift {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(1.8%, -1.5%); }
-}
 
 /* Not a themeable Tailwind v4 namespace, so plain utility classes instead of @theme. */
-/* Hero cosmic background (LandingBackground.tsx), replacing the old grid
-   texture. Painted back-to-front as five layers within that component:
-   solid base -> blurred nebula blobs (far, then mid) -> a smooth gradient
-   "wash" (directional tints + the broad central violet aura) -> stars ->
-   orbit SVG -> vignette. Split into far/mid/wash so the nebula reads as
-   layered depth rather than one flat tinted rectangle. This must never
-   compete with the sphere or the .hero-glow directly behind it (kept
-   separate and unduplicated — see LandingPage.tsx): every color here stays
-   inside gradients/blur, never a flat fill, and the page still reads dark
-   first. */
+/* Hero black grid + dots background (LandingBackground.tsx) — restores the
+   pre-nebula look. Two layers within that component: a solid near-black
+   base, then this faint technical grid, then the existing AmbientDust dots
+   (VoiceSphere.tsx, untouched), then the vignette below. Deliberately no 3D
+   floor-grid tilt (that reads as a cyberpunk/synthwave grid, which the brief
+   rules out) — "depth" instead comes from the mask below fading the grid out
+   near the sphere/headline and softening again at the far edges, so it
+   never competes with the sphere or typography. */
 .landing-background-root {
   background-color: #05060a;
 }
-/* Base shape all nebula blobs share: an irregular (non-circular) blurred
-   silhouette, so they read as clouds rather than glowing discs. Each named
-   blob below only sets its own size/position/color/blur strength. */
-.landing-blob {
-  position: absolute;
-  filter: blur(70px);
-}
-.landing-blob-left-far {
-  left: -18%;
-  top: -8%;
-  width: 58%;
-  height: 82%;
-  border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%;
-  background: radial-gradient(closest-side, rgba(91, 63, 194, 0.22) 0%, rgba(21, 19, 51, 0.1) 65%, transparent 100%);
-}
-.landing-blob-right-far {
-  right: -20%;
-  top: 2%;
-  width: 60%;
-  height: 78%;
-  border-radius: 55% 45% 40% 60% / 50% 55% 45% 50%;
-  background: radial-gradient(closest-side, rgba(180, 63, 155, 0.24) 0%, rgba(91, 63, 194, 0.1) 65%, transparent 100%);
-}
-.landing-blob-left-mid {
-  left: -6%;
-  top: 28%;
-  width: 32%;
-  height: 44%;
-  filter: blur(50px);
-  border-radius: 60% 40% 55% 45% / 40% 60% 40% 60%;
-  background: radial-gradient(closest-side, rgba(118, 84, 255, 0.16) 0%, transparent 75%);
-}
-.landing-blob-right-mid {
-  right: -8%;
-  top: 10%;
-  width: 38%;
-  height: 48%;
-  filter: blur(55px);
-  border-radius: 45% 55% 60% 40% / 55% 45% 60% 40%;
-  background: radial-gradient(closest-side, rgba(180, 63, 155, 0.18) 0%, transparent 75%);
-}
-.landing-blob-warm {
-  right: 2%;
-  bottom: -10%;
-  width: 28%;
-  height: 32%;
-  filter: blur(60px);
-  border-radius: 50% 50% 40% 60% / 60% 40% 60% 40%;
-  background: radial-gradient(closest-side, rgba(255, 112, 72, 0.14) 0%, rgba(180, 63, 155, 0.08) 60%, transparent 90%);
-}
-.landing-blob-top-left {
-  left: 4%;
-  top: -6%;
-  width: 20%;
-  height: 20%;
-  filter: blur(45px);
-  border-radius: 48% 52% 55% 45% / 50% 45% 55% 50%;
-  background: radial-gradient(closest-side, rgba(118, 84, 255, 0.14) 0%, transparent 80%);
-}
-/* Smooth wash on top of the blurred blobs: no flat background-color of its
-   own (would hide the blobs beneath it) — just soft directional tints plus
-   the broad central violet aura (2-3 sphere diameters, well larger than
-   .hero-glow, which stays untouched and unduplicated) and a deep pool at
-   the very bottom edge. */
-.landing-nebula-wash {
+.landing-grid {
   background-image:
-    radial-gradient(65% 60% at 50% 44%, rgba(118, 84, 255, 0.16) 0%, rgba(91, 63, 194, 0.09) 40%, rgba(91, 63, 194, 0.03) 65%, transparent 82%),
-    radial-gradient(55% 70% at 6% 45%, rgba(21, 19, 51, 0.5) 0%, rgba(91, 63, 194, 0.07) 55%, transparent 85%),
-    radial-gradient(58% 72% at 96% 42%, rgba(91, 63, 194, 0.09) 0%, rgba(180, 63, 155, 0.08) 55%, transparent 85%),
-    radial-gradient(46% 42% at 88% 92%, rgba(180, 63, 155, 0.07) 0%, rgba(255, 112, 72, 0.05) 55%, transparent 82%),
-    radial-gradient(70% 38% at 50% 104%, rgba(21, 19, 51, 0.55) 0%, transparent 72%);
+    linear-gradient(to right, rgba(245, 245, 247, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 245, 247, 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(70% 65% at 50% 42%, transparent 0%, transparent 26%, black 60%, black 78%, transparent 100%);
+  -webkit-mask-image: radial-gradient(70% 65% at 50% 42%, transparent 0%, transparent 26%, black 60%, black 78%, transparent 100%);
 }
 /* Topmost decorative layer: a very subtle dark edge vignette that focuses
    attention centrally without ever reading as an obvious frame. */
@@ -497,8 +404,6 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse-ring,
   .animate-glow-drift,
-  .animate-nebula-drift-slow,
-  .animate-nebula-drift,
   .animate-landing-enter,
   .animate-text-materialize,
   .animate-scroll-bounce {
@@ -514,7 +419,6 @@
   .animate-word-reveal,
   .animate-subtitle-reveal,
   .animate-hero-glow-breathe,
-  .animate-orbit-breathe,
   .animate-info-reveal-left,
   .animate-info-reveal-up,
   .animate-info-reveal-fade {

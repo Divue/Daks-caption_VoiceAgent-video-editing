@@ -1,9 +1,16 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { VoiceSphere, SphereCornerCaptions } from "../components/VoiceSphere";
 import { LandingNavbar } from "../components/landing/LandingNavbar";
 import { LandingBackground } from "../components/landing/LandingBackground";
 
-const HEADLINE_WORDS = ["Create,", "Caption,", "and", "Edit", "—", "All", "With", "Your", "Voice"];
+// Two deliberate lines rather than one run-on sentence with an em dash: line
+// one is the primary statement, line two reads as its continuation/emphasis.
+// Word-reveal stagger continues across both lines (see HeroHeadline below),
+// so the two-line layout doesn't change the animation language.
+const HEADLINE_LINES = [
+  ["Create,", "Caption,", "and", "Edit"],
+  ["All", "With", "Your", "Voice"],
+];
 const HEADLINE_STAGGER_BASE_MS = 220;
 const HEADLINE_STAGGER_STEP_MS = 45;
 
@@ -41,6 +48,42 @@ const HERO_INFO_ITEMS: HeroInfoItem[] = [
     delay: 880,
   },
 ];
+
+// Renders HEADLINE_LINES as two lines, each word individually staggered with
+// the existing word-reveal animation — the stagger index keeps counting up
+// across the line break so the reveal still reads as one continuous sweep.
+function HeroHeadline({ motionSafe }: { motionSafe: boolean }) {
+  let wordIndex = 0;
+  return (
+    <h1 className="font-display text-heading-lg text-ink-primary sm:text-display-md">
+      {HEADLINE_LINES.map((line, lineIdx) => (
+        <span key={lineIdx} className="block">
+          {line.map((word, i) => {
+            const delay = HEADLINE_STAGGER_BASE_MS + wordIndex * HEADLINE_STAGGER_STEP_MS;
+            wordIndex += 1;
+            return (
+              // The separator space is a plain sibling text node, not part of
+              // the inline-block span's own content — an inline-block box
+              // lays out its content as its own isolated line, so a trailing
+              // space placed inside it sits at that line's end and gets
+              // collapsed away by ordinary CSS whitespace rules, silently
+              // gluing every word together.
+              <Fragment key={word}>
+                <span
+                  className={`inline-block ${motionSafe ? "animate-word-reveal" : ""}`}
+                  style={motionSafe ? { animationDelay: `${delay}ms` } : undefined}
+                >
+                  {word}
+                </span>
+                {i < line.length - 1 ? " " : ""}
+              </Fragment>
+            );
+          })}
+        </span>
+      ))}
+    </h1>
+  );
+}
 
 function HeroProductInfo({ motionSafe }: { motionSafe: boolean }) {
   return (
@@ -97,22 +140,7 @@ export default function LandingPage() {
             >
               Voice-Powered Video Editing
             </p>
-            <h1 className="font-display text-heading-lg text-ink-primary sm:text-display-md">
-              {HEADLINE_WORDS.map((word, i) => (
-                <span
-                  key={word}
-                  className={`inline-block ${motionSafe ? "animate-word-reveal" : ""}`}
-                  style={
-                    motionSafe
-                      ? { animationDelay: `${HEADLINE_STAGGER_BASE_MS + i * HEADLINE_STAGGER_STEP_MS}ms` }
-                      : undefined
-                  }
-                >
-                  {word}
-                  {i < HEADLINE_WORDS.length - 1 ? " " : ""}
-                </span>
-              ))}
-            </h1>
+            <HeroHeadline motionSafe={motionSafe} />
             <p
               className={`text-body-sm text-ink-secondary sm:text-body-md ${motionSafe ? "animate-subtitle-reveal" : ""}`}
               style={motionSafe ? { animationDelay: "640ms" } : undefined}

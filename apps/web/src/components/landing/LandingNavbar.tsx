@@ -222,6 +222,9 @@ export function LandingNavbar() {
   useEffect(() => {
     function onScroll() {
       setScrolled(window.scrollY > 8);
+      // Page scroll progress for the hairline under the bar — a CSS variable, not React state.
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      navRef.current?.style.setProperty("--page-p", max > 0 ? (window.scrollY / max).toFixed(4) : "0");
     }
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -258,11 +261,19 @@ export function LandingNavbar() {
   return (
     <header
       ref={navRef}
-      className={`sticky top-0 z-50 transition-colors duration-300 ${
-        scrolled ? "border-b border-line-subtle bg-canvas/85 backdrop-blur-md" : "border-b border-transparent bg-transparent"
+      className={`fixed inset-x-0 top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-500 ${
+        scrolled ? "border-b border-line-subtle bg-canvas/80 backdrop-blur-xl" : "border-b border-transparent bg-transparent"
       } ${motionSafe ? "animate-navbar-enter" : ""}`}
     >
-      <div className="relative mx-auto grid h-16 max-w-[1200px] grid-cols-[auto_1fr_auto] items-center gap-4 px-4 sm:px-8">
+      {/* Scroll progress hairline, in the signal colour, along the bar's bottom edge. */}
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-x-0 -bottom-px h-px origin-left bg-gradient-to-r from-signal/0 via-signal to-signal/60 transition-opacity duration-500 ${scrolled ? "opacity-100" : "opacity-0"}`}
+        style={{ transform: "scaleX(var(--page-p, 0))" }}
+      />
+      <div
+        className={`relative mx-auto grid max-w-[1200px] grid-cols-[auto_1fr_auto] items-center gap-4 px-4 transition-[height] duration-500 ease-out-expo sm:px-8 ${scrolled ? "h-14" : "h-[72px]"}`}
+      >
         <a href="#top" className={`flex items-center gap-2 rounded-md text-ink-primary ${FOCUS_RING}`}>
           <BrandMark />
           <span className="font-display text-heading-md">Expressive Captions</span>
@@ -283,7 +294,7 @@ export function LandingNavbar() {
                 aria-controls={`nav-panel-${item.key}`}
                 onFocus={() => openMenu(item.key)}
                 onClick={() => openMenu(item.key)}
-                className={`relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-body-sm transition-colors duration-200 ease-out-expo after:absolute after:-bottom-0.5 after:left-4 after:right-4 after:h-px after:origin-left after:scale-x-0 after:bg-ink-primary/70 after:transition-transform after:duration-300 after:ease-out-expo after:content-[''] hover:after:scale-x-100 ${FOCUS_RING} ${
+                className={`relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-body-sm transition-colors duration-200 ease-out-expo after:absolute after:-bottom-0.5 after:left-4 after:right-4 after:h-px after:origin-left after:scale-x-0 after:bg-signal after:transition-transform after:duration-300 after:ease-out-expo after:content-[''] hover:after:scale-x-100 ${FOCUS_RING} ${
                   activeMenu === item.key ? "bg-surface-raised text-ink-primary" : "text-ink-secondary hover:text-ink-primary"
                 }`}
               >
@@ -303,10 +314,16 @@ export function LandingNavbar() {
           <button
             type="button"
             onClick={handleStartCreating}
-            className={`group hidden items-center gap-1.5 rounded-full bg-signal px-4 py-2 text-body-sm font-medium text-canvas shadow-[0_0_0_rgba(255,107,74,0)] transition-all duration-200 ease-out-expo hover:-translate-y-0.5 hover:scale-[1.02] hover:brightness-110 hover:shadow-[0_10px_28px_-6px_rgba(255,107,74,0.4),0_0_36px_-10px_rgba(255,107,74,0.3)] lg:inline-flex ${FOCUS_RING}`}
+            className={`group relative hidden items-center gap-1.5 overflow-hidden rounded-full bg-signal px-4 py-2 text-body-sm font-medium text-canvas shadow-[0_0_0_rgba(255,107,74,0)] transition-all duration-200 ease-out-expo hover:-translate-y-0.5 hover:scale-[1.02] hover:brightness-110 hover:shadow-[0_10px_28px_-6px_rgba(255,107,74,0.4),0_0_36px_-10px_rgba(255,107,74,0.3)] lg:inline-flex ${FOCUS_RING}`}
           >
-            Start Creating
-            <ArrowRightIcon className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+            {motionSafe && (
+              <span
+                aria-hidden="true"
+                className="absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/35 to-transparent animate-shine"
+              />
+            )}
+            <span className="relative">Start Creating</span>
+            <ArrowRightIcon className="relative h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
           </button>
           <button
             type="button"

@@ -176,7 +176,7 @@ Nothing is deployed from this repo yet. The intended targets (`CLAUDE.md`) and t
 | Issue | Where | Why it matters |
 |---|---|---|
 | **The timeline toolbar contradicts a written invariant.** `INDEX.md` says no editing toolbar; the app shows Split, Trim, Transitions, Effects, Music, Speed. All inert, all refused by the agent. | `components/toolbar/EditorToolbar.tsx`, timeline tracks | A judge who sees scissors will ask for a cut. Needs a lead decision: rewrite the invariant, or remove the toolbar. |
-| **Saving isn't tested end to end.** In demo mode there is no server project, so nothing saves. The bulk-save endpoint has tests, but "agent edits a real uploaded project → reload → edits are still there" has never been checked. | `useWordPatch.applyAgentPatches`, `PATCH /projects/{id}/words` | Edits could be lost on reload and nobody would know. |
+| ~~Saving isn't tested end to end.~~ **Closed.** Driven in a real browser against project `d8cb55cadb89`: "make the word god bright green" → one `PATCH /projects/{id}/words` → 200 → `style.color = "#00FF00"` on the server, version 2→3. The test edit was reverted. | `useWordPatch.applyAgentPatches` | Was the biggest unknown: edits could have been lost on reload and nobody would have known. |
 | **Nobody has spoken to it.** Voice is proven with synthesised speech only. | voice path | Real mics, real accents, real pauses. |
 | **Hinglish speech is untested.** The worker uses `VOICE_STT_LANGUAGE=en-IN`; `hi-IN` hasn't been tried. | `.env` | The product is for Hinglish creators. |
 | **"Stop making things red" varies.** It usually turns off the tone layer and sometimes recolours words instead. Both remove the red; only the first is what the catalogue checks. | agent prompt | Mildly flaky demo prompt. |

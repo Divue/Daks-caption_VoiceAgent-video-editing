@@ -3,6 +3,7 @@ import { describeError, isApiError } from '@/lib/api'
 import { submitTextCommand, submitVoiceTranscript } from '@/lib/agent-api'
 import type { ActivePreset, ClarificationTurn, SelectionContext } from '@/lib/agent-api'
 import { summarisePatches, summariseTurn } from '@/lib/agent-summary'
+import { REDO_PHRASES, STOP_LISTENING, UNDO_PHRASES, isNotACommand } from '@/lib/voice-intents'
 import { usePresetOverride } from '@/state/preset-override-context'
 import { useProject } from '@/state/project-context'
 import { useWordPatch } from '@/state/word-patch-context'
@@ -10,16 +11,6 @@ import type { useAgentActivity } from '@/hooks/useAgentActivity'
 
 type Activity = ReturnType<typeof useAgentActivity>
 
-/**
- * "Undo that" is handled by the EDITOR, not by a tool.
- *
- * Making it a tool call would put the user's history in the model's hands, cost a Bedrock round
- * trip to press a button we already have, and could not work anyway — the undo stack lives in the
- * browser and the agent has never seen it. Matching locally dispatches the exact same UNDO the
- * toolbar button and Ctrl+Z dispatch, so there is still only one history mechanism (audit 07).
- */
-const UNDO_PHRASES = /^(undo( that| it| the last( one)?)?|take that back|revert that|nevermind|never mind)[.!]?$/i
-const REDO_PHRASES = /^(redo( that| it)?|put it back)[.!]?$/i
 
 export interface AgentTurnState {
   /** A turn is in flight. The agent may take many tool rounds, so this can last seconds. */
@@ -34,7 +25,7 @@ export interface AgentTurnState {
   awaitingAnswer: ClarificationTurn | null
 }
 
-export function useAgentCommand(activity: Activity) {
+export function useAgentCommand(activity: Activity, onStopListening?: () => void) {
   const { project, dispatch } = useProject()
   const { applyAgentPatches } = useWordPatch()
   // The resolved preset — base + any stored override — so the agent sees the look the user is
@@ -82,6 +73,21 @@ export function useAgentCommand(activity: Activity) {
     async (rawCommand: string, selection: SelectionContext, source: 'text' | 'voice' = 'text') => {
       const command = rawCommand.trim()
       if (!command) return
+
+      // A live mic produces speech that was never aimed at us. Filter it here rather than
+      // letting the model puzzle over it: each one is a round trip, a history entry and a
+      // few seconds of the user watching a spinner for something they did not say.
+      if (source === 'voice') {
+        if (isNotACommand(command)) {
+          addEntry(`Ignored “${command}” — that did not sound like a command`, 'info')
+          return
+        }
+        if (STOP_LISTENING.test(command.replace(/[.,!?]/g, '').trim())) {
+          onStopListening?.()
+          addEntry('Stopped listening', 'info')
+          return
+        }
+      }
 
       if (UNDO_PHRASES.test(command)) {
         dispatch({ type: 'UNDO' })
@@ -232,7 +238,7 @@ export function useAgentCommand(activity: Activity) {
         )
       }
     },
-    [addEntry, updateEntry, applyAgentPatches, dispatch],
+    [addEntry, updateEntry, applyAgentPatches, dispatch, onStopListening],
   )
 
   /** Drop a pending question — the user moved on rather than answering. */

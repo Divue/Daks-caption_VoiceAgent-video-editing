@@ -18,6 +18,7 @@ import { Project, deriveBlocks } from '@captions/shared'
 import { applyAgentPatch, createInitialState, projectReducer } from '../src/state/project-reducer'
 import type { AgentPatch, ProjectHistoryState } from '../src/state/project-reducer'
 import { summarisePatches, summariseTurn } from '../src/lib/agent-summary'
+import { FILLER, MIN_VOICE_CHARS, STOP_LISTENING, UNDO_PHRASES } from '../src/lib/voice-intents'
 import { DEFAULT_CHIPS, DEMO_PROMPTS, isRefusalPrompt } from '../src/lib/demo-prompts'
 import { formatTimecode } from '../src/lib/format'
 
@@ -274,6 +275,28 @@ console.log('\ncaption block timings — what the transcript rows print')
     solo?.startMs === words[3].startMs && solo?.endMs === words[3].endMs,
     `${solo?.startMs}-${solo?.endMs} vs ${words[3].startMs}-${words[3].endMs}`,
   )
+}
+
+console.log('\nvoice — what never reaches the agent')
+{
+  // A live mic hears things that were never aimed at us. Each one that gets through is a
+  // Bedrock round trip, a spinner, and a history entry saying "I'm not sure what you meant".
+  const junk = ['uh', 'ummm', 'hmm', 'okay', 'so', 'yeah', 'a', 'I']
+  check('filler is recognised as filler', junk.every((w) => FILLER.test(w)), junk.filter((w) => !FILLER.test(w)).join(','))
+
+  const real = ['make it red', 'stop making things red', 'bigger', 'put a fire emoji on bekaar']
+  check('real commands are NOT filtered', real.every((w) => !FILLER.test(w)), real.filter((w) => FILLER.test(w)).join(','))
+
+  check('a command shorter than the minimum is dropped', 'no'.length < MIN_VOICE_CHARS)
+  check('a short real command survives', 'red'.length >= MIN_VOICE_CHARS)
+
+  const stops = ["stop listening", "mic off", "that's all", "I'm done"]
+  check('stop phrases are recognised', stops.every((w) => STOP_LISTENING.test(w)), stops.filter((w) => !STOP_LISTENING.test(w)).join(','))
+  check('"stop making things red" is NOT a stop phrase', !STOP_LISTENING.test('stop making things red'))
+
+  const undos = ['undo', 'undo that', 'take that back', 'never mind']
+  check('undo phrases are recognised locally', undos.every((w) => UNDO_PHRASES.test(w)), undos.filter((w) => !UNDO_PHRASES.test(w)).join(','))
+  check('"undo the red on that word" is NOT a bare undo', !UNDO_PHRASES.test('undo the red on that word'))
 }
 
 console.log(failures === 0 ? '\nAll checks passed.\n' : `\n${failures} check(s) FAILED.\n`)

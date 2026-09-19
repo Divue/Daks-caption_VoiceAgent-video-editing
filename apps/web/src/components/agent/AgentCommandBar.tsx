@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ChevronDown, MessageCircleQuestion, Send, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -45,6 +45,13 @@ export function AgentCommandBar({
   onCancel,
 }: AgentCommandBarProps) {
   const [value, setValue] = useState('')
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  // A question is a prompt to answer, so put the cursor where the answer goes. Without this
+  // the agent asks and the user has to find the field again before they can reply.
+  useEffect(() => {
+    if (awaitingQuestion && !busy) inputRef.current?.focus()
+  }, [awaitingQuestion, busy])
   const [showAll, setShowAll] = useState(false)
 
   function handleSubmit(event: FormEvent) {
@@ -86,7 +93,14 @@ export function AgentCommandBar({
         {awaitingQuestion && !busy && (
           <div className="flex items-start gap-2 rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
             <MessageCircleQuestion className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <p className="flex-1 text-sm text-foreground">{awaitingQuestion}</p>
+            <div className="flex-1">
+              <p className="text-sm text-foreground">{awaitingQuestion}</p>
+              {micStatus === 'listening' && (
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Just say the answer — the mic is still on.
+                </p>
+              )}
+            </div>
             <Button
               type="button"
               variant="ghost"
@@ -113,6 +127,7 @@ export function AgentCommandBar({
         >
           <MicButton status={micStatus} onToggle={onToggleMic} />
           <Input
+            ref={inputRef}
             value={value}
             onChange={(event) => setValue(event.target.value)}
             placeholder={

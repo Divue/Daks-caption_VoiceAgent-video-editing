@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AgentActivityPanel } from '@/components/agent/AgentActivityPanel'
 import { AgentCommandBar } from '@/components/agent/AgentCommandBar'
 import { CaptionStylePanel } from '@/components/inspector/CaptionStylePanel'
@@ -57,7 +57,12 @@ function App() {
 
   useUndoRedoShortcuts()
 
-  const agent = useAgentCommand(activity)
+  // The mic and the turn runner each need the other: the runner must be able to stop
+  // listening when you say "that's all", and the mic must hand transcripts to the runner. A
+  // ref breaks the cycle without making either of them re-create itself every render.
+  const stopVoiceRef = useRef<() => void>(() => {})
+  const stopListening = useCallback(() => stopVoiceRef.current(), [])
+  const agent = useAgentCommand(activity, stopListening)
 
   /**
    * Everything the editor knows about what the user is pointing at, resolved at send time.
@@ -85,6 +90,11 @@ function App() {
   )
 
   const voice = useVoiceInput(handleVoiceTranscript)
+  // Assigned in an effect, not during render: a ref written while rendering is read by
+  // whatever runs first, and React can discard a render pass entirely.
+  useEffect(() => {
+    stopVoiceRef.current = voice.stop
+  }, [voice.stop])
 
   // The mic reports transport state; the agent reports whether it is working. Showing them as
   // one control is a VIEW concern and is derived here, so neither side can leave the other
@@ -113,6 +123,18 @@ function App() {
   }
 
   /** Dispatches the same UNDO the toolbar and Ctrl+Z use — one history, one mechanism. */
+  // The agent's reply is the thing you want to see the moment you ask for something — and in
+  // a voice-first product you are not looking at the panel when you start talking. Switching
+  // on the first turn only: after that the user's own choice of tab is theirs to keep.
+  const [rightTab, setRightTab] = useState('inspector')
+  const hasShownAgent = useRef(false)
+  useEffect(() => {
+    if (agent.busy && !hasShownAgent.current) {
+      hasShownAgent.current = true
+      setRightTab('agent')
+    }
+  }, [agent.busy])
+
   const handleUndoTurn = useCallback(
     (steps: number) => {
       for (let i = 0; i < steps; i += 1) dispatch({ type: 'UNDO' })
@@ -219,7 +241,11 @@ function App() {
               width="lg:w-[340px] w-full"
               bare
             >
-              <Tabs defaultValue="inspector" className="flex h-full min-h-0 flex-col gap-0">
+              <Tabs
+                value={rightTab}
+                onValueChange={setRightTab}
+                className="flex h-full min-h-0 flex-col gap-0"
+              >
                 <TabsList className="h-9 w-full shrink-0 justify-start gap-0 rounded-none border-b border-border/60 bg-transparent p-0">
                   {/* Underline tabs, per DESIGN.md's segmented-tab: the active one is marked by a
                       2px primary rule, not a filled pill. */}

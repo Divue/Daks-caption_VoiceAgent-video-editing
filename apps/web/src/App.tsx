@@ -16,6 +16,10 @@ import type { CaptionBlock, Emotion, Word } from '@captions/shared'
 import type { MicStatus } from '@/hooks/useAgentActivity'
 import { useAgentActivity } from '@/hooks/useAgentActivity'
 import { useAgentCommand } from '@/hooks/useAgentCommand'
+import type { TransportOutcome } from '@/hooks/useAgentCommand'
+import { getProject } from '@/lib/api'
+import { resolveTransport } from '@/lib/voice-intents'
+import type { TransportIntent } from '@/lib/voice-intents'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
 import { findBlockIndexAt, useCaptionBlocks } from '@/hooks/useCaptionBlocks'
 import { useSelection } from '@/hooks/useSelection'
@@ -27,10 +31,20 @@ import { useProject } from '@/state/project-context'
 import { useSync } from '@/state/sync-context'
 import { useWordPatch } from '@/state/word-patch-context'
 
+/** How long the video stays turned down after the user stops speaking. */
+const DUCK_RELEASE_MS = 900
+
 function App() {
   const { project, dispatch } = useProject()
-  const { localPreviewUrl } = useSync()
-  const { timeMs, isPlaying, seek } = usePlayback()
+  const { localPreviewUrl, projectId } = useSync()
+  const playback = usePlayback()
+  const { timeMs, isPlaying, seek } = playback
+  // The player's newest state, readable from callbacks that must not be re-created 60 times a
+  // second (the playhead is state). Assigned in an effect for the same reason as stopVoiceRef.
+  const playbackRef = useRef(playback)
+  useEffect(() => {
+    playbackRef.current = playback
+  })
   const { selectedWordId, select } = useSelection()
   const activity = useAgentActivity()
   const { entries, addEntry } = activity
@@ -62,7 +76,49 @@ function App() {
   // ref breaks the cycle without making either of them re-create itself every render.
   const stopVoiceRef = useRef<() => void>(() => {})
   const stopListening = useCallback(() => stopVoiceRef.current(), [])
-  const agent = useAgentCommand(activity, stopListening)
+
+  // "Play", "pause", "go to 5 seconds": the editor's own player, answered here rather than by a
+  // model with no playback tool. `resolveTransport` is pure and tested; this only applies it.
+  const handleTransport = useCallback(async (intent: TransportIntent): Promise<TransportOutcome> => {
+    const p = playbackRef.current
+    const { action, label } = resolveTransport(intent, { timeMs: p.timeMs, durationMs: p.durationMs, rate: p.rate })
+    switch (action.kind) {
+      case 'play': {
+        const result = await p.play()
+        return result.ok ? { ok: true, label } : { ok: false, label: `Couldn’t play — ${result.reason}` }
+      }
+      case 'pause':
+        p.pause()
+        return { ok: true, label }
+      case 'seek': {
+        p.seek(action.ms)
+        if (action.thenPlay) {
+          const result = await p.play()
+          if (!result.ok) return { ok: false, label: `Went back to the start, but couldn’t play — ${result.reason}` }
+        }
+        return { ok: true, label }
+      }
+      case 'rate':
+        p.setRate(action.rate)
+        return { ok: true, label }
+      case 'mute':
+        p.setMuted(action.muted)
+        return { ok: true, label }
+      case 'none':
+        return { ok: true, label }
+    }
+  }, [])
+
+  const isVideoPlaying = useCallback(() => playbackRef.current.isPlaying, [])
+  const agent = useAgentCommand(activity, stopListening, handleTransport, isVideoPlaying)
+
+  // A fresh presigned link for the same file, for when the one the player holds has expired. Only
+  // the link is taken from the response: swapping the whole project here would fight the edit queue.
+  const getFreshVideoUrl = useCallback(async (): Promise<string | null> => {
+    if (!projectId) return null
+    const { project: latest } = await getProject(projectId)
+    return latest.videoUrl ?? null
+  }, [projectId])
 
   /**
    * Everything the editor knows about what the user is pointing at, resolved at send time.
@@ -101,6 +157,13 @@ function App() {
   // stuck in a state it has no way to clear.
   const micStatus: MicStatus = agent.busy && voice.status === 'listening' ? 'processing' : voice.status
 
+  // The newest outcome, while it is still news. The command bar decides how long to keep showing it.
+  const latestEntry = entries.at(-1)
+  const flash =
+    latestEntry && (latestEntry.status === 'ok' || latestEntry.status === 'warn' || latestEntry.status === 'info')
+      ? { id: latestEntry.id, text: latestEntry.message, tone: latestEntry.status }
+      : null
+
   // One definition of "the mic is on", shared by the button, the Stop link and Esc, so they can
   // never disagree about whether there is anything to stop. `connecting` counts: a start still
   // in flight is exactly what someone clicks again to cancel.
@@ -110,6 +173,49 @@ function App() {
     voice.stop()
     addEntry('Voice input stopped')
   }, [voice, addEntry])
+
+  // Turn the video down only WHILE THE USER IS SPEAKING, so their voice is not buried under the
+  // clip's narration, and back up a moment after they stop.
+  //
+  // This used to duck for as long as the mic was OPEN. A voice session can stay open the whole time
+  // someone is editing, so the video sat at a quarter of its volume for the entire session — and on
+  // Windows the system turns other audio down further while any app has a microphone open. "I can't
+  // hear the video" was the result. An interim transcript is the signal that someone is talking.
+  const { duck } = playback
+  const speaking = voice.interim !== null
+  useEffect(() => {
+    if (speaking) {
+      duck(true)
+      return
+    }
+    // A short hold, so a brief gap between two words doesn't make the video pump up and down.
+    const timer = setTimeout(() => duck(false), DUCK_RELEASE_MS)
+    return () => clearTimeout(timer)
+  }, [speaking, duck])
+  // Whatever happens — the mic closing mid-sentence, this component going away — the volume the
+  // user chose comes back.
+  useEffect(() => () => duck(false), [duck])
+
+  // Space plays and pauses, as it does in every video tool — the agent even tells people to use
+  // it. Ignored while typing, and on controls that already use Space themselves.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== ' ' || event.repeat || event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      if (
+        target &&
+        (target.isContentEditable ||
+          /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName) ||
+          target.closest('[role="tab"],[role="slider"],[role="switch"],[role="checkbox"]'))
+      ) {
+        return
+      }
+      event.preventDefault()
+      playbackRef.current.toggle()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // Esc ends a voice session from anywhere — including while typing, since the one thing Esc
   // should never mean while the mic is open is "keep listening".
@@ -239,6 +345,7 @@ function App() {
             <section className="flex min-h-[320px] min-w-0 flex-1 flex-col lg:min-h-0">
               <VideoStage
                 src={localPreviewUrl ?? project.videoUrl}
+                getFreshSrc={getFreshVideoUrl}
                 width={project.width}
                 height={project.height}
                 captionLayer={(frameWidth) => (
@@ -325,6 +432,7 @@ function App() {
           onDismissQuestion={agent.dismissQuestion}
           pendingCommand={agent.pendingCommand}
           interimTranscript={voice.interim}
+          flash={flash}
           onToggleMic={handleToggleMic}
           onStopMic={stopVoice}
           onSubmitCommand={handleSubmitCommand}

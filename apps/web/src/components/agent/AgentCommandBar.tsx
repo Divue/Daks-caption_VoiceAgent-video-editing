@@ -18,6 +18,15 @@ import { MicButton } from './MicButton'
  */
 const REFUSAL_LABEL = "won't work — on purpose"
 
+/** How long an outcome stays on the status line before it yields back to "Listening…". */
+const FLASH_MS = 4500
+/**
+ * What to say. "Stop" is offered for pausing on purpose: measured against the live recogniser, a
+ * spoken "pause" came back as "Pass", "House" or "Has", while "stop the video" was heard correctly
+ * every time. Every example here is a command the editor actually handles.
+ */
+const LISTENING_HINT = 'Listening… try “play”, “stop the video”, “go to 5 seconds”, or “make that line angry”'
+
 interface AgentCommandBarProps {
   micStatus: MicStatus
   busy: boolean
@@ -28,6 +37,12 @@ interface AgentCommandBarProps {
   pendingCommand: string | null
   /** Live, not-yet-final speech. Shown, never submitted — an interim guess is not a command. */
   interimTranscript: string | null
+  /**
+   * What just happened, for a few seconds ("Paused", "Jumped to 0:10", "Ignored “Um”…"). The
+   * outcome used to live only in the Activity tab, so a command that was heard and obeyed — or
+   * heard and dropped — left the user looking at an unchanged bar, wondering if anything happened.
+   */
+  flash?: { id: string; text: string; tone: 'ok' | 'warn' | 'info' } | null
   onToggleMic: () => void
   /** Ends the voice session. Offered as text too, not only as the mic button's second meaning. */
   onStopMic: () => void
@@ -42,6 +57,7 @@ export function AgentCommandBar({
   onDismissQuestion,
   pendingCommand,
   interimTranscript,
+  flash,
   onToggleMic,
   onStopMic,
   onSubmitCommand,
@@ -49,6 +65,17 @@ export function AgentCommandBar({
 }: AgentCommandBarProps) {
   const [value, setValue] = useState('')
   const inputRef = useRef<HTMLInputElement | null>(null)
+
+  // A flash is shown for a few seconds and then yields the line back to "Listening…". Tracked by
+  // id, so the next outcome shows even if it has the same words as the last.
+  const [expiredFlashId, setExpiredFlashId] = useState<string | null>(null)
+  const flashId = flash?.id
+  useEffect(() => {
+    if (!flashId) return
+    const timer = setTimeout(() => setExpiredFlashId(flashId), FLASH_MS)
+    return () => clearTimeout(timer)
+  }, [flashId])
+  const liveFlash = flash && flash.id !== expiredFlashId ? flash : null
 
   // A question is a prompt to answer, so put the cursor where the answer goes. Without this
   // the agent asks and the user has to find the field again before they can reply.
@@ -81,7 +108,14 @@ export function AgentCommandBar({
     ? { text: pendingCommand ?? 'Working…', tone: 'text-muted-foreground' as const }
     : interimTranscript
       ? { text: interimTranscript, tone: 'text-muted-foreground/70' as const }
-      : micStatus === 'listening' || micStatus === 'processing'
+      : liveFlash
+        ? {
+            text: liveFlash.text,
+            tone: (liveFlash.tone === 'warn' ? 'text-amber-400' : liveFlash.tone === 'ok' ? 'text-primary' : 'text-muted-foreground') as string,
+          }
+      : micStatus === 'listening'
+        ? { text: LISTENING_HINT, tone: 'text-primary' as const }
+      : micStatus === 'processing'
         ? { text: 'Listening…', tone: 'text-primary' as const }
         : micStatus === 'connecting'
           ? { text: 'Connecting the microphone…', tone: 'text-muted-foreground' as const }

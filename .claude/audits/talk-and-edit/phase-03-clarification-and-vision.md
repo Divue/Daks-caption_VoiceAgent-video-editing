@@ -82,6 +82,28 @@ Demo: `services/api/scripts/agent_demo.py` (rewritten as a graded catalogue).
 (the ribbon encodes time spatially already — audit 16 §2.4 removed that density deliberately),
 `services/api/requirements.txt`, `remotion/`.
 
+## Architecture
+Clarification is stateless on the server and stateful only in the editor, which is where the
+conversation already lives:
+
+```
+turn 1   "put the captions where my hand is"
+           └─► planner ─► NEEDS_INPUT: "which part of the video?"   (status needs_input, 0 patches)
+editor   stores ClarificationTurn {command, question}, shows the question above the input
+turn 2   "around 22 seconds in"  +  history=[ClarificationTurn]
+           └─► planner renders <earlier_exchange> (data) + <user_command> (the answer)
+               ├─ analyze_frame(atMs=22000) ─► ffmpeg -ss ─► Rekognition DetectLabels
+               └─ set_position / update_caption_style ─► patches
+```
+
+NEW: the `needs_input` status, `ClarificationTurn`, the `<earlier_exchange>` block, and the
+editor's history ref. REUSED: the same untrusted-data envelope the command and selection already
+used (so a question quoting caption text cannot become an instruction next turn), P1's
+`media._run` ffmpeg wrapper for frame grabs, and `app.s3.client()` for presigning `s3://`.
+
+The mic fix is an ownership change, not a new component: `useVoiceInput` reports transport
+state only, and "the agent is working" is derived in `App` from `useAgentCommand`.
+
 ## Interfaces / Contracts
 `AgentCommandResponse.status` gains `needs_input`; `.question: str | None` set only then.
 `AgentCommandRequest.history: list[ClarificationTurn]`, same on the voice request.

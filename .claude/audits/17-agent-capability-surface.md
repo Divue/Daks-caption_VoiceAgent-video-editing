@@ -1,3 +1,23 @@
+> **Superseded in part — 2026-09-19.** Several statements below were true when written and are
+> now false. The body is kept as history; trust this list over it.
+> - **The agent is implemented and mounted.** `app/agent/` is not empty; `main.py` mounts
+>   `app/agent/router.py` at `/agent/*`. `POST /projects/{id}/agent` (the 501 stub) is deleted.
+> - **The tool surface changed.** §3's tool names are not what exists. Mutating tools take
+>   `wordIds: list[str]`. `move_caption`/`scale_caption` were removed; `add_overlay` is registered
+>   DISABLED. The authoritative list is the registry itself (`services/api/app/agent/tools/`,
+>   registered in each module); the history of how it got there is
+>   `talk-and-edit/phase-01-agent-editing-mvp.md` → Implementation → "Agent (P4 folder)".
+> - **There IS a bulk endpoint:** `PATCH /projects/{id}/words`, all-or-nothing, one version bump.
+> - **Conditional layers CAN now be persisted** via `Project.presetOverride` (`baseFontSize`,
+>   `wordsPerLine`, `emphasis`, `emphasisScale`, `reveal`, `emotion`). §4's "cannot be persisted
+>   at all" still holds only for stretch tuning, alignment/layout, glow layers and the auto-emphasis
+>   interval.
+> - **Response shape** is `{status, patches, log, question?}`, not §5's `{patch, applied, version,
+>   steps}`. `status` includes `needs_input`, when the agent asks instead of guessing.
+> - **Undo:** the agent's turn IS in the user's undo stack now — one turn is one undo step.
+>
+> Current state: `.claude/audits/talk-and-edit/` phases 01–04.
+
 # 17 — Agent capability surface: everything the editor can do, as tools
 
 **For:** P4 (`services/api/app/agent/`). **Written by:** P3. **Date:** 2026-09-18.

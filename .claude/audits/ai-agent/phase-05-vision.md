@@ -1,3 +1,10 @@
+> **Correction — 2026-09-19 (added by P3; original text below unchanged).** `analyze_frame` is no
+> longer "practically unusable". The diagnosis here blamed the fixtures, but the real blocker was
+> that the tool accepted only `s3://` while the API deliberately hands the editor a presigned
+> `https://` URL (`routers/projects.py::_project_body`: "never s3://"). It now accepts https,
+> `s3://` and local paths, and was verified end to end against live Rekognition — a real `Person`
+> box at 22 s of `Normal.mp4`. See `talk-and-edit/phase-03-clarification-and-vision.md`.
+
 # Phase 5 — Visual Analysis Contract (`analyze_frame`)
 
 ## Status

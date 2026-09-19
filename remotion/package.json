@@ -1,0 +1,20 @@
+{
+  "name": "@captions/remotion",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "The caption composition and the local render server that turns a Project into an MP4.",
+  "scripts": {
+    "render-server": "node server/index.mjs",
+    "check": "node scripts/check.mjs",
+    "still": "node scripts/still.mjs"
+  },
+  "dependencies": {
+    "@captions/shared": "*",
+    "@remotion/bundler": "4.0.526",
+    "@remotion/renderer": "4.0.526",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "remotion": "4.0.526"
+  }
+}

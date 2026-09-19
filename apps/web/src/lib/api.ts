@@ -326,8 +326,30 @@ export interface NotImplementedBody {
   responseContract?: unknown
 }
 
-export function startRender(projectId: string, signal?: AbortSignal): Promise<unknown> {
-  return request(`/projects/${projectId}/render`, { method: 'POST', signal })
+export type RenderState = 'queued' | 'rendering' | 'done' | 'failed'
+
+export interface RenderStarted {
+  renderId: string
+  state: RenderState
+}
+
+export interface RenderStatus {
+  renderId: string
+  state: RenderState
+  /** 0..1 */
+  progress: number
+  /** A presigned, save-as link. Present only once `state` is "done". */
+  outputUrl: string | null
+  error: string | null
+}
+
+/** Starts an export of the SAVED project. 503 `render_unavailable` means the render server is not running. */
+export function startRender(projectId: string, signal?: AbortSignal): Promise<RenderStarted> {
+  return request<RenderStarted>(`/projects/${projectId}/render`, { method: 'POST', signal })
+}
+
+export function getRender(projectId: string, renderId: string, signal?: AbortSignal): Promise<RenderStatus> {
+  return request<RenderStatus>(`/projects/${projectId}/render/${renderId}`, { signal })
 }
 
 export interface ProjectSummary {

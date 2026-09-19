@@ -116,10 +116,20 @@ interface LayoutProps {
 
 /** One wrapped line, words side by side — the conventional subtitle shape. */
 function InlineLayout({ words, preset, ...rest }: LayoutProps) {
+  // The gaps below are in `em`, and `em` resolves against THIS element's font size — which nothing set,
+  // so it was the browser default (16px) at every frame size. Words scale with the frame; their gap did
+  // not, so on a large frame (an exported 1440p video) it shrank to a sliver relative to the text and the
+  // words ran together ("Hellogoodmorning"). Setting the row's size to the caption's own base size makes
+  // `0.28em` mean what it was written to mean, at any size. The words set their own font size, so this
+  // changes only the spacing.
+  const baseFontSize = resolveWordStyle(words[0], preset, rest.project.settings, rest.frameWidth, {
+    emphasised: false,
+  }).fontSize
   return (
     <div
       className="flex flex-wrap items-baseline gap-x-[0.28em] gap-y-[0.1em]"
       style={{
+        fontSize: baseFontSize,
         // Merging can push a block past the preset's nominal wordsPerLine, so this wraps
         // rather than assuming a fixed slot count (plan §3.1).
         justifyContent: justify(preset.align ?? 'center'),

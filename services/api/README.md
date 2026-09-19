@@ -65,7 +65,8 @@ Errors are always flat: `{"error": "<code>", ...}`.
 | POST | `/agent/command` | the agent. `{command, project, selection?}` → `{status: ok\|unsupported\|error\|not_implemented, patches[], log[]}`. Patches are reducer actions the EDITOR applies and persists; the agent saves nothing. `selection` carries `selectedWordId(s)`, `playheadMs`, `activeBlockId`, `activeBlockWordIds` — that is what "this word" and "that line" resolve to |
 | POST | `/agent/voice-command` | same planner, same response; takes `transcript` (text, never audio) instead of `command` |
 | POST | `/agent/livekit-token` | mints a LiveKit room-join token. `503 livekit_not_configured` when the `LIVEKIT_*` vars are unset, which the editor treats as "fall back to browser speech recognition" |
-| POST / GET | `/projects/{id}/render`, `/projects/{id}/render/{renderId}` | **P2 seam.** `501` with `responseContract` |
+| POST | `/projects/{id}/render` | export the **saved** project → `202 {renderId, state}`. Probes the source's fps, sends the project and a presigned `videoUrl` to the Remotion render server (`remotion/server`, `RENDER_SERVICE_URL`, default `http://host.docker.internal:3100`). `409 no_video` when nothing was uploaded, `503 render_unavailable` (says how to start it) when the render server is down |
+| GET | `/projects/{id}/render/{renderId}` | `{renderId, state: queued\|rendering\|done\|failed, progress 0..1, outputUrl, error}`. On `done` the MP4 is moved to S3 (`renders/{renderId}.mp4`) and `outputUrl` is a presigned **save-as** link (`Content-Disposition: attachment`); after that it is answered from S3 alone, so a render-server restart cannot break it. A render the server no longer knows is reported `failed`, not 500 |
 
 ## Layout
 
@@ -75,7 +76,7 @@ app/jobctx.py        ambient job context (project id + stage reporting across th
 app/pricing.py       rate table (+ verified flags) app/costs.py      cost_event(), queries, rollups
 app/media.py         ffprobe / ffmpeg              app/jobs/runner.py background pipeline job
 app/store/           dynamo.py (client, table spec) projects.py (blob + versions) jobs.py (runId, heartbeat)
-app/routers/         projects, costs, render (P2 seam)
+app/routers/         projects, costs, render (thin proxy to the Remotion render server)
 app/agent/           the agent: contracts, validation, tools/, planner, voice, router
 app/pipeline/        the STT/prosody pipeline (audit 11)
 ```

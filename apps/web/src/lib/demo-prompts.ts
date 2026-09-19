@@ -106,7 +106,7 @@ export const DEMO_PROMPTS: DemoPrompt[] = [
   {
     n: 9,
     title: 'Reshape the captions',
-    command: 'fewer words per line — show three at a time',
+    command: 'fewer words per line — show two at a time',
     why:
       'wordsPerLine is a PRESET field, not a word field. Impossible until we stored ' +
       'preset overrides on the Project; one integer that changes the whole shape of ' +

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { Emotion } from '@captions/shared'
 import type { Word } from '@captions/shared'
@@ -47,6 +47,16 @@ export function CaptionStylePanel({ selectedWordId }: { selectedWordId: string |
   const { preset, setOverride, reset, isOverridden } = usePresetOverride()
   const { saving, error, patch, patchStyle, clearError } = useWordPatch()
   const [scope, setScope] = useState<Scope>('preset')
+
+  // Selecting a word IS the gesture that means "I want to change this one". Leaving the panel
+  // on preset scope made per-word editing look impossible: you click a word, every control
+  // still edits all 51, and nothing says why. Switching back to preset scope stays manual —
+  // deselecting should not silently widen what your next drag touches.
+  const lastSelected = useRef<string | null>(selectedWordId)
+  useEffect(() => {
+    if (selectedWordId && selectedWordId !== lastSelected.current) setScope('word')
+    lastSelected.current = selectedWordId
+  }, [selectedWordId])
 
   const word = selectedWordId
     ? project.words.find((candidate) => candidate.id === selectedWordId)

@@ -29,6 +29,7 @@ from typing import Callable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.agent.contracts import (
+    ActivePreset,
     AgentCommandRequest,
     AgentCommandResponse,
     ClarificationTurn,
@@ -66,6 +67,21 @@ def styles_of(response: AgentCommandResponse) -> list[dict]:
 
 
 CLIPS = Path("/srv/scripts/stt_bakeoff/clips")
+
+# What the editor resolves and sends on every command. Mirrored from
+# packages/shared/src/presets.ts's `rangmanch`, which every fixture uses. Hardcoded here
+# because `Preset` lives only in TypeScript on purpose — the point of sending it is that the
+# agent cannot see it otherwise, and a harness that omits it would test a blinder agent than
+# the app actually runs.
+RANGMANCH = ActivePreset(
+    presetId="rangmanch",
+    name="Rangmanch",
+    baseColor="#FFF6E9",
+    emphasisColor="#E2452A",
+    emphasisFontFamily="Anton",
+    emotionColors={"angry": "#FF5C3A"},
+    wordsPerLine=3,
+)
 
 
 def load_named_project(name: str) -> Project:
@@ -232,11 +248,12 @@ PROMPTS: list[Prompt] = [
     ),
     Prompt(
         9, "average", "Reshape the captions",
-        "fewer words per line — show three at a time",
+        "fewer words per line — show two at a time",
         "wordsPerLine is a PRESET field, not a word field. One integer that changes the whole "
-        "shape of the output.",
+        "shape of the output. Asked for TWO deliberately: Rangmanch is already three, and now "
+        "that the agent can see the active preset it correctly answers 'already done' for three.",
         expect_ok(lambda r, p: (
-            any(x.override.wordsPerLine == 3 for x in patches_of(r, "SET_PRESET_OVERRIDE")),
+            any(x.override.wordsPerLine == 2 for x in patches_of(r, "SET_PRESET_OVERRIDE")),
             f"overrides: {[x.override.model_dump(exclude_none=True) for x in patches_of(r, 'SET_PRESET_OVERRIDE')]}",
         )),
     ),
@@ -262,25 +279,39 @@ PROMPTS: list[Prompt] = [
         project="normal",
     ),
     Prompt(
-        11, "asks", "No target given",
+        11, "average", "A reasonable default beats a question",
         "make it bigger",
-        "Bigger WHAT? Nothing is selected and nothing was named. Asking costs a second; "
-        "resizing the wrong thing costs the user their edit.",
+        "Deliberately in the ACTING tier, not the asking one. \"It\" in a caption editor means "
+        "the captions, the change is visible and one Ctrl+Z away, and stopping to ask \"which "
+        "word?\" would be pedantic. The agent asks when guessing produces the WRONG VIDEO, not "
+        "whenever a sentence is short. It must also route this through baseFontSize, not a "
+        "per-word size, or the emphasised words come out smaller than they started.",
+        expect_ok(lambda r, p: (
+            any(x.override.baseFontSize for x in patches_of(r, "SET_PRESET_OVERRIDE"))
+            and not patches_of(r, "UPDATE_WORD"),
+            f"overrides={[x.override.model_dump(exclude_none=True) for x in patches_of(r, 'SET_PRESET_OVERRIDE')]}, "
+            f"per-word={len(patches_of(r, 'UPDATE_WORD'))} (per-word would shrink the big words)",
+        )),
+        project="normal",
+    ),
+    Prompt(
+        12, "asks", "No value given",
+        "change the colour",
+        "Which colour, and of what? Every answer is a different video, and there is no sane "
+        "default — picking one at random is exactly the failure asking exists to prevent.",
         lambda r, p: (
             r.status == "needs_input" and not r.patches,
             f"status={r.status}, question={r.question!r}",
         ),
-        answer="the word pagal",
+        answer="make all the captions purple",
         expect_after_answer=lambda r, p: (
-            r.status == "ok" and any(
-                (x.patch.style.fontSize if x.patch.style else None) for x in patches_of(r, "UPDATE_WORD")
-            ),
-            f"after the answer: touched {sorted(touched_words(r))}",
+            r.status == "ok" and bool(r.patches),
+            f"after the answer: status={r.status}, patches={len(r.patches)}",
         ),
         project="normal",
     ),
     Prompt(
-        12, "asks", "Ambiguous reference",
+        17, "asks", "Ambiguous reference",
         "change that word to blue",
         "'That word' with no selection and no playhead. The editor sent nothing to resolve it "
         "with, so there is no honest way to pick one.",
@@ -378,7 +409,12 @@ def run_one(prompt: Prompt) -> bool:
 
     try:
         response = run_agent_command(
-            AgentCommandRequest(command=prompt.command, project=project, selection=prompt.selection)
+            AgentCommandRequest(
+                command=prompt.command,
+                project=project,
+                selection=prompt.selection,
+                activePreset=RANGMANCH,
+            )
         )
     except Exception as exc:  # a crash is a failure, not an exception to the harness
         print(f"    \033[31mCRASHED\033[0m {exc}")
@@ -407,6 +443,7 @@ def run_one(prompt: Prompt) -> bool:
                 command=prompt.answer,
                 project=project,
                 selection=prompt.selection,
+                activePreset=RANGMANCH,
                 history=[ClarificationTurn(command=prompt.command, question=response.question or "?")],
             )
         )

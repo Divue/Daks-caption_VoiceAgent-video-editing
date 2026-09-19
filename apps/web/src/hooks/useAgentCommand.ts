@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { describeError, isApiError } from '@/lib/api'
 import { submitTextCommand, submitVoiceTranscript } from '@/lib/agent-api'
-import type { ClarificationTurn, SelectionContext } from '@/lib/agent-api'
+import type { ActivePreset, ClarificationTurn, SelectionContext } from '@/lib/agent-api'
 import { summarisePatches, summariseTurn } from '@/lib/agent-summary'
+import { usePresetOverride } from '@/state/preset-override-context'
 import { useProject } from '@/state/project-context'
 import { useWordPatch } from '@/state/word-patch-context'
 import type { useAgentActivity } from '@/hooks/useAgentActivity'
@@ -36,6 +37,9 @@ export interface AgentTurnState {
 export function useAgentCommand(activity: Activity) {
   const { project, dispatch } = useProject()
   const { applyAgentPatches } = useWordPatch()
+  // The resolved preset — base + any stored override — so the agent sees the look the user is
+  // actually staring at, not the preset id alone.
+  const { preset } = usePresetOverride()
   const { addEntry, updateEntry } = activity
 
   const [state, setState] = useState<AgentTurnState>({
@@ -55,6 +59,11 @@ export function useAgentCommand(activity: Activity) {
   useEffect(() => {
     projectRef.current = project
   }, [project])
+
+  const presetRef = useRef(preset)
+  useEffect(() => {
+    presetRef.current = preset
+  }, [preset])
 
   useEffect(() => () => controllerRef.current?.abort(), [])
 
@@ -102,11 +111,27 @@ export function useAgentCommand(activity: Activity) {
 
       try {
         const request = source === 'voice' ? submitVoiceTranscript : submitTextCommand
+        const p = presetRef.current
+        const activePreset: ActivePreset = {
+          presetId: p.id,
+          name: p.name,
+          baseColor: p.base.color,
+          emphasisColor: p.emphasis?.color,
+          emphasisFontFamily: p.emphasis?.fontFamily,
+          emotionColors: Object.fromEntries(
+            Object.entries(p.emotion ?? {})
+              .map(([tone, value]) => [tone, value?.style?.color])
+              .filter((pair): pair is [string, string] => typeof pair[1] === 'string'),
+          ),
+          wordsPerLine: p.wordsPerLine,
+        }
+
         const response = await request(
           command,
           projectRef.current,
           selection,
           history,
+          activePreset,
           controller.signal,
         )
 

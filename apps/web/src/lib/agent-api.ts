@@ -46,6 +46,21 @@ export interface AgentCommandResponse {
  * Blocks are derived on the fly and their indices shift as you edit (audit 17 §2), so the EDITOR
  * resolves the active block to word ids here and the agent only ever works in word ids.
  */
+/**
+ * What the active preset actually looks like. The agent cannot see this on its own — `Preset`
+ * lives only in TypeScript — so without it "get rid of the red" turns off the tone layer and
+ * leaves every emphasised word red, because the agent never knew they were red.
+ */
+export interface ActivePreset {
+  presetId?: string
+  name?: string
+  baseColor?: string
+  emphasisColor?: string
+  emphasisFontFamily?: string
+  emotionColors?: Record<string, string>
+  wordsPerLine?: number
+}
+
 export interface SelectionContext {
   selectedWordId?: string | null
   selectedWordIds?: string[] | null
@@ -60,11 +75,12 @@ export function submitTextCommand(
   project: Project,
   selection: SelectionContext,
   history: ClarificationTurn[],
+  activePreset: ActivePreset,
   signal?: AbortSignal,
 ): Promise<AgentCommandResponse> {
   return request('/agent/command', {
     method: 'POST',
-    body: { command, project, selection, history },
+    body: { command, project, selection, history, activePreset },
     signal,
   })
 }
@@ -79,11 +95,12 @@ export function submitVoiceTranscript(
   project: Project,
   selection: SelectionContext,
   history: ClarificationTurn[],
+  activePreset: ActivePreset,
   signal?: AbortSignal,
 ): Promise<AgentCommandResponse> {
   return request('/agent/voice-command', {
     method: 'POST',
-    body: { transcript, project, selection, history },
+    body: { transcript, project, selection, history, activePreset },
     signal,
   })
 }

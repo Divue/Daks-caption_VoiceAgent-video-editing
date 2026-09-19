@@ -274,6 +274,31 @@ class SelectionContext(BaseModel):
         )
 
 
+class ActivePreset(BaseModel):
+    """What the active preset actually LOOKS like, resolved by the editor.
+
+    The agent is otherwise blind to it. `Preset` lives only in TypeScript
+    (packages/shared/src/presets.ts) and is deliberately not mirrored here, so
+    without this the agent cannot know that Rangmanch draws emphasised words in
+    #E2452A and angry words in #FF5C3A. That blindness had a visible cost: asked
+    to "get rid of the red" it turned off the emotion layer, reported success,
+    and left every emphasised word red — because it never knew they were red.
+
+    The editor resolves this because the editor owns the resolver. Sent as data,
+    inside the same untrusted envelope as everything else.
+    """
+
+    presetId: str | None = None
+    name: str | None = None
+    baseColor: str | None = None
+    # The colour emphasised words are drawn in — a different source of "red" from the tone layer.
+    emphasisColor: str | None = None
+    emphasisFontFamily: str | None = None
+    # tone -> the colour that tone paints, e.g. {"angry": "#FF5C3A"}.
+    emotionColors: dict[str, str] = Field(default_factory=dict)
+    wordsPerLine: int | None = None
+
+
 class AgentCommandRequest(BaseModel):
     """The full request body for POST /agent/command (route defined in
     router.py, not yet wired into app/main.py — see the Phase 1 audit)."""
@@ -281,6 +306,8 @@ class AgentCommandRequest(BaseModel):
     command: str = Field(min_length=1)
     project: Project
     selection: SelectionContext | None = None
+    # What the active preset actually looks like, resolved by the editor.
+    activePreset: ActivePreset | None = None
     # Earlier "command -> question" rounds of THIS conversation, oldest first.
     # Present only when the user is answering a question the agent asked.
     history: list[ClarificationTurn] = Field(default_factory=list)
@@ -346,4 +373,5 @@ class AgentVoiceCommandRequest(BaseModel):
     transcript: str = Field(min_length=1)
     project: Project
     selection: SelectionContext | None = None
+    activePreset: ActivePreset | None = None
     history: list[ClarificationTurn] = Field(default_factory=list)

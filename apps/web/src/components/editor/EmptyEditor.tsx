@@ -100,7 +100,8 @@ export function EmptyEditor() {
       try {
         setLifecycle({ k: 'creating' })
         const { projectId: newId, upload } = await createProject(
-          { filename: file.name, contentType: file.type },
+          // New uploads start on Dhamaka; the API's own default (rangmanch) stays for other callers.
+          { filename: file.name, contentType: file.type, presetId: 'dhamaka' },
           controller.signal,
         )
         setProjectId(newId)

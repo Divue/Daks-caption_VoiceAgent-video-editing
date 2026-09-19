@@ -59,7 +59,7 @@ def get_bedrock_client() -> BedrockConverseClient:
     "ap-south-1" default already used by app/pipeline/stt.py and tag.py,
     kept consistent rather than introducing a different default here.
     """
-    import boto3
+    from .. import aws_fallback
 
     region = os.environ.get("AWS_REGION", "ap-south-1")
-    return boto3.client("bedrock-runtime", region_name=region)
+    return aws_fallback.client("bedrock-runtime", region)

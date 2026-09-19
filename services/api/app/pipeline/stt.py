@@ -13,9 +13,7 @@ import time
 import urllib.request
 import uuid
 
-import boto3
-
-from .. import jobctx
+from .. import aws_fallback, jobctx
 from ..costs import cost_event
 
 BEDROCK_REGION = os.environ.get("AWS_REGION", "ap-south-1")
@@ -31,7 +29,7 @@ TRANSCRIBE_TIMEOUT_S = 600
 def transcribe(s3_uri: str, media_format: str = "wav", language: str = "hi-IN",
                audio_seconds: float = 0.0) -> list[dict]:
     """Run a Transcribe job over an object already in S3. Returns [{text, startMs, endMs}]."""
-    client = boto3.client("transcribe", region_name=BEDROCK_REGION)
+    client = aws_fallback.client("transcribe", BEDROCK_REGION)
     job = f"captions-{uuid.uuid4().hex[:12]}"
     with cost_event(stage="transcribe", service="transcribe", model_id=f"batch-{language}") as ev:
         ev.audio(audio_seconds)
@@ -66,7 +64,7 @@ def romanize_words(words: list[dict], chunk_size: int = 60) -> list[dict]:
     """Devanagari tokens -> Roman, one for one, so timings stay attached to their word."""
     if not words:
         return words
-    client = boto3.client("bedrock-runtime", region_name=BEDROCK_REGION)
+    client = aws_fallback.client("bedrock-runtime", BEDROCK_REGION)
     out = [dict(w) for w in words]
 
     for start in range(0, len(out), chunk_size):

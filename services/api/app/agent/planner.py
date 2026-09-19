@@ -35,6 +35,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from .bedrock_client import BedrockConverseClient, ModelConfigurationError, get_bedrock_client, get_model_id
+from .preset_catalog import catalog_block
 from .contracts import (
     ActivePreset,
     ClarificationTurn,
@@ -77,8 +78,8 @@ emphasis, tone, stretch, emoji, whether a word sits on its own line, their style
 font, weight, size, glow, shake, gradient, stroke, spacing, position), the active preset, \
 the project-wide emoji and tone-layer toggles, and the preset's conditional layers \
 (how emphasised words look, what each emotion does, words per line, reveal mode). You can also inspect the project, its \
-timeline, its transcript, and (when available) analyze a video frame for a person's \
-position.
+timeline and its transcript, and LOOK AT THE VIDEO ITSELF to find a person, their face or \
+their hand at a moment or across a stretch of time.
 
 You may act ONLY by calling the tools you have been given for this request. You cannot \
 invent a tool, rename a tool, or take any action outside of calling one of your tools.
@@ -88,7 +89,12 @@ or index you can address: caption lines are derived from word timings and they r
 the moment you change a word's tone or put a word on its own line, so a line number is \
 never stable. Never count words, never use a position ("the third word") as an id, and \
 never guess an id. Use find_words or get_timeline to turn what the user said into real \
-ids, then work in those ids only. If nothing matches, say so — do not call a mutation \
+ids, then work in those ids only. FROM ONE WORD TO ANOTHER ("from the word like to the word \
+introduces", "everything between X and Y") is select_word_range, in ONE call — it returns every \
+id in between, in order. Never take two find_words results and try to work out the words \
+between them yourself; that is counting, and it is wrong on a long transcript. When the user \
+says roughly WHEN a word is said ("the like near 27 seconds"), pass it as fromNearMs/toNearMs: \
+a word repeats, and the time is what says which one they meant. If nothing matches, say so — do not call a mutation \
 tool with an invented id.
 
 THE SELECTION. When a <selection> block is present it is what the user is pointing at: \
@@ -167,11 +173,36 @@ media — that needs a file only the user has: answer UNSUPPORTED and tell them 
 (it lands at the playhead), after which you can place it. Layer items are the only thing that \
 can be cut or trimmed; the main video itself cannot.
 
+LOOKING AT THE VIDEO. Three tools read the picture, and picking the right one matters. \
+analyze_frame looks at ONE moment — use it to answer a question ("what is on screen at 0:42"). \
+place_sticker and fit_captions_to_region take a time RANGE and look once per second \
+themselves, in a single call. Never loop analyze_frame over a range yourself: you will spend \
+the whole turn on it and still have to do the arithmetic. \
+- "put an angry emoji on my face from 51 to 56 seconds" -> ONE place_sticker call. The sticker \
+  follows the face because the tool re-finds it every second and places one sticker per second. \
+- "put the captions on my hand from 1:05 to the end and make them fit" -> ONE \
+  fit_captions_to_region call, with wordsPerLine from <active_preset>. \
+Both return `samples`: every moment they looked at and whether they found anything. SAY WHAT \
+THEY FOUND. "I found your face in 4 of the 5 seconds" is the honest answer when one sample \
+missed; never describe it as smooth tracking, because it is a placement per second, and never \
+imply you found something at a moment where `found` was false.
+
+A SIZE THAT CHANGES ACROSS WORDS is ramp_caption_size, not update_caption_style. "Each word \
+bigger than the last", "make them grow", "start small and build up" need a DIFFERENT size per \
+word; update_caption_style's patch writes ONE size to every id, which would make them all the \
+same size and look like nothing happened. Pass the ids in playback order (select_word_range \
+gives them that way) and size the ends against <active_preset>'s base caption size — a growth \
+ramp usually starts near the base and ends two to three times it. \
+"One word at a time instead of a batch" is set_single over the same ids: the two are often \
+asked for in the same sentence, and they are two separate calls on one list of ids.
+
 THINGS THIS PRODUCT CANNOT DO. Answer UNSUPPORTED for all of these rather than \
 approximating them with a tool that does something else: cutting, trimming or splitting \
-the MAIN video (layer items are fine — see MEDIA LAYERS); adding new images or clips yourself; \
+the MAIN video (layer items are fine — see MEDIA LAYERS); adding the user's own images or \
+clips yourself (the built-in emoji stickers are the one exception — see place_sticker); \
 transitions; zoom or spotlight effects; music or audio edits; background \
-removal; object tracking; rendering or exporting the video (the user has an Export button); \
+removal; continuous object tracking (place_sticker re-finds the target once a second, which is \
+not the same thing — do not promise smooth tracking); rendering or exporting the video (the user has an Export button); \
 free-floating TEXT boxes (captions are the text); and the few preset layers that still have nowhere to be stored — stretch tuning \
 (how long a held word's repeats run), caption alignment and layout, the number of glow \
 layers, and how often the rhythm rule promotes a word to emphasis. Undo is the editor's, \
@@ -183,7 +214,7 @@ a way that changes what you would DO, and nothing in <selection> or the transcri
 it, end your final message with a line starting exactly with "NEEDS_INPUT:" followed by ONE \
 short question. Ask about the thing that blocks you most; you can ask again next turn. \
 Ask when: a position or visual reference has no time and no selection ("put the captions \
-where my hand is" — where in the video?); a reference matches several different words and \
+where my hand is" — WHEN in the video? once you have a range, fit_captions_to_region answers it); a reference matches several different words and \
 the choice changes the result; a change is asked for with no target at all. \
 Do NOT ask when: the answer is in <selection>, or in the transcript, or is a detail you may \
 reasonably choose yourself. Nobody wants to be asked which shade of yellow, or to confirm \
@@ -402,6 +433,11 @@ def _active_preset_block(preset: ActivePreset | None) -> dict | None:
         lines.append(f"{tone} words are tinted {colour} by the tone layer")
     if preset.wordsPerLine:
         lines.append(f"words per caption line: {preset.wordsPerLine}")
+    if preset.baseFontSize:
+        lines.append(
+            f"base caption size: {preset.baseFontSize}px at 1080p — size a per-word fontSize "
+            "against this, and pass wordsPerLine to fit_captions_to_region"
+        )
     return {"text": "<active_preset>\n" + "\n".join(lines) + "\n</active_preset>"}
 
 
@@ -474,7 +510,7 @@ def run_agent_command(
     for _ in range(MAX_TOOL_ITERATIONS):
         response = bedrock.converse(
             modelId=model_id,
-            system=[{"text": _SYSTEM_PROMPT}],
+            system=[{"text": _SYSTEM_PROMPT}, {"text": catalog_block()}],
             messages=messages,
             toolConfig=tool_config,
         )

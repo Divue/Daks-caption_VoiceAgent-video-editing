@@ -13,6 +13,7 @@ services:
       - ./services/api/app:/srv/app
       - ./services/api/tests:/srv/tests
       - ./services/api/scripts:/srv/scripts
+      - ./services/api/assets:/srv/assets:ro
       - ./packages/shared/fixtures:/srv/fixtures:ro
       - ~/.aws:/root/.aws:ro
     environment:

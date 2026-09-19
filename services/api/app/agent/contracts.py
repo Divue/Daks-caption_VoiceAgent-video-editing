@@ -324,6 +324,10 @@ class ActivePreset(BaseModel):
     # tone -> the colour that tone paints, e.g. {"angry": "#FF5C3A"}.
     emotionColors: dict[str, str] = Field(default_factory=dict)
     wordsPerLine: int | None = None
+    # The BASE caption size in px at 1080p. Needed by any tool that writes a per-word
+    # fontSize — ramp_caption_size has to know what "bigger than normal" is a multiple OF,
+    # and the preset's own size lives in TypeScript like the rest of `Preset`.
+    baseFontSize: float | None = None
 
 
 class AgentCommandRequest(BaseModel):

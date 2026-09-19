@@ -24,6 +24,8 @@ import uuid
 
 from app.schema import Overlay, Project
 
+from ..preset_catalog import describe_for_tool
+
 from ..contracts import (
     AddOverlayAction,
     AgentPresetOverridePatch,
@@ -227,7 +229,12 @@ def add_overlay(args: AddOverlayArgs, project: Project) -> AddOverlayResult:
 default_registry.register(
     ToolSpec(
         name="apply_preset",
-        description="Set the project's active preset.",
+        description=(
+            "Set the project's active preset — the whole caption look. Match the user's vibe "
+            "words ('trendy', 'subtle', 'loud', 'classy') to a preset using the <presets> "
+            "catalogue in your instructions, which describes what each one looks like."
+            + describe_for_tool()
+        ),
         input_model=ApplyPresetArgs,
         output_model=ApplyPresetResult,
         reads=False,

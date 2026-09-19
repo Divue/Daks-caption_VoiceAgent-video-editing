@@ -74,6 +74,7 @@ function describePreset(p: Preset): ActivePreset {
         .filter((pair): pair is [string, string] => typeof pair[1] === 'string'),
     ),
     wordsPerLine: p.wordsPerLine,
+    baseFontSize: p.base.fontSize,
   }
 }
 

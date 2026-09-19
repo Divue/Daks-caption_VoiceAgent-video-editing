@@ -23,6 +23,8 @@ from .schemas import (
     GetProjectContextResult,
     GetTimelineArgs,
     GetTimelineResult,
+    SelectWordRangeArgs,
+    SelectWordRangeResult,
     TimelineWord,
 )
 
@@ -138,6 +140,59 @@ def find_words(args: FindWordsArgs, project: Project) -> FindWordsResult:
     )
 
 
+def _pick_endpoint(query: str, project: Project, near_ms: int | None, role: str) -> Word:
+    """The ONE word an endpoint of a range refers to.
+
+    Tried in order — exact text, then substring, then fuzzy — so a clean match is never
+    beaten by a loose one. Among the survivors, `near_ms` decides: a transcript says "like"
+    four times and the user told us which by saying when. Without a hint the earliest match
+    wins, which is the only defensible default.
+
+    Raises ToolExecutionError naming the query, because an endpoint that cannot be resolved
+    must not silently become word one or word N — that would apply the change to a range
+    nobody asked for.
+    """
+    q = query.strip().lower()
+    if not q:
+        raise ToolExecutionError(f"the {role} word of the range must not be blank")
+
+    candidates = [w for w in project.words if w.text.lower() == q]
+    if not candidates:
+        candidates = [w for w in project.words if q in w.text.lower()]
+    if not candidates:
+        candidates = _fuzzy(q, project.words)
+    if not candidates:
+        raise ToolExecutionError(
+            f"no word matching {query!r} (the {role} end of the range) is in this transcript"
+        )
+
+    if near_ms is None:
+        return min(candidates, key=lambda w: w.startMs)
+    return min(candidates, key=lambda w: (abs(w.startMs - near_ms), w.startMs))
+
+
+def select_word_range(args: SelectWordRangeArgs, project: Project) -> SelectWordRangeResult:
+    """Every word from one word to another, inclusive, in playback order."""
+    start = _pick_endpoint(args.fromText, project, args.fromNearMs, "first")
+    end = _pick_endpoint(args.toText, project, args.toNearMs, "last")
+
+    order = {w.id: i for i, w in enumerate(project.words)}
+    first, last = order[start.id], order[end.id]
+    if first > last:
+        raise ToolExecutionError(
+            f"{start.text!r} (at {start.startMs}ms) comes AFTER {end.text!r} (at {end.startMs}ms), "
+            "so that range runs backwards — check which word the range starts at"
+        )
+
+    span = project.words[first : last + 1]
+    return SelectWordRangeResult(
+        wordIds=[w.id for w in span],
+        words=[_timeline_word(w) for w in span],
+        fromWordId=start.id,
+        toWordId=end.id,
+    )
+
+
 default_registry.register(
     ToolSpec(
         name="get_project_context",
@@ -178,4 +233,24 @@ default_registry.register(
         notes="Implemented in Phase 3.",
     ),
     find_words,
+)
+
+default_registry.register(
+    ToolSpec(
+        name="select_word_range",
+        description=(
+            "Every word from one word to another, inclusive — 'from the word like to the word "
+            "introduces'. Use this instead of calling find_words twice and working out what is "
+            "in between: never count words yourself. Pass fromNearMs/toNearMs when the user said "
+            "roughly when a word is said ('the like near 27 seconds'), which is what picks the "
+            "right one when a word repeats."
+        ),
+        input_model=SelectWordRangeArgs,
+        output_model=SelectWordRangeResult,
+        reads=True,
+        writes=False,
+        status=ToolStatus.AVAILABLE,
+        notes="Endpoints resolve exact -> substring -> fuzzy; nearMs breaks ties by time.",
+    ),
+    select_word_range,
 )

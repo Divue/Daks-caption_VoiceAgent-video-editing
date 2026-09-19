@@ -1,6 +1,5 @@
-import { Loader2, Mic, MicOff } from 'lucide-react'
+import { Loader2, Mic, MicOff, Square } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import type { MicStatus } from '@/hooks/useAgentActivity'
 
 interface MicButtonProps {
@@ -10,39 +9,51 @@ interface MicButtonProps {
 
 const LABELS: Record<MicStatus, string> = {
   idle: 'Start voice input',
+  connecting: 'Connecting — click to cancel',
   listening: 'Stop voice input',
-  processing: 'Working on what you said',
+  processing: 'Stop voice input (the agent keeps working)',
   success: 'Start voice input',
   error: 'Voice input failed — try again',
   denied: 'Microphone blocked — enable it in your browser',
 }
 
+/**
+ * The mic control, and — while the mic is open — the STOP control.
+ *
+ * It used to show the same microphone glyph whether you were idle or live, distinguished only by
+ * a fill and a pulse, so nothing on screen said "click here to disconnect". While the mic is open
+ * it now shows a stop square: the universal sign for "end this", readable at a glance and without
+ * knowing the button is a toggle. It is never disabled — stopping the mic is the one control that
+ * must always work, and mid-turn is exactly when someone reaches for it.
+ */
 export function MicButton({ status, onToggle }: MicButtonProps) {
-  // `processing` means the AGENT is working; the mic itself is still open underneath, so the
-  // button keeps its stop affordance and only its icon changes.
-  const isListening = status === 'listening' || status === 'processing'
-  const isProcessing = status === 'processing'
-  // A blocked mic is a state the user has to fix in the browser, so it stays visible rather than
-  // collapsing back to "idle" and inviting an identical click that will fail the same way.
+  const isLive = status === 'listening' || status === 'processing'
+  const isConnecting = status === 'connecting'
   const isDenied = status === 'denied'
   const isError = status === 'error'
 
   return (
     <div className="relative shrink-0">
-      {isListening && <span className="absolute inset-0 animate-ping rounded-full bg-primary/40" />}
+      {isLive && <span className="absolute inset-0 animate-ping rounded-full bg-primary/30" />}
       <Button
         type="button"
-        variant={isListening ? 'default' : isDenied || isError ? 'destructive' : 'outline'}
+        variant={isLive || isConnecting ? 'default' : isDenied || isError ? 'destructive' : 'outline'}
         size="icon"
         aria-label={LABELS[status]}
         title={LABELS[status]}
-        aria-pressed={isListening}
+        aria-pressed={isLive || isConnecting}
         onClick={onToggle}
-        className={cn('relative rounded-full', isListening && 'animate-pulse')}
+        className="relative rounded-full"
       >
-        {/* Never disabled: stopping the mic is the one control that must always work, and
-            while the agent is thinking is exactly when someone reaches for it. */}
-        {isProcessing ? <Loader2 className="animate-spin" /> : isDenied ? <MicOff /> : <Mic />}
+        {isConnecting ? (
+          <Loader2 className="animate-spin" />
+        ) : isLive ? (
+          <Square className="size-3.5 fill-current" />
+        ) : isDenied ? (
+          <MicOff />
+        ) : (
+          <Mic />
+        )}
       </Button>
     </div>
   )

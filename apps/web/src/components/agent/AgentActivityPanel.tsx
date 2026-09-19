@@ -45,6 +45,7 @@ const ICON_TONE: Record<Exclude<AgentEntryStatus, 'info'>, string> = {
 }
 
 function headline(busy: boolean, micStatus: MicStatus): string {
+  if (micStatus === 'connecting') return 'Connecting the microphone…'
   if (micStatus === 'listening') return 'Listening…'
   if (micStatus === 'denied') return 'Microphone blocked'
   if (busy || micStatus === 'processing') return 'Working…'

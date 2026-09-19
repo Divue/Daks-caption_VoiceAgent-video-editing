@@ -45,7 +45,7 @@ export interface AgentLogEntry {
  * idle/listening are driven by real local interaction (the mic toggle). `processing` means a
  * transcript is in flight to the agent; `denied` means the browser refused the microphone.
  */
-export type MicStatus = 'idle' | 'listening' | 'processing' | 'success' | 'error' | 'denied'
+export type MicStatus = 'idle' | 'connecting' | 'listening' | 'processing' | 'success' | 'error' | 'denied'
 
 /**
  * The editor's activity log. Every entry describes something that really happened — a state

@@ -136,7 +136,9 @@ All crossings were made on the repo owner's explicit instruction.
 Headless Chromium against the running stack, measuring computed styles rather than reading
 messages:
 - Video loads to `readyState 4`, duration 28.11 s; captions render at 1.5 s.
-- Mic toggles Start → Stop → Start and is never disabled.
+- Mic toggles Start → Stop → Start and is never disabled. **Correction (phase 6):** this checked
+  the label only. Stopping during the multi-second start still left a live mic connected — see
+  `phase-06-voice-disconnect.md`.
 - Commands round-trip; the panel shows reply, count, utterance and steps.
 - **One agent turn = one undo step:** 51 words to yellow → "Undo that" restores the original
   exactly, including the emphasis red → Ctrl+Shift+Z redoes → Ctrl+Z undoes.

@@ -99,12 +99,32 @@ function App() {
   // The mic reports transport state; the agent reports whether it is working. Showing them as
   // one control is a VIEW concern and is derived here, so neither side can leave the other
   // stuck in a state it has no way to clear.
-  const micStatus: MicStatus = agent.busy && voice.status !== 'idle' ? 'processing' : voice.status
+  const micStatus: MicStatus = agent.busy && voice.status === 'listening' ? 'processing' : voice.status
+
+  // One definition of "the mic is on", shared by the button, the Stop link and Esc, so they can
+  // never disagree about whether there is anything to stop. `connecting` counts: a start still
+  // in flight is exactly what someone clicks again to cancel.
+  const micIsOn = voice.status === 'listening' || voice.status === 'connecting'
+
+  const stopVoice = useCallback(() => {
+    voice.stop()
+    addEntry('Voice input stopped')
+  }, [voice, addEntry])
+
+  // Esc ends a voice session from anywhere — including while typing, since the one thing Esc
+  // should never mean while the mic is open is "keep listening".
+  useEffect(() => {
+    if (!micIsOn) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') stopVoice()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [micIsOn, stopVoice])
 
   function handleToggleMic() {
-    if (voice.status === 'listening') {
-      voice.stop()
-      addEntry('Voice input stopped')
+    if (micIsOn) {
+      stopVoice()
       return
     }
     // Which transport actually started is logged, not assumed: LiveKit falls back to the
@@ -114,6 +134,8 @@ function App() {
       if (result === 'livekit') addEntry('Listening (LiveKit)')
       else if (result === 'browser') addEntry('Listening (browser speech recognition)')
       else if (result === 'denied') addEntry('Microphone blocked by the browser', 'error')
+      // Stopped before it finished connecting: the stop was already logged, say nothing more.
+      else if (result === 'cancelled') return
       else addEntry('No microphone transport available', 'error')
     })
   }
@@ -304,6 +326,7 @@ function App() {
           pendingCommand={agent.pendingCommand}
           interimTranscript={voice.interim}
           onToggleMic={handleToggleMic}
+          onStopMic={stopVoice}
           onSubmitCommand={handleSubmitCommand}
           onCancel={agent.cancel}
         />

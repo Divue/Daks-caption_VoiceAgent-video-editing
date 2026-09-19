@@ -44,6 +44,7 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | — | `talk-and-edit/phase-03-clarification-and-vision.md` | The agent asks when under-specified; analyze_frame works; mic bug; graded 16-prompt catalogue |
 | — | `talk-and-edit/phase-04-ui-hardening.md` | Driving the real UI: wrong demo project, "bigger" shrinking the big word, the agent blind to its own preset |
 | — | `talk-and-edit/phase-05-barge-in-and-targeting.md` | A pause mid-sentence lost the first half; the turn state machine; targeting words by how they look |
+| — | `talk-and-edit/phase-06-voice-disconnect.md` | Stopping voice mid-connect left the mic live behind an "off" button; session token, Stop link, Esc |
 | 16 | `audits/16-editor-ui-critique.md` | Editor UI critique + the redesign it drove (P3) | Any editor chrome/layout/colour work. Read §1 first: the timeline was a picture of a video editor we are not building, and most of the ugliness was downstream of that. |
 | 15 | `audits/15-caption-style-panel-and-editor-ui.md` | Caption style panel, the 4 measured presets, **schema v2**, editor UI/theme (P3) | Anything touching `Style`, `Preset`, the style resolver, the inspector panel, style writes, or the editor's look. **Read before any `Style`/`PresetId` change** — v2 renamed two fields and one preset id. |
 

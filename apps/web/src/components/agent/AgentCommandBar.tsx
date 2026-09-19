@@ -29,6 +29,8 @@ interface AgentCommandBarProps {
   /** Live, not-yet-final speech. Shown, never submitted — an interim guess is not a command. */
   interimTranscript: string | null
   onToggleMic: () => void
+  /** Ends the voice session. Offered as text too, not only as the mic button's second meaning. */
+  onStopMic: () => void
   onSubmitCommand: (command: string) => void
   onCancel: () => void
 }
@@ -41,6 +43,7 @@ export function AgentCommandBar({
   pendingCommand,
   interimTranscript,
   onToggleMic,
+  onStopMic,
   onSubmitCommand,
   onCancel,
 }: AgentCommandBarProps) {
@@ -69,12 +72,19 @@ export function AgentCommandBar({
     setShowAll(false)
   }
 
+  // Whether there is a voice session to end — computed apart from `status`, because the status
+  // line shows the agent's work or the interim transcript while the mic is still open, and the
+  // way out must not disappear exactly when someone is talking or waiting.
+  const micOn = micStatus === 'listening' || micStatus === 'processing' || micStatus === 'connecting'
+
   const status = busy
     ? { text: pendingCommand ?? 'Working…', tone: 'text-muted-foreground' as const }
     : interimTranscript
       ? { text: interimTranscript, tone: 'text-muted-foreground/70' as const }
-      : micStatus === 'listening'
+      : micStatus === 'listening' || micStatus === 'processing'
         ? { text: 'Listening…', tone: 'text-primary' as const }
+        : micStatus === 'connecting'
+          ? { text: 'Connecting the microphone…', tone: 'text-muted-foreground' as const }
         : micStatus === 'denied'
           ? {
               text: 'Microphone blocked. Allow it in your browser to use voice.',
@@ -165,10 +175,21 @@ export function AgentCommandBar({
 
         {/* One line that is either what we are hearing or what we are doing — never both, and
             never a fabricated "thinking" message when nothing is running. */}
-        {status ? (
-          <p className={cn('truncate px-1 text-xs', status.tone)} aria-live="polite">
-            {status.text}
-          </p>
+        {status || micOn ? (
+          <div className="flex items-center gap-2 px-1">
+            <p className={cn('min-w-0 flex-1 truncate text-xs', status?.tone)} aria-live="polite">
+              {status?.text ?? 'Listening…'}
+            </p>
+            {micOn && (
+              <button
+                type="button"
+                onClick={onStopMic}
+                className="shrink-0 rounded-md border border-border/70 px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+              >
+                Stop listening <span className="text-muted-foreground/60">· Esc</span>
+              </button>
+            )}
+          </div>
         ) : (
           /* Three chips inline — the bar is the headline control and must stay one line tall.
              The other eight (including the refusal) are one click away in a list that closes as

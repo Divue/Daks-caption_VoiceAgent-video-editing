@@ -52,7 +52,7 @@ const BRAND_RING = Array.from({ length: 10 }, (_, i) => {
   return { cx: 12 + Math.cos(angle) * 9, cy: 12 + Math.sin(angle) * 9, bright: i % 3 === 0 };
 });
 
-function BrandMark() {
+export function BrandMark() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" aria-hidden="true">
       {BRAND_RING.map((p, i) => (

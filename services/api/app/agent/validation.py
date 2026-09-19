@@ -17,6 +17,7 @@ from app.schema import Project
 
 from .contracts import (
     AddOverlayAction,
+    SetLayersAction,
     AgentPatch,
     SetPresetAction,
     SetPresetOverrideAction,
@@ -92,6 +93,14 @@ def apply_patch(project: Project, patch: AgentPatch) -> Project:
                 data["presetOverride"] = merged
             else:
                 data.pop("presetOverride", None)
+
+    elif isinstance(patch, SetLayersAction):
+        # Whole-list replace, matching store/projects.patch_project and the reducer: [] removes the
+        # key so an absent list and an empty one stay the same thing.
+        if patch.layers:
+            data["layers"] = [item.model_dump(mode="json", exclude_none=True) for item in patch.layers]
+        else:
+            data.pop("layers", None)
 
     elif isinstance(patch, AddOverlayAction):
         data["overlays"].append(patch.overlay.model_dump(mode="json"))

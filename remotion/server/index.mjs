@@ -64,7 +64,11 @@ async function readJson(req) {
 }
 
 function validate(body) {
-  const { project, videoUrl, fps } = body ?? {}
+  const { project, videoUrl, fps, mediaUrls } = body ?? {}
+  if (mediaUrls !== undefined) {
+    if (!mediaUrls || typeof mediaUrls !== 'object' || Array.isArray(mediaUrls)) return 'mediaUrls must be an object of mediaId -> URL'
+    for (const url of Object.values(mediaUrls)) if (typeof url !== 'string' || !/^https?:\/\//.test(url)) return 'every media URL must be http(s)'
+  }
   if (!project || typeof project !== 'object' || !Array.isArray(project.words)) return 'project must be a Project object with words'
   if (![project.width, project.height, project.durationMs].every((n) => Number.isFinite(n) && n > 0)) return 'project needs positive width, height and durationMs'
   let url
@@ -111,7 +115,7 @@ async function runOne(r) {
     cancel()
   }, MAX_RENDER_MS)
   try {
-    const inputProps = { project: r.project, videoUrl: r.videoUrl, fps: r.fps }
+    const inputProps = { project: r.project, videoUrl: r.videoUrl, fps: r.fps, mediaUrls: r.mediaUrls ?? {} }
     const composition = await selectComposition({ serveUrl, id: 'CaptionVideo', inputProps, browserExecutable: BROWSER })
     const output = path.join(OUT_DIR, `${r.id}.mp4`)
     await renderMedia({
@@ -198,7 +202,7 @@ const server = http.createServer(async (req, res) => {
       const problem = validate(body)
       if (problem) return send(res, 400, { error: 'invalid_request', detail: problem })
       const id = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
-      const r = { id, projectId: typeof body.projectId === 'string' ? body.projectId : null, state: 'queued', progress: 0, createdAt: Date.now(), project: body.project, videoUrl: body.videoUrl, fps: body.fps ?? 30 }
+      const r = { id, projectId: typeof body.projectId === 'string' ? body.projectId : null, state: 'queued', progress: 0, createdAt: Date.now(), project: body.project, videoUrl: body.videoUrl, fps: body.fps ?? 30, mediaUrls: body.mediaUrls ?? {} }
       renders.set(id, r)
       queue.push(r)
       void pump()

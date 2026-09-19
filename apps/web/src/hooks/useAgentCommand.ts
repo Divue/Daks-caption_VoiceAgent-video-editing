@@ -88,8 +88,8 @@ export function useAgentCommand(
   /** Whether the video is playing right now — read at send time, not captured at render. */
   isPlaying?: () => boolean,
 ) {
-  const { project, dispatch } = useProject()
-  const { applyAgentPatches } = useWordPatch()
+  const { project } = useProject()
+  const { applyAgentPatches, undo, redo } = useWordPatch()
   // The resolved preset — base + any stored override — so the agent sees the look the user is
   // actually staring at, not the preset id alone.
   const { preset } = usePresetOverride()
@@ -199,12 +199,12 @@ export function useAgentCommand(
       // the in-flight one land anyway: the opposite of both things the user wanted.
       if (UNDO_PHRASES.test(said)) {
         if (cancelRequesting('Cancelled — nothing was changed')) return
-        dispatch({ type: 'UNDO' })
+        undo()
         addEntry('Undid the last change', 'ok')
         return
       }
       if (REDO_PHRASES.test(said)) {
-        dispatch({ type: 'REDO' })
+        redo()
         addEntry('Redid the last change', 'ok')
         return
       }
@@ -394,7 +394,7 @@ export function useAgentCommand(
         }
       }
     },
-    [addEntry, updateEntry, applyAgentPatches, dispatch, onStopListening, onTransport, isPlaying, cancelRequesting, settle],
+    [addEntry, updateEntry, applyAgentPatches, undo, redo, onStopListening, onTransport, isPlaying, cancelRequesting, settle],
   )
 
   /** Drop a pending question — the user moved on rather than answering. */

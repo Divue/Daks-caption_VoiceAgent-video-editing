@@ -17,6 +17,10 @@ interface VideoStageProps {
    * point — replacing our CaptionRenderer with Remotion's <Player> is one JSX element.
    */
   captionLayer?: (frameWidth: number) => ReactNode
+  /** Media layers, drawn OVER the video and UNDER the captions. Shown even with captions off. */
+  mediaLayer?: (frameWidth: number, frameHeight: number) => ReactNode
+  /** Selection handles for the media layers, drawn over EVERYTHING so they can be grabbed. */
+  editLayer?: (frameWidth: number, frameHeight: number) => ReactNode
   /**
    * A fresh link to the same file. Presigned URLs expire after an hour; without this an editor
    * left open simply dies with a "reload the project" message. Resolves null when unavailable.
@@ -31,7 +35,7 @@ const FAILED = "Couldn't load this video."
  * Owns the ONE <video> element in the app and hands it to the playback clock.
  * Everything on screen here is real: real frames, real transport, real duration.
  */
-export function VideoStage({ src, width, height, captionLayer, getFreshSrc }: VideoStageProps) {
+export function VideoStage({ src, width, height, captionLayer, mediaLayer, editLayer, getFreshSrc }: VideoStageProps) {
   const { attachVideo, ready, buffering, isPlaying, playError, timeMs } = usePlayback()
   const [captionsEnabled, setCaptionsEnabled] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -211,7 +215,9 @@ export function VideoStage({ src, width, height, captionLayer, getFreshSrc }: Vi
             </div>
           )}
 
+          {frameWidth > 0 && mediaLayer?.(frameWidth, (frameWidth * height) / width)}
           {captionsEnabled && frameWidth > 0 && captionLayer?.(frameWidth)}
+          {frameWidth > 0 && editLayer?.(frameWidth, (frameWidth * height) / width)}
 
           {/* Loading: a frame that is not there yet must not look like a broken one. */}
           {loading && (

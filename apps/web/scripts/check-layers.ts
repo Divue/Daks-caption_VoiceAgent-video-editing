@@ -14,6 +14,7 @@ import {
   trimItemStart,
 } from '../src/lib/layers'
 import { overrideDelta } from '../src/lib/override-delta'
+import { diffProjects } from '../src/lib/project-diff'
 import { applyAgentPatch, createInitialState, projectReducer } from '../src/state/project-reducer'
 
 const failures: string[] = []
@@ -94,6 +95,30 @@ check('back to the preset is a whole-object null', overrideDelta({ wordsPerLine:
 const delta = overrideDelta({ wordsPerLine: 2, reveal: 'dim' }, { reveal: 'none' }) as Record<string, unknown>
 check('a key the turn dropped is sent as null, so the server removes it too', delta.wordsPerLine === null && delta.reveal === 'none')
 check('an unchanged override round-trips', JSON.stringify(overrideDelta({ wordsPerLine: 3 }, { wordsPerLine: 3 })) === '{"wordsPerLine":3}')
+
+console.log('\nundo that SAVES — what the server needs to hold the document undo moved to')
+{
+  const a = { ...fixture, layers: [base] } as Project
+  const w0 = a.words[0]
+  const b: Project = {
+    ...a,
+    presetId: 'chamak',
+    presetOverride: { wordsPerLine: 2 },
+    layers: [...halves!],
+    words: a.words.map((w, i) => (i === 0 ? { ...w, text: 'EDITED', style: { color: '#FF0000', fontSize: 90 } } : w)),
+  }
+  const forward = diffProjects(a, b)
+  check('an edit is found as exactly the fields that changed', forward.words.length === 1 && forward.words[0].text === 'EDITED' && forward.words[0].startMs === undefined)
+  check('project fields and the whole layer list come along', forward.project.presetId === 'chamak' && forward.project.layers?.length === 2 && JSON.stringify(forward.project.presetOverride) === '{"wordsPerLine":2}')
+  const back = diffProjects(b, a)
+  check('UNDO sends the old text back', back.words[0].text === w0.text)
+  check('UNDO removes style keys the word did not have, as explicit nulls', back.words[0].style?.color === null && back.words[0].style?.fontSize === null)
+  check('UNDO clears an override that did not exist before', back.project.presetOverride === null)
+  check('UNDO restores the layers exactly', JSON.stringify(back.project.layers) === JSON.stringify([base]))
+  check('two identical documents need no writes at all', diffProjects(a, a).words.length === 0 && Object.keys(diffProjects(a, a).project).length === 0)
+  const noLayers = diffProjects(b, fixture as Project)
+  check('undoing the first layer ever added sends an empty list, which removes them', JSON.stringify(noLayers.project.layers) === '[]')
+}
 
 console.log(failures.length ? `\n${failures.length} check(s) FAILED` : '\nAll checks passed.')
 process.exit(failures.length ? 1 : 0)

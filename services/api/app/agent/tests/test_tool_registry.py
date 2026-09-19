@@ -177,6 +177,9 @@ EXPECTED_ALL_TOOLS = {
     "apply_preset", "set_settings", "set_preset_override", "reset_styling",
     # vision
     "analyze_frame",
+    # media layers — images and clips over the video
+    "get_layers", "update_layer_items", "retime_layer_item", "split_layer_item",
+    "set_layer_track", "duplicate_layer_item", "remove_layer_items",
     # registered but DISABLED — nothing renders an overlay, so it is never offered
     "add_overlay",
 }

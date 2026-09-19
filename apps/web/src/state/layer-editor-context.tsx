@@ -30,8 +30,8 @@ interface LayerEditorValue {
   splitAtPlayhead: () => string | null
   remove: (id: string) => void
   duplicate: (id: string) => void
-  /** Upload a file and place it at the playhead. */
-  addFile: (file: File) => Promise<void>
+  /** Upload a file and place it at the playhead. Resolves to the new item's id, or null. */
+  addFile: (file: File) => Promise<string | null>
   uploading: { name: string; pct: number } | null
   error: string | null
   clearError: () => void
@@ -118,15 +118,15 @@ export function LayerEditorProvider({ children }: { children: ReactNode }) {
       setError(null)
       if (!projectId) {
         setError('Media can only be added to a saved project — upload a video first.')
-        return
+        return null
       }
       if (!(LAYER_MEDIA_TYPES as readonly string[]).includes(file.type)) {
         setError(`"${file.name}" isn't a supported image or video (PNG, JPEG, WebP, GIF, MP4, MOV, WebM).`)
-        return
+        return null
       }
       if (layersRef.current.length >= MAX_LAYER_ITEMS) {
         setError(`A project can hold ${MAX_LAYER_ITEMS} layer items.`)
-        return
+        return null
       }
       setUploading({ name: file.name, pct: 0 })
       try {
@@ -142,8 +142,10 @@ export function LayerEditorProvider({ children }: { children: ReactNode }) {
         )
         commit([...layersRef.current, item])
         setSelectedLayerId(item.id)
+        return item.id
       } catch (cause) {
         setError(isApiError(cause) ? describeError(cause) : cause instanceof Error ? cause.message : String(cause))
+        return null
       } finally {
         setUploading(null)
       }

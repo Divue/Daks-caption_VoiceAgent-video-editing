@@ -14,7 +14,7 @@ from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, Field, SerializeAsAny, field_serializer, field_validator, model_serializer
 
-from app.schema import Overlay, PresetId, PresetOverride, Signals, StylePatch, Project
+from app.schema import LayerItem, Overlay, PresetId, PresetOverride, Signals, StylePatch, Project
 
 # The sentinel a patch carries for "remove this key", for fields whose real
 # type has no spare value to mean it (`single: bool | None`). `emoji` uses
@@ -222,12 +222,22 @@ class AddOverlayAction(BaseModel):
 # ADD_OVERLAY stays in the union (the shape is still valid and
 # validation.py still applies it) even though `add_overlay` is no longer
 # offered to the model — see tools/project_tools.py for why.
+class SetLayersAction(BaseModel):
+    """Mirrors apps/web's `{ type: 'SET_LAYERS', layers }` action: the media layers as the whole
+    list they should now be. A split or a delete has no clean per-item expression, and the list is
+    small (≤ MAX_LAYER_ITEMS), so every layer tool returns the finished list. `[]` removes them."""
+
+    type: Literal["SET_LAYERS"] = "SET_LAYERS"
+    layers: list[LayerItem]
+
+
 AgentPatch = Union[
     UpdateWordAction,
     SetPresetAction,
     SetSettingsAction,
     SetPresetOverrideAction,
     AddOverlayAction,
+    SetLayersAction,
 ]
 DiscriminatedAgentPatch = Annotated[AgentPatch, Field(discriminator="type")]
 

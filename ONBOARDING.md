@@ -71,18 +71,18 @@ never commit them, never paste them in chat.
 ## 2. Check it actually works
 
 ```bash
-# The agent's own test suite (plain check() scripts, not pytest) — expect 324 checks
+# The agent's own test suite (plain check() scripts, not pytest)
 for t in test_contracts test_tool_registry test_context_tools test_mutation_tools test_word_tools \
          test_vision_tools test_bedrock_client test_tool_config test_planner test_voice test_router \
-         test_livekit_token; do
+         test_livekit_token test_layer_tools; do
   docker compose exec -T api python -m app.agent.tests.$t | tail -1
 done
 
-# The API's pytest suite — expect 95 passed
+# The API's pytest suite — expect 128 passed
 docker compose exec api python -m pytest tests/ -q -p no:warnings
 
-# The editor — expect "All checks passed." twice, then a clean build
-cd apps/web && npx tsc -b && npm run check:agent && npm run check:captions && npm run build
+# The editor — expect "All checks passed." three times, then a clean build
+cd apps/web && npx tsc -b && npm run check:agent && npm run check:captions && npm run check:layers && npm run build
 
 # The agent against REAL Bedrock, graded easy → hard (costs real API calls)
 docker compose exec api python scripts/agent_demo.py --list          # free, prints the catalogue
@@ -135,6 +135,7 @@ rather than rediscovering it.
 | **Agent history (P4's build log)** | `.claude/audits/ai-agent/phase-01` → `phase-08`. Read `phase-05-vision.md`'s correction banner first — its original conclusion is out of date. |
 | **The editor UI** | audits `00`, `09`, `15`, `16` (the design rules: orange has a budget, no fake features), `07` (undo), `13` (why every write goes through one queue) |
 | **Pipeline / API** | audits `11` (speech-to-text + prosody), `12` (persistence and the write contract), and `services/api/README.md` (every endpoint) |
+| **Media layers** (images/clips over the video) | `LAYERS.md` — the model, the workflow, the agent's tools — then `.claude/audits/layers/phase-01-media-layers.md`. The arithmetic lives only in `apps/web/src/lib/layers.ts` and `services/api/app/agent/tools/layer_tools.py`; change both together. |
 | **Export / rendering** | `.claude/audits/export/phase-01-containerised-render.md`, then `remotion/README.md`. `DEPLOYING-EXPORT.md` for the licence and the AWS options. |
 | **Deploying** | `DEPLOYING-EXPORT.md` first (App Runner is closed to new customers — that changes the API's target too), then section 4 below, `services/api/Dockerfile`, `services/voice-agent/README.md` |
 

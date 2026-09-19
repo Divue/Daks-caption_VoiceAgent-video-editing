@@ -4,6 +4,7 @@ import type { LayerItem, PresetId, PresetOverride, Word } from '@captions/shared
 import { getProject, isApiError, patchProject, patchWord, patchWordsBulk } from '@/lib/api'
 import type { ApiError, BulkWordPatch, WordPatch } from '@/lib/api'
 import { overrideDelta } from '@/lib/override-delta'
+import { diffProjects } from '@/lib/project-diff'
 import { applyAgentPatch } from '@/state/project-reducer'
 import type { AgentPatch } from '@/state/project-reducer'
 import type { StyleChange } from '@/lib/style-change'
@@ -62,9 +63,16 @@ export function useWordPatchState(): PatchState & {
   patchStyle: (wordIds: string[], change: StyleChange) => void
   applyAgentPatches: (patches: AgentPatch[]) => Promise<AgentApplyResult>
   patchProjectFields: (patch: ProjectFieldPatch) => Promise<string | null>
+  /** Step back / forward through history AND save the result. Use these, never a raw UNDO. */
+  undo: (steps?: number) => void
+  redo: (steps?: number) => void
   clearError: () => void
 } {
-  const { project, dispatch } = useProject()
+  const { project, dispatch, past, future } = useProject()
+  const historyRef = useRef({ past, future })
+  useEffect(() => {
+    historyRef.current = { past, future }
+  }, [past, future])
   // Read at write time: an agent turn diffs the override it produced against the one it started
   // from, and that has to be the document as it stood a moment ago, not as of the last render.
   const projectRef = useRef(project)
@@ -354,6 +362,45 @@ export function useWordPatchState(): PatchState & {
   )
 
   /**
+   * Undo / redo that SAVE. The reducer moves between two whole documents; this also sends the
+   * server whatever it takes to hold the one we moved to (`diffProjects`), on the same queue as
+   * every other write. Before this, Ctrl+Z changed only the screen — the undone change survived on
+   * the server, came back on reload, and was in every export.
+   *
+   * `steps` exists for the agent panel's "Undo that" on a turn that took two history entries.
+   */
+  const stepHistory = useCallback(
+    (direction: 'undo' | 'redo', steps = 1) => {
+      const { past: back, future: ahead } = historyRef.current
+      const available = direction === 'undo' ? back.length : ahead.length
+      const count = Math.min(steps, available)
+      if (count === 0) return
+      const before = projectRef.current
+      const after = direction === 'undo' ? back[back.length - count] : ahead[count - 1]
+      for (let i = 0; i < count; i += 1) dispatch({ type: direction === 'undo' ? 'UNDO' : 'REDO' })
+      setError(null)
+      if (!projectId) return
+
+      const { words, project: fields } = diffProjects(before, after)
+      if (words.length === 0 && Object.keys(fields).length === 0) return
+      enqueue(async () => {
+        if (words.length > 0) {
+          const { version: next } = await patchWordsBulk(projectId, words, versionRef.current, controllerRef.current?.signal)
+          versionRef.current = next
+        }
+        if (Object.keys(fields).length > 0) {
+          const { version: next } = await patchProject(projectId, fields, versionRef.current, controllerRef.current?.signal)
+          versionRef.current = next
+        }
+        setVersion(versionRef.current)
+      })
+    },
+    [projectId, dispatch, setVersion, enqueue],
+  )
+  const undo = useCallback((steps?: number) => stepHistory('undo', steps), [stepHistory])
+  const redo = useCallback((steps?: number) => stepHistory('redo', steps), [stepHistory])
+
+  /**
    * Project-level fields (preset, settings) on the SAME queue as word writes.
    *
    * These used to be written by PresetPicker with its own `patchProject` call, which is a second
@@ -388,7 +435,7 @@ export function useWordPatchState(): PatchState & {
 
   const clearError = useCallback(() => setError(null), [])
 
-  return { saving, error, patch, patchWords, patchStyle, applyAgentPatches, patchProjectFields, clearError }
+  return { saving, error, patch, patchWords, patchStyle, applyAgentPatches, patchProjectFields, undo, redo, clearError }
 }
 
 /**

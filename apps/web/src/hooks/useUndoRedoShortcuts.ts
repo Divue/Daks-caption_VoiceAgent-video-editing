@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useProject } from '@/state/project-context'
+import { useWordPatch } from '@/state/word-patch-context'
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -8,7 +8,8 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 /** Wires Ctrl/Cmd+Z (undo) and Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y (redo) to the project history. */
 export function useUndoRedoShortcuts() {
-  const { dispatch } = useProject()
+  // The saving undo/redo — a raw UNDO dispatch changes only the screen (see useWordPatch).
+  const { undo, redo } = useWordPatch()
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -21,14 +22,14 @@ export function useUndoRedoShortcuts() {
 
       if (isUndo) {
         event.preventDefault()
-        dispatch({ type: 'UNDO' })
+        undo()
       } else if (isRedo) {
         event.preventDefault()
-        dispatch({ type: 'REDO' })
+        redo()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [dispatch])
+  }, [undo, redo])
 }

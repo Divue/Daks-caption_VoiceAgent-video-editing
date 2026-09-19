@@ -92,12 +92,34 @@ def load_named_project(name: str) -> Project:
     here the same clip is mounted in the container, so the demo uses the local file and the
     vision prompts exercise real ffmpeg and real Rekognition rather than being skipped.
     """
+    with_layers = name.endswith("+layers")
+    name = name.removesuffix("+layers")
     path = FIXTURE.parent / f"{name}-project.json"
     data = json.loads(path.read_text(encoding="utf-8"))
+    if with_layers:
+        data["layers"] = DEMO_LAYERS
     clip = CLIPS / str(data.get("videoUrl", ""))
     if clip.is_file():
         data["videoUrl"] = str(clip)
     return Project.model_validate(data)
+
+
+# Two media layers for the layer prompts: a logo over the opening, and a B-roll clip that overlaps it.
+# The ids and media ids are the shapes the editor mints; the agent works on the document and never
+# fetches the files, so nothing needs to exist in S3.
+DEMO_LAYERS = [
+    {"id": "L1", "track": 1, "kind": "image", "mediaId": "aaaaaaaaaaaa.png", "name": "logo.png",
+     "startMs": 0, "endMs": 8000, "trimStartMs": 0, "x": 50, "y": 40, "width": 30, "aspect": 2,
+     "rotation": 0, "opacity": 1, "muted": True},
+    {"id": "L2", "track": 1, "kind": "video", "mediaId": "bbbbbbbbbbbb.mp4", "name": "broll.mp4",
+     "startMs": 4000, "endMs": 9000, "trimStartMs": 0, "sourceDurationMs": 12000, "x": 50, "y": 60,
+     "width": 45, "aspect": 16 / 9, "rotation": 0, "opacity": 1, "muted": True},
+]
+
+
+def layers_after(response: AgentCommandResponse) -> list:
+    found = patches_of(response, "SET_LAYERS")
+    return list(found[-1].layers) if found else []
 
 
 # How hard the command is for the AGENT, not for the user to say. The order is the demo
@@ -158,13 +180,20 @@ def addressed_red(response: AgentCommandResponse) -> bool:
 PROMPTS: list[Prompt] = [
     # ---- easy -----------------------------------------------------------------
     Prompt(
-        1, "easy", "Restyle everything",
+        1, "easy", "Recolour the captions",
         "make all the captions yellow",
-        "The simplest possible win, and it proves the plural tool surface: every word changes "
-        "in ONE tool call and ONE bulk write, not N round trips.",
+        "ONE change to the preset's BASE face — not a colour stamped onto every word. The "
+        "emphasised and angry words keep their own colours on top, which is the hierarchy the "
+        "preset exists to draw. This prompt used to require stamping all words, and that is "
+        "exactly what erased the emphasis and tone colours (audit talk-and-edit/phase-09).",
         expect_ok(lambda r, p: (
-            len(touched_words(r)) == len(p.words),
-            f"{len(touched_words(r))} of {len(p.words)} words restyled",
+            any(
+                x.override is not None and x.override.base is not None and x.override.base.color
+                for x in patches_of(r, "SET_PRESET_OVERRIDE")
+            )
+            and not any(x.patch.style is not None and x.patch.style.color for x in patches_of(r, "UPDATE_WORD")),
+            f"base colour set: {[x.override.base.color for x in patches_of(r, 'SET_PRESET_OVERRIDE') if x.override and x.override.base]}, "
+            f"words stamped: {sum(1 for x in patches_of(r, 'UPDATE_WORD') if x.patch.style is not None and x.patch.style.color)}",
         )),
     ),
     Prompt(
@@ -253,8 +282,8 @@ PROMPTS: list[Prompt] = [
         "shape of the output. Asked for TWO deliberately: Rangmanch is already three, and now "
         "that the agent can see the active preset it correctly answers 'already done' for three.",
         expect_ok(lambda r, p: (
-            any(x.override.wordsPerLine == 2 for x in patches_of(r, "SET_PRESET_OVERRIDE")),
-            f"overrides: {[x.override.model_dump(exclude_none=True) for x in patches_of(r, 'SET_PRESET_OVERRIDE')]}",
+            any((x.override is not None and x.override.wordsPerLine == 2) for x in patches_of(r, "SET_PRESET_OVERRIDE")),
+            f"overrides: {[(x.override.model_dump(exclude_none=True) if x.override else None) for x in patches_of(r, 'SET_PRESET_OVERRIDE')]}",
         )),
     ),
 
@@ -287,9 +316,9 @@ PROMPTS: list[Prompt] = [
         "whenever a sentence is short. It must also route this through baseFontSize, not a "
         "per-word size, or the emphasised words come out smaller than they started.",
         expect_ok(lambda r, p: (
-            any(x.override.baseFontSize for x in patches_of(r, "SET_PRESET_OVERRIDE"))
+            any(x.override is not None and x.override.baseFontSize for x in patches_of(r, "SET_PRESET_OVERRIDE"))
             and not patches_of(r, "UPDATE_WORD"),
-            f"overrides={[x.override.model_dump(exclude_none=True) for x in patches_of(r, 'SET_PRESET_OVERRIDE')]}, "
+            f"overrides={[(x.override.model_dump(exclude_none=True) if x.override else None) for x in patches_of(r, 'SET_PRESET_OVERRIDE')]}, "
             f"per-word={len(patches_of(r, 'UPDATE_WORD'))} (per-word would shrink the big words)",
         )),
         project="normal",
@@ -377,11 +406,11 @@ PROMPTS: list[Prompt] = [
                 and touched_words(r) <= {w.id for w in p.words if w.emotion == "angry"}
             )
             or any(
-                x.override.emotion and "angry" in x.override.emotion
+                x.override is not None and x.override.emotion and "angry" in x.override.emotion
                 for x in patches_of(r, "SET_PRESET_OVERRIDE")
             ),
             f"touched {sorted(touched_words(r))}; overrides="
-            f"{[x.override.model_dump(exclude_none=True) for x in patches_of(r, 'SET_PRESET_OVERRIDE')]}; "
+            f"{[x.override.model_dump(exclude_none=True) if x.override else None for x in patches_of(r, 'SET_PRESET_OVERRIDE')]}; "
             f"angry set is {sorted(w.id for w in p.words if w.emotion == 'angry')}",
         )),
         project="normal",
@@ -396,6 +425,47 @@ PROMPTS: list[Prompt] = [
             r.status == "unsupported",
             f"status={r.status} (want unsupported), patches={len(r.patches)}",
         ),
+    ),
+
+    # ---- media layers: images and clips over the video -----------------------------------------
+    Prompt(
+        18, "average", "Place the logo",
+        "make the logo bigger and put it in the top right corner",
+        "Picks the item by NAME ('the logo' is logo.png), then one call moves it to the named "
+        "anchor and scales it. The clip under it must not move.",
+        expect_ok(lambda r, p: (
+            any(i.id == "L1" and (i.x, i.y) == (80, 15) and i.width > 30 for i in layers_after(r))
+            and any(i.id == "L2" and (i.x, i.y, i.width) == (50, 60, 45) for i in layers_after(r)),
+            f"after: {[(i.id, i.x, i.y, round(i.width, 1)) for i in layers_after(r)]}",
+        )),
+        project="normal+layers",
+    ),
+    Prompt(
+        19, "hard", "Cut and restack",
+        "cut the b-roll at 6 seconds and bring the second half in front of the logo",
+        "Two intents that depend on each other: the cut makes a NEW item, and the restack has to "
+        "act on that new item, not on the original. Both halves share the source — the second "
+        "must open 2 s into the clip, or the footage jumps at the cut.",
+        expect_ok(lambda r, p: (
+            any(i.mediaId == "bbbbbbbbbbbb.mp4" and i.endMs == 6000 and i.track == 1 for i in layers_after(r))
+            and any(
+                i.mediaId == "bbbbbbbbbbbb.mp4" and i.startMs == 6000 and i.track == 2 and i.trimStartMs == 2000
+                for i in layers_after(r)
+            ),
+            f"after: {[(i.id, i.track, i.startMs, i.endMs, i.trimStartMs) for i in layers_after(r)]}",
+        )),
+        project="normal+layers",
+    ),
+    Prompt(
+        20, "average", "Knows it cannot invent media",
+        "add a picture of a cat in the corner",
+        "A new image needs a file only the user has. The agent must say so and point at Add "
+        "media — not place something it made up, and not move the logo instead.",
+        lambda r, p: (
+            r.status == "unsupported" and not r.patches,
+            f"status={r.status} (want unsupported), patches={len(r.patches)}",
+        ),
+        project="normal+layers",
     ),
 ]
 

@@ -116,13 +116,26 @@ def download_name(project_id: str) -> str:
     return f"{project_id}-captioned.mp4"
 
 
+def _media_urls(project_id: str, record) -> dict[str, str]:
+    """A fresh presigned GET for every file the project's layers use, keyed by mediaId.
+
+    Minted here, like `videoUrl`, because the render server has no AWS credentials and a URL stored in
+    the project would have expired. The ids already passed schema.MEDIA_ID_PATTERN when the project
+    was validated, so each key built from one is a name under this project's prefix, never a path.
+    """
+    layers = (record.project.layers if record.project else None) or []
+    return {item.mediaId: s3.presigned_get(s3.media_key(project_id, item.mediaId))
+            for item in layers}
+
+
 @router.post("", status_code=202)
 def start_render(project_id: str) -> dict:
     record = _require_ready(project_id)
     body = _project_body(record)  # the SAVED project, with a fresh presigned videoUrl
     video_url = body.get("videoUrl", "")
     response = _call("POST", "/renders", timeout=START_TIMEOUT_S, json={
-        "projectId": project_id, "project": body, "videoUrl": video_url, "fps": probe_fps(video_url)})
+        "projectId": project_id, "project": body, "videoUrl": video_url, "fps": probe_fps(video_url),
+        "mediaUrls": _media_urls(project_id, record)})
     if response.status_code == 400:
         raise HTTPException(422, {"error": "invalid_render_request", "detail": response.json().get("detail", "")})
     if not response.ok:

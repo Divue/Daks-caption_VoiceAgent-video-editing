@@ -66,6 +66,21 @@ def _error_log(message: str) -> AgentLogEntry:
     return AgentLogEntry(id=uuid.uuid4().hex, message=message, timestamp=int(time.time() * 1000))
 
 
+def _describe_failure(exc: Exception) -> str:
+    """What the user is told when the planner itself blew up.
+
+    A rate limit is the one failure that is both common and fixable by the user — Bedrock throttles
+    bursts of calls, and a demo is exactly a burst of calls. Measured: the 15th command in about a
+    minute came back `ThrottlingException` after botocore's 4 retries. "Failed unexpectedly" told the
+    user nothing and invited them to keep hammering it; this says to wait. Anything else stays
+    generic: its details are in the server log and are no use to a creator.
+    """
+    code = getattr(exc, "response", {}).get("Error", {}).get("Code", "") if hasattr(exc, "response") else ""
+    if code in {"ThrottlingException", "TooManyRequestsException", "ServiceQuotaExceededException"}:
+        return "The AI service is busy right now (rate limited). Wait a few seconds and say it again — nothing was changed."
+    return "The agent failed unexpectedly. Nothing was changed."
+
+
 @router.post("/command", response_model=AgentCommandResponse, response_model_exclude_none=True)
 def run_command(
     request: AgentCommandRequest,
@@ -82,9 +97,9 @@ def run_command(
     HTTP 500."""
     try:
         return run_agent_command(request, client=client)
-    except Exception:
+    except Exception as exc:
         logger.exception("unexpected error running agent command")
-        return AgentCommandResponse(status="error", patches=[], log=[_error_log("The agent failed unexpectedly.")])
+        return AgentCommandResponse(status="error", patches=[], log=[_error_log(_describe_failure(exc))])
 
 
 @router.post("/voice-command", response_model=AgentCommandResponse, response_model_exclude_none=True)
@@ -105,6 +120,6 @@ def run_voice_command(
             history=request.history,
             client=client,
         )
-    except Exception:
+    except Exception as exc:
         logger.exception("unexpected error running agent voice command")
-        return AgentCommandResponse(status="error", patches=[], log=[_error_log("The agent failed unexpectedly.")])
+        return AgentCommandResponse(status="error", patches=[], log=[_error_log(_describe_failure(exc))])

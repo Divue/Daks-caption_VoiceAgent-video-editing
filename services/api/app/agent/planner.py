@@ -17,10 +17,11 @@ module never constructs or mutates a Project itself. It only ever:
      returning anything
 
 `request.project` is never assigned to, mutated, or replaced anywhere in
-this module — every state change is computed by a tool handler against a
-plain read of `request.project`, and the only thing this module ever
-returns is a list of patches for the FRONTEND to apply through its own
-reducer (per the approved plan's stateless-agent architecture).
+this module. Each tool call runs against `working`: the request's project
+with every EARLIER tool call's patches of this turn applied (a fresh object
+each step), so a second tool sees what the first did. The only thing this
+module ever returns is a list of patches for the FRONTEND to apply through
+its own reducer (per the approved plan's stateless-agent architecture).
 """
 from __future__ import annotations
 
@@ -154,11 +155,24 @@ not name and to words that do not exist yet. \
 - "fewer words per line" / "three words at a time" -> set_preset_override's `wordsPerLine`. \
 - "reveal the words one at a time" -> set_preset_override's `reveal`.
 
+MEDIA LAYERS — IMAGES AND CLIPS OVER THE VIDEO. The user can place their own images and clips \
+(a logo, a reaction picture, a B-roll cut) on two layers above the video and below the captions. \
+You can move, resize, rotate, fade, mute, retime, trim, split, duplicate, restack and delete them \
+with the layer tools — call get_layers first and pick items by their NAME ("the logo" is the item \
+named logo.png) or by when they are on screen; never guess an id. If several items could be \
+meant and the choice matters, ask which. "Top right" and the other named spots are \
+update_layer_items' `position`. "Cut the clip at 5 seconds" is split_layer_item. "Show the logo \
+until 8 seconds" is retime_layer_item's `endMs`. "Put it in front" is track 2. You CANNOT add new \
+media — that needs a file only the user has: answer UNSUPPORTED and tell them to use Add media \
+(it lands at the playhead), after which you can place it. Layer items are the only thing that \
+can be cut or trimmed; the main video itself cannot.
+
 THINGS THIS PRODUCT CANNOT DO. Answer UNSUPPORTED for all of these rather than \
 approximating them with a tool that does something else: cutting, trimming or splitting \
-the video; transitions; zoom or spotlight effects; music or audio edits; background \
-removal; object tracking; rendering or exporting the video; overlay or free-floating text \
-boxes; and the few preset layers that still have nowhere to be stored — stretch tuning \
+the MAIN video (layer items are fine — see MEDIA LAYERS); adding new images or clips yourself; \
+transitions; zoom or spotlight effects; music or audio edits; background \
+removal; object tracking; rendering or exporting the video (the user has an Export button); \
+free-floating TEXT boxes (captions are the text); and the few preset layers that still have nowhere to be stored — stretch tuning \
 (how long a held word's repeats run), caption alignment and layout, the number of glow \
 layers, and how often the rhythm rule promotes a word to emphasis. Undo is the editor's, \
 not yours: if the user asks you to undo, tell them to press Ctrl+Z or use Undo that in \
@@ -451,6 +465,9 @@ def run_agent_command(
     messages: list[dict[str, Any]] = [{"role": "user", "content": command_blocks}]
 
     collected_patches: list[AgentPatch] = []
+    # The document as this turn has left it so far — see the tool loop. A new object each step;
+    # `request.project` itself is never modified.
+    working = request.project
     final_text = ""
     stopped_at_iteration_cap = False
 
@@ -478,9 +495,19 @@ def run_agent_command(
 
         tool_result_blocks = []
         for tool_use in tool_uses:
-            content, patches, log_message = _run_tool(tool_use["name"], tool_use.get("input"), request.project)
+            content, patches, log_message = _run_tool(tool_use["name"], tool_use.get("input"), working)
             log.append(_log(log_message))
             collected_patches.extend(patches)
+            # Every later tool in this turn must see what the earlier ones did. Handing each tool
+            # the turn's STARTING document was harmless for word edits, whose patches merge, and
+            # destructive for anything that returns a finished list: "cut the clip and move the
+            # second half" could not find the half it had just made, and "move the logo and delete
+            # the clip" would have had its second list silently put the logo back. A tool whose
+            # patch does not apply leaves `working` alone; the final validation below reports it.
+            if patches:
+                advanced, error = apply_patches(working, patches)
+                if error is None:
+                    working = advanced
             tool_result_blocks.append(
                 {
                     "toolResult": {

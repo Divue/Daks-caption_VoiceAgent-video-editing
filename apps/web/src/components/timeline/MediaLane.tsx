@@ -13,8 +13,8 @@ interface MediaLaneProps {
 /**
  * The video and audio lanes: one clip each, spanning the whole source.
  *
- * They are honest about being one clip — we do not cut, split or layer, so there is never more
- * than one, and the lane says where the media is rather than pretending to be an NLE track. The
+ * They are honest about being one clip — the MAIN video is never cut or split, so there is never
+ * more than one. Overlay media lives on its own lanes (`LayerLane`), which are real clip tracks. The
  * previous version was a flat coloured bar with a floating label; this one at least renders the
  * shape of the thing (a clip with ends) and stays quiet enough to sit under the captions without
  * competing with them.

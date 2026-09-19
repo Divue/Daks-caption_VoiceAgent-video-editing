@@ -1,7 +1,20 @@
-import { Fragment, useState } from "react";
-import { VoiceSphere, SphereCornerCaptions } from "../components/VoiceSphere";
+import { Fragment, useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
+import { VoiceSphere } from "../components/VoiceSphere";
 import { LandingNavbar } from "../components/landing/LandingNavbar";
 import { LandingBackground } from "../components/landing/LandingBackground";
+import { CaptionShowcaseSection } from "../components/landing/CaptionShowcaseSection";
+import { ToneSection } from "../components/landing/ToneSection";
+import { SignalsSection } from "../components/landing/SignalsSection";
+import { TalkToEditSection } from "../components/landing/TalkToEditSection";
+import { HinglishSection } from "../components/landing/HinglishSection";
+import { StepsSection } from "../components/landing/StepsSection";
+import { ClosingSection } from "../components/landing/ClosingSection";
+import { LandingFooter } from "../components/landing/dark/LandingFooter";
+import { LandingScrollbar } from "../components/landing/LandingScrollbar";
+import { useScrollVar } from "../components/landing/caption-demo";
+import { useRoute } from "@/router";
+import { ArrowRightIcon } from "@/icons";
 
 // Two deliberate lines rather than one run-on sentence with an em dash: line
 // one is the primary statement, line two reads as its continuation/emphasis.
@@ -11,56 +24,33 @@ const HEADLINE_LINES = [
   ["Create,", "Caption,", "and", "Edit"],
   ["All", "With", "Your", "Voice"],
 ];
-const HEADLINE_STAGGER_BASE_MS = 220;
-const HEADLINE_STAGGER_STEP_MS = 45;
+const HEADLINE_STAGGER_BASE_MS = 250;
+const HEADLINE_STAGGER_STEP_MS = 75;
 
-interface HeroInfoItem {
-  n: string;
-  title: string;
-  description: string;
-  animate: string;
-  delay: number;
-}
+// The hero's old left-of-sphere info block, folded into one mono bullet row under the CTAs.
+const HERO_POINTS = ["Voice-first editing", "Tone-aware captions", "Hinglish-first", "Short-form ready"];
 
-// Left-of-sphere product info (see hero section below): each item uses a
-// distinct reveal direction per design spec, not one repeated fade, and the
-// delays start only once the headline/eyebrow have mostly settled.
-const HERO_INFO_ITEMS: HeroInfoItem[] = [
-  {
-    n: "01",
-    title: "Voice-First Editing",
-    description: "Control your edits naturally with your voice.",
-    animate: "animate-info-reveal-left",
-    delay: 640,
-  },
-  {
-    n: "02",
-    title: "Smart Captions",
-    description: "Create polished captions without manual editing.",
-    animate: "animate-info-reveal-up",
-    delay: 760,
-  },
-  {
-    n: "03",
-    title: "Short-Form Ready",
-    description: "Turn your ideas into content made for social media.",
-    animate: "animate-info-reveal-fade",
-    delay: 880,
-  },
+// Scroll split: as the hero scrolls away, line one slides off to the left and line two to the
+// right (driven by --hero-p, 0..1, from useScrollVar — no re-render per frame).
+const LINE_SPLIT: CSSProperties[] = [
+  { transform: "translate3d(calc(var(--hero-p, 0) * -24vw), 0, 0)", opacity: "calc(1 - var(--hero-p, 0) * 1.15)" },
+  { transform: "translate3d(calc(var(--hero-p, 0) * 24vw), 0, 0)", opacity: "calc(1 - var(--hero-p, 0) * 1.15)" },
 ];
 
 // Renders HEADLINE_LINES as two lines, each word individually staggered with
 // the existing word-reveal animation — the stagger index keeps counting up
 // across the line break so the reveal still reads as one continuous sweep.
 function HeroHeadline({ motionSafe }: { motionSafe: boolean }) {
-  let wordIndex = 0;
   return (
-    <h1 className="font-display text-heading-lg text-ink-primary sm:text-display-md">
+    <h1 className="font-display text-[clamp(1.7rem,7.4vw,2.6rem)] font-bold leading-[1.02] tracking-[-0.035em] text-ink-primary lg:text-[min(4.1vw,3.5rem)]">
       {HEADLINE_LINES.map((line, lineIdx) => (
-        <span key={lineIdx} className="block">
+        <span
+          key={lineIdx}
+          className={`block whitespace-nowrap will-change-transform ${lineIdx === 1 ? "text-signal" : ""}`}
+          style={motionSafe ? LINE_SPLIT[lineIdx] : undefined}
+        >
           {line.map((word, i) => {
-            const delay = HEADLINE_STAGGER_BASE_MS + wordIndex * HEADLINE_STAGGER_STEP_MS;
-            wordIndex += 1;
+            const delay = HEADLINE_STAGGER_BASE_MS + (lineIdx * HEADLINE_LINES[0].length + i) * HEADLINE_STAGGER_STEP_MS;
             return (
               // The separator space is a plain sibling text node, not part of
               // the inline-block span's own content — an inline-block box
@@ -68,12 +58,16 @@ function HeroHeadline({ motionSafe }: { motionSafe: boolean }) {
               // space placed inside it sits at that line's end and gets
               // collapsed away by ordinary CSS whitespace rules, silently
               // gluing every word together.
+              // Outer span is the mask (clips the word while it rises; the padding/negative margin
+              // keep descenders inside it), inner span is the word that rises and tips upright.
               <Fragment key={word}>
-                <span
-                  className={`inline-block ${motionSafe ? "animate-word-reveal" : ""}`}
-                  style={motionSafe ? { animationDelay: `${delay}ms` } : undefined}
-                >
-                  {word}
+                <span className="-mb-[0.14em] inline-block overflow-hidden pb-[0.14em] align-bottom">
+                  <span
+                    className={`inline-block origin-bottom-left ${motionSafe ? "animate-mask-up" : ""}`}
+                    style={motionSafe ? { animationDelay: `${delay}ms` } : undefined}
+                  >
+                    {word}
+                  </span>
                 </span>
                 {i < line.length - 1 ? " " : ""}
               </Fragment>
@@ -85,74 +79,171 @@ function HeroHeadline({ motionSafe }: { motionSafe: boolean }) {
   );
 }
 
-function HeroProductInfo({ motionSafe }: { motionSafe: boolean }) {
+function ScrollCue({ motionSafe }: { motionSafe: boolean }) {
   return (
-    <div className="absolute left-6 top-[46%] hidden w-40 -translate-y-1/2 flex-col gap-7 xl:left-8 xl:flex 2xl:left-16 2xl:w-56">
-      {HERO_INFO_ITEMS.map((item) => (
-        <div
-          key={item.n}
-          className={`group ${motionSafe ? item.animate : ""}`}
-          style={motionSafe ? { animationDelay: `${item.delay}ms` } : undefined}
-        >
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[11px] text-ink-tertiary transition-colors duration-200 group-hover:text-signal">
-              {item.n}
-            </span>
-            <span className="h-px w-4 bg-line-subtle transition-all duration-200 group-hover:w-6 group-hover:bg-signal/50" />
-          </div>
-          <p className="mt-2 text-body-sm font-medium uppercase leading-snug tracking-wide text-ink-secondary transition-colors duration-200 group-hover:text-ink-primary">
-            {item.title}
-          </p>
-          <p className="mt-1.5 text-body-sm leading-snug text-ink-tertiary transition-colors duration-200 group-hover:text-ink-secondary">
-            {item.description}
-          </p>
-        </div>
-      ))}
+    <div aria-hidden="true" className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 sm:block" style={{ opacity: "calc(1 - var(--hero-p, 0) * 4)" }}>
+      <div
+        className={`flex h-8 w-5 justify-center rounded-full border border-line-default pt-1.5 ${motionSafe ? "animate-text-materialize" : ""}`}
+        style={motionSafe ? { animationDelay: "1800ms" } : undefined}
+      >
+        <span className={`h-1.5 w-0.5 rounded-full bg-ink-secondary ${motionSafe ? "animate-scroll-wheel" : ""}`} />
+      </div>
     </div>
   );
 }
 
 export default function LandingPage() {
   const [motionSafe] = useState(() => !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  return (
-    <div className="min-h-screen bg-canvas text-ink-primary">
-      <LandingNavbar />
+  // Load intro (VoiceSphere's `intro`): only the background and the sphere show until it lands.
+  // The scroll reset runs here, during the first render, because the sphere measures its own
+  // position in a layout effect that fires before any effect of this component.
+  const [introDone, setIntroDone] = useState(() => {
+    if (!motionSafe) return true;
+    window.history.scrollRestoration = "manual";
+    window.scrollTo(0, 0);
+    // Scroll is locked for the whole intro (owner's call). Locked here, not in an effect, so the
+    // scrollbar is already gone when the sphere measures where it will land.
+    document.documentElement.style.overflow = "hidden";
+    return false;
+  });
+  // The page draws its own scrollbar (LandingScrollbar); the native one is hidden while the landing
+  // page is mounted so it can't pop in, and shift the layout, when the intro's lock lifts.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("landing-native-scrollbar-hidden");
+    return () => {
+      root.classList.remove("landing-native-scrollbar-hidden");
+      // The intro turned restoration off so every load starts at the top; hand it back so the
+      // editor's back/forward navigation restores scroll as normal.
+      window.history.scrollRestoration = "auto";
+    };
+  }, []);
+  // Keeps the lock in step with the intro, and never leaves it on when the page unmounts.
+  useEffect(() => {
+    document.documentElement.style.overflow = introDone ? "" : "hidden";
+    return () => {
+      document.documentElement.style.overflow = "";
+    };
+  }, [introDone]);
+  const { navigate } = useRoute();
+  const heroRef = useRef<HTMLElement>(null);
+  // 0 while the hero's top is at the top of the viewport, 1 once it has scrolled 60% of a screen.
+  useScrollVar(heroRef, "--hero-p", 0, -0.6, motionSafe);
 
-      {/* Landing centerpiece — the sphere is the entire visual content here, deliberately */}
-      <section className="relative flex min-h-[90vh] items-center justify-center overflow-hidden px-4 py-20 sm:px-8">
+  const reveal = (delay: number): { className: string; style?: CSSProperties } =>
+    motionSafe ? { className: "animate-rise", style: { animationDelay: `${delay}ms` } } : { className: "" };
+  // Everything under the headline eases out a little faster than the split lines.
+  const fadeOnScroll: CSSProperties = motionSafe ? { opacity: "calc(1 - var(--hero-p, 0) * 1.6)" } : {};
+
+  return (
+    <div id="top" className="min-h-screen overflow-x-clip bg-canvas text-ink-primary">
+      {introDone && <LandingNavbar />}
+      <LandingScrollbar visible={introDone} />
+
+      <section ref={heroRef} className="relative flex min-h-[100svh] items-center overflow-hidden px-4 pb-20 pt-28 sm:px-8 lg:pb-16 lg:pt-24">
         <LandingBackground motionSafe={motionSafe} />
-        {/* Atmospheric glow, behind the sphere: placed here (before the content
-            column below) purely by DOM order, so it paints underneath the
-            sphere/controls/text with no z-index needed. Sized/positioned off
-            the section itself rather than the sphere's own box, since the
-            sphere's rendered footprint includes its status text/mic button
-            below the stage — anchoring to that would pull the glow's visual
-            center lower than the sphere's actual optical center. */}
-        <div
-          aria-hidden="true"
-          className={`hero-glow pointer-events-none absolute left-1/2 top-[44%] aspect-[3/4] w-[85vw] max-w-[420px] -translate-x-1/2 -translate-y-1/2 opacity-50 sm:w-[65vw] sm:max-w-[600px] sm:opacity-75 xl:w-[720px] xl:opacity-100 ${motionSafe ? "animate-hero-glow-breathe" : ""}`}
-        />
-        <div className="relative mx-auto flex w-full max-w-[1200px] flex-col items-center justify-center">
-          <div className="mb-8 flex max-w-2xl flex-col items-center gap-3 text-center sm:mb-10">
-            <p
-              className={`font-mono text-[11px] uppercase tracking-widest text-ink-tertiary ${motionSafe ? "animate-eyebrow-reveal" : ""}`}
-              style={motionSafe ? { animationDelay: "120ms" } : undefined}
-            >
-              Voice-Powered Video Editing
-            </p>
-            <HeroHeadline motionSafe={motionSafe} />
-            <p
-              className={`text-body-sm text-ink-secondary sm:text-body-md ${motionSafe ? "animate-subtitle-reveal" : ""}`}
-              style={motionSafe ? { animationDelay: "640ms" } : undefined}
-            >
-              Turn your ideas into polished, share-ready short-form content.
-            </p>
+
+        <div className="relative mx-auto grid w-full max-w-[1200px] items-center gap-8 lg:grid-cols-[1.2fr_1fr] lg:gap-6">
+          {/* Holds its place during the intro (so the sphere's destination is final), and is
+              remounted when the intro ends so the reveal animations play then. */}
+          <div
+            key={introDone ? "copy" : "copy-waiting"}
+            className={`flex flex-col items-center text-center lg:items-start lg:text-left ${introDone ? "" : "invisible"}`}
+          >
+            {/* Wrapper carries the scroll fade: the reveal animation (fill: both) owns the pill's own opacity. */}
+            <div style={fadeOnScroll}>
+              <p
+                className={`inline-flex items-center gap-2 rounded-full border border-line-subtle bg-surface/80 px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest text-ink-secondary backdrop-blur-sm ${motionSafe ? "animate-rise" : ""}`}
+                style={motionSafe ? { animationDelay: "80ms" } : undefined}
+              >
+                <span className="relative flex h-2 w-2">
+                  {motionSafe && <span className="absolute inset-0 rounded-full bg-signal/60 animate-pulse-ring" />}
+                  <span className="relative h-2 w-2 rounded-full bg-signal" />
+                </span>
+                Voice-Powered Video Editing
+              </p>
+            </div>
+
+            <div className="mt-6">
+              <HeroHeadline motionSafe={motionSafe} />
+            </div>
+
+            <div style={fadeOnScroll} className="flex flex-col items-center lg:items-start">
+              <p
+                className={`mt-6 max-w-[34rem] text-body-md text-ink-secondary sm:text-body-lg ${reveal(950).className}`}
+                style={reveal(950).style}
+              >
+                Turn your ideas into polished, share-ready short-form content. Captions that catch how you said
+                it, in an editor you just talk to.
+              </p>
+
+              <div className={`mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start ${reveal(1100).className}`} style={reveal(1100).style}>
+                <button
+                  type="button"
+                  onClick={() => navigate("/editor")}
+                  className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-signal px-6 py-3 text-body-sm font-semibold text-canvas transition-all duration-200 ease-out-expo hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_10px_28px_-6px_rgba(255,107,74,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+                >
+                  {motionSafe && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/35 to-transparent animate-shine"
+                    />
+                  )}
+                  <span className="relative">Start Creating</span>
+                  <ArrowRightIcon className="relative h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("showcase")?.scrollIntoView({ behavior: motionSafe ? "smooth" : "auto" })}
+                  className="inline-flex items-center rounded-full border border-line-default px-6 py-3 text-body-sm font-semibold text-ink-primary transition-all duration-200 ease-out-expo hover:-translate-y-0.5 hover:border-ink-secondary hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-secondary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+                >
+                  See it in action
+                </button>
+              </div>
+
+              <ul
+                className={`mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-wide text-ink-tertiary lg:justify-start ${reveal(1250).className}`}
+                style={reveal(1250).style}
+              >
+                {HERO_POINTS.map((point) => (
+                  <li key={point} className="flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-signal" aria-hidden="true" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
-          <VoiceSphere />
+
+          {/* The sphere: drifts down and back a little as the hero scrolls away. */}
+          <div
+            className="relative"
+            style={motionSafe ? { transform: "translate3d(0, calc(var(--hero-p, 0) * 70px), 0) scale(calc(1 - var(--hero-p, 0) * 0.1))" } : undefined}
+          >
+            {/* Atmospheric glow, behind the sphere by DOM order (no z-index needed). */}
+            {/* Outer layer fades the glow in slowly after the intro; the inner one breathes (its own
+                opacity animation would otherwise override the fade). */}
+            <div
+              aria-hidden="true"
+              className={`pointer-events-none absolute left-1/2 top-[40%] aspect-[3/4] w-[90%] max-w-[560px] -translate-x-1/2 -translate-y-1/2 transition-opacity duration-[2400ms] ease-out ${introDone ? "opacity-60 sm:opacity-80 xl:opacity-100" : "opacity-0"}`}
+            >
+              <div className={`hero-glow h-full w-full ${motionSafe ? "animate-hero-glow-breathe" : ""}`} />
+            </div>
+            <VoiceSphere intro={motionSafe} onIntroDone={() => setIntroDone(true)} />
+          </div>
         </div>
-        <HeroProductInfo motionSafe={motionSafe} />
-        <SphereCornerCaptions motionSafe={motionSafe} />
+
+        {introDone && <ScrollCue motionSafe={motionSafe} />}
       </section>
+
+      <CaptionShowcaseSection />
+      <ToneSection />
+      <SignalsSection />
+      <TalkToEditSection />
+      <HinglishSection />
+      <StepsSection />
+      <ClosingSection />
+      <LandingFooter />
     </div>
   );
 }

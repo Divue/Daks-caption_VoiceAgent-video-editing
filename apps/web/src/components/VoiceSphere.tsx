@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactElement } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType, type MutableRefObject } from "react";
+import { AudioWaveform, Mic, Sparkles, Wand2 } from "lucide-react";
 import { createProgram, generateSphereBuffers, rotationMat3 } from "../lib/webgl";
 import { smoothTowards, clamp } from "../lib/smoothing";
 import { useMicAnalyser } from "../hooks/useMicAnalyser";
-import { MicIcon, ShakeIcon, StretchIcon, ScaleUpIcon, GlowIcon, ChevronDownIcon } from "../icons";
+import { MicIcon, ChevronDownIcon } from "../icons";
 
 const VERTEX_SHADER = `
 attribute vec3 aPosition;
@@ -26,9 +27,13 @@ uniform float uAspect;
 uniform float uSizeBase;
 uniform float uRenderScale;
 uniform vec2 uPointerNDC;
+uniform float uGreyMix;
+uniform float uWarm;
 
 varying float vBrightness;
 varying float vTint;
+varying float vGrey;
+varying float vWarm;
 
 /* Classic 3D simplex noise (Ashima Arts / Ian McEwan, webgl-noise —
    public-domain-style reference implementation, no texture lookups,
@@ -264,6 +269,14 @@ void main() {
   float brightnessAudio = 1.0 + uAudioLevel * 0.4 + pointerProx * 0.25;
   vBrightness = (0.4 + depthFactor * 0.75) * shellDim * brightnessAudio;
   vTint = aTint;
+  /* 60% of particles (aTint < 0.6, uniformly random) end up grey. Each one turns at its own
+     moment as uGreyMix runs 0 -> 1 during the load intro, so the sphere forms all-white and
+     half-greys itself particle by particle rather than dimming as one block. */
+  float greyStart = (aTint / 0.6) * 0.8;
+  vGrey = aTint < 0.6 ? smoothstep(greyStart, greyStart + 0.2, uGreyMix) : 0.0;
+  /* Intro only: the swarm starts partly orange (the brand signal colour) and drains to the
+     white/grey mix as it forms. Per-particle amount, so it reads as orange mixed in, not a tint. */
+  vWarm = uWarm * (0.25 + 0.75 * fract(aSeed * 7.31));
 }
 `;
 
@@ -271,6 +284,8 @@ const FRAGMENT_SHADER = `
 precision mediump float;
 varying float vBrightness;
 varying float vTint;
+varying float vGrey;
+varying float vWarm;
 uniform float uGlobalAlpha;
 uniform vec3 uColorNeutral;
 uniform vec3 uColorAccent;
@@ -281,10 +296,12 @@ void main() {
   float falloff = smoothstep(0.5, 0.0, dist);
   if (falloff <= 0.001) discard;
 
-  // uColorAccent is a brighter warm-white highlight, not a different hue —
-  // reference sphere is monochrome ivory with a few brighter "hero" dots.
-  vec3 color = vTint > 0.85 ? uColorAccent : uColorNeutral;
-  float alpha = falloff * vBrightness * uGlobalAlpha;
+  // A white/grey mix: white particles (with a few brighter warm "hero" dots, uColorAccent)
+  // read as sparkle over a cooler grey body (uColorNeutral). Whites get an alpha lift so
+  // they read as white rather than as the old uniformly dimmed ivory.
+  vec3 white = vTint > 0.85 ? uColorAccent : vec3(1.0, 0.985, 0.96);
+  vec3 color = mix(mix(white, uColorNeutral, vGrey), vec3(1.0, 0.42, 0.29), vWarm);
+  float alpha = falloff * vBrightness * uGlobalAlpha * mix(1.45, 0.85, vGrey);
   gl_FragColor = vec4(color * vBrightness, alpha);
 }
 `;
@@ -298,14 +315,43 @@ const BASE_POINT_SIZE = 8.8;
 // this is just the wall-clock length of that window.
 const ENTRANCE_DURATION_MS = 2400;
 
+// Load intro (the `intro` prop): the sphere forms big and centred in the viewport, half-greys
+// itself while forming, then glides into its place in the layout; the controls and the rest of
+// the page appear after that. Times are from mount.
+const INTRO_GREY_START_MS = 500; // whites start turning grey once the swarm has mostly gathered
+const INTRO_GREY_MS = 1700;
+// Overlapping stages, motion-design style: each one starts before the previous has finished, so
+// the whole intro reads as one continuous move instead of a queue of separate animations.
+//   xyz entrance      0 ──────────────── 2400
+//   glide home                1850 ─────────── 2800
+//   page content (text, nav, glow)   2280 ───────────►
+//   arms + controls                     2560 ─────────►
+const INTRO_GLIDE_AT_MS = 1850; // ~550 ms before the entrance settles
+const INTRO_GLIDE_MS = 950;
+const INTRO_CONTENT_AT_MS = INTRO_GLIDE_AT_MS + INTRO_GLIDE_MS * 0.45; // mid-glide
+const INTRO_CONTROLS_AT_MS = INTRO_GLIDE_AT_MS + INTRO_GLIDE_MS * 0.75; // arms start just before landing
+const INTRO_MAX_DIAMETER_PX = 280;
+const INTRO_WARM_FADE_START_MS = 350; // the orange drains while the swarm converges
+const INTRO_WARM_FADE_MS = 1500;
+
+// After landing, the connector "arms" grow out of the sphere one by one, and each control
+// appears as its arm arrives.
+const ARM_DELAY_MS = 60;
+const ARM_STAGGER_MS = 130;
+const ARM_GROW_MS = 700;
+const armArrivesAt = (i: number) => ARM_DELAY_MS + i * ARM_STAGGER_MS + ARM_GROW_MS - 180;
+
 // The canvas element is CANVAS_FRACTION of the stage width (see JSX below);
 // the sphere is tuned to visually fill roughly SPHERE_FRACTION of the stage.
 // RENDER_SCALE shrinks the projected position (not perspective/depth) so
 // the resting sphere keeps that same apparent size inside the now much
 // larger, mostly-empty canvas — the extra room is what displaced particles
 // move into instead of hitting the canvas's own rectangular edge.
-const CANVAS_FRACTION = 0.58;
-const SPHERE_FRACTION = 0.3;
+// Enlarged for the two-column hero (the sphere sits in the right column, so the stage is
+// narrower than the old full-width one). Same canvas:sphere ratio as before (~1.95), so the
+// displacement headroom described above is unchanged.
+const CANVAS_FRACTION = 0.86;
+const SPHERE_FRACTION = 0.44;
 const RENDER_SCALE = SPHERE_FRACTION / CANVAS_FRACTION;
 
 // Reference sphere reads as a bright, warm-white/ivory particle field, not
@@ -313,7 +359,7 @@ const RENDER_SCALE = SPHERE_FRACTION / CANVAS_FRACTION;
 // kept monochrome so it doesn't compete with the four hero controls' colors.
 // Standard alpha blending (see draw call below) means brightness here comes
 // straight from these values, not from a workaround dim/glow multiplier.
-const COLOR_NEUTRAL: [number, number, number] = [0.92, 0.88, 0.79];
+const COLOR_NEUTRAL: [number, number, number] = [0.6, 0.6, 0.64]; // the grey 60% (see vGrey)
 const COLOR_ACCENT: [number, number, number] = [1.0, 0.97, 0.88];
 
 const MIC_ACCENT = "#8B98F0"; // matches STRETCH — reference's mic ring is the same blue-violet
@@ -338,73 +384,64 @@ const EFFECT_RELEASE: Record<EffectKey, number> = {
 interface ControlSpec {
   label: string;
   effect: EffectKey;
-  icon: (props: { className?: string }) => ReactElement;
+  icon: ComponentType<{ className?: string }>;
   color: string;
-  css: string;
+  /** Direction from the sphere centre, radians (0 = right, positive = down). */
+  angle: number;
   anchor: { x: number; y: number };
   enterDelay: number;
 }
 
-// Sphere sits slightly above the stage's vertical center, matching the
-// reference composition — controls curve their connector trails toward it.
-const SPHERE_CENTER = { x: 50, y: 44 };
+// Sphere sits slightly above the stage's vertical center — controls curve their connector
+// trails toward it.
+const SPHERE_CENTER = { x: 50, y: 46 };
 
-// The four anchor slots around the sphere — positions, connector targets and
-// reveal timing. These stay fixed (they're the ones tuned to sit safely
-// inside the viewport); which effect identity below lands in which slot is
-// shuffled per page load, not the slots themselves.
-//
-// Deliberately asymmetric radial distances AND angles from SPHERE_CENTER
-// (approximate, in this same percentage-of-stage coordinate space): slot 1
-// sits close (~23 units out, tucked just above the sphere), slot 2 medium
-// (~37, lower-left), slot 3 medium-far (~48, upper-left), slot 4 far (~58,
-// lower-right) — not an even four-quadrant ring, so the connector lines
-// read as an intentional, hand-placed cluster rather than a clean geometric
-// pattern. Every anchor still clears the sphere's own footprint (roughly
-// x:[38,62] y:[27,61] in this space, allowing for the "close" slot to sit
-// right at that edge on purpose) with margin, and every css offset stays
-// within the same left-0/right-0 extremes the original slots already used,
-// so nothing sits closer to the viewport edge than before.
-type ControlSlot = Pick<ControlSpec, "css" | "anchor" | "enterDelay">;
-const CONTROL_SLOTS: ControlSlot[] = [
-  { css: "top-[14%] right-[30%] sm:right-[34%]", anchor: { x: 58, y: 22 }, enterDelay: 260 },
-  { css: "bottom-[22%] left-[14%] sm:left-[17%]", anchor: { x: 20, y: 66 }, enterDelay: 340 },
-  { css: "top-[2%] left-[6%] sm:left-[9%]", anchor: { x: 16, y: 10 }, enterDelay: 420 },
-  { css: "bottom-[2%] right-0 sm:right-[1%]", anchor: { x: 90, y: 86 }, enterDelay: 500 },
-];
+// Stage width / height (the `aspect-[4/3]` on the stage below). Needed to turn a radius measured
+// in %-of-width into %-of-height, so the controls sit on a true circle around the sphere.
+const STAGE_ASPECT = 4 / 3;
+
+// Controls orbit the sphere closely. Radii are in %-of-stage-width from SPHERE_CENTER; the sphere
+// itself is SPHERE_FRACTION wide, so its radius is SPHERE_FRACTION * 50. Each control's inner
+// edge sits at CONTROL_RADIUS and its connector runs inward to CONNECTOR_INNER_RADIUS, just
+// outside the sphere — about a fifth of the old connectors, which ran from far-flung slots.
+const SPHERE_RADIUS = SPHERE_FRACTION * 50;
+const CONTROL_RADIUS = SPHERE_RADIUS + 6.5;
+const CONNECTOR_INNER_RADIUS = SPHERE_RADIUS + 1.5;
+/** Where a connector ends, as a fraction of the way from the sphere centre out to its control. */
+const CONNECTOR_INNER = CONNECTOR_INNER_RADIUS / CONTROL_RADIUS;
+
+function anchorAt(angle: number): { x: number; y: number } {
+  return {
+    x: SPHERE_CENTER.x + Math.cos(angle) * CONTROL_RADIUS,
+    y: SPHERE_CENTER.y + Math.sin(angle) * CONTROL_RADIUS * STAGE_ASPECT,
+  };
+}
+
+// The four slots around the sphere, and which control sits in each. Fixed, not shuffled: the
+// labels are long, so the two longest sit where they have room (top, right) and the shortest takes
+// the left, which is squeezed against the headline column.
+const deg = (d: number) => (d * Math.PI) / 180;
+type ControlSlot = Pick<ControlSpec, "angle" | "anchor" | "enterDelay">;
+const slot = (angleDeg: number, i: number): ControlSlot => ({
+  angle: deg(angleDeg),
+  anchor: anchorAt(deg(angleDeg)),
+  enterDelay: armArrivesAt(i),
+});
 
 type ControlIdentity = Pick<ControlSpec, "label" | "effect" | "icon" | "color">;
-const CONTROL_IDENTITIES: ControlIdentity[] = [
-  { label: "SHAKE", effect: "shake", icon: ShakeIcon, color: "#FF6B4A" },
-  { label: "STRETCH", effect: "stretch", icon: StretchIcon, color: "#8B98F0" },
-  { label: "SCALE UP", effect: "scaleUp", icon: ScaleUpIcon, color: "#A78BFA" },
-  { label: "GLOW", effect: "glow", icon: GlowIcon, color: "#F2618B" },
-];
-
-function shuffle<T>(items: T[]): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
-/** Randomizes which effect sits at which of the four fixed slots, once per mount. */
-function useRandomizedControls(): ControlSpec[] {
-  const [controls] = useState<ControlSpec[]>(() => {
-    const shuffledIdentities = shuffle(CONTROL_IDENTITIES);
-    return CONTROL_SLOTS.map((slot, i) => ({ ...slot, ...shuffledIdentities[i] }));
-  });
-  return controls;
-}
+const CONTROLS: ControlSpec[] = [
+  { ...slot(-118, 0), label: "SENTIMENT ANALYSIS", effect: "shake", icon: AudioWaveform, color: "#8B98F0" },
+  { ...slot(-40, 1), label: "VOICE AI NATIVE", effect: "scaleUp", icon: Mic, color: "#FF6B4A" },
+  { ...slot(62, 2), label: "EASIER TO EDIT", effect: "stretch", icon: Wand2, color: "#A78BFA" },
+  { ...slot(166, 3), label: "TRENDY", effect: "glow", icon: Sparkles, color: "#F2618B" },
+] satisfies (ControlSlot & ControlIdentity)[];
 
 // Continuous radial "breathing" for the four controls, added on top of their
 // existing fixed slots/angles — see the dedicated useEffect in VoiceSphere()
 // below for the actual per-frame math. Constants only, kept next to the
 // connector geometry they also drive since both read the same anchor math.
 const BREATHE_PERIOD_MS = 3200;
-const BREATHE_AMPLITUDE = 0.09; // resting radial distance ranges ~91%..109%
+const BREATHE_AMPLITUDE = 0.05; // resting radial distance ranges ~95%..105% (controls now orbit close)
 const BREATHE_SCALE_MID = 0.995;
 const BREATHE_SCALE_HALF_RANGE = 0.025; // scale ranges ~0.97 (near) .. 1.02 (far)
 const BREATHE_INTRO_DELAY_MS = 1300; // starts only once entrance (max ~1.2s) has settled
@@ -412,35 +449,41 @@ const BREATHE_INTRO_RAMP_MS = 700; // fades amplitude in rather than snapping to
 const BREATHE_PHASES = [0, 1.4, 2.9, 4.5]; // radians — one per fixed slot, same tempo, different rhythm
 const BREATHE_TABLET_MAX_WIDTH = 1024; // below this, amplitude is halved (Responsive: reduce on tablet)
 
+/**
+ * One connector, from its control's anchor (bx, by) in toward the sphere. `grow` (0..1) extends it
+ * outward from the sphere end, so at 0 it is a point on the sphere's rim and at 1 it reaches the
+ * control: the "arm" growing out of the sphere after the intro.
+ */
+function connectorGeometry(bx: number, by: number, grow: number) {
+  const endX = SPHERE_CENTER.x + (bx - SPHERE_CENTER.x) * CONNECTOR_INNER;
+  const endY = SPHERE_CENTER.y + (by - SPHERE_CENTER.y) * CONNECTOR_INNER;
+  const startX = endX + (bx - endX) * grow;
+  const startY = endY + (by - endY) * grow;
+  const bow = (bx < 50 ? -0.8 : 0.8) * grow;
+  const d = `M ${startX} ${startY} Q ${(startX + endX) / 2 + bow} ${(startY + endY) / 2} ${endX} ${endY}`;
+  return { d, startX, startY, endX, endY };
+}
+
 type ConnectorNodeRefs = { path: SVGPathElement | null; startDot: SVGCircleElement | null; endDot: SVGCircleElement | null };
 
 function ConnectorField({
   controls,
   connectorRefs,
+  initialGrow,
 }: {
   controls: ControlSpec[];
   connectorRefs: MutableRefObject<ConnectorNodeRefs[]>;
+  /** 0 when the arms will be grown by the frame loop, 1 when drawn static (reduced motion). */
+  initialGrow: number;
 }) {
   const paths = useMemo(
     () =>
-      controls.map((c) => {
-        const t = 0.66;
-        const endX = c.anchor.x + (SPHERE_CENTER.x - c.anchor.x) * t;
-        const endY = c.anchor.y + (SPHERE_CENTER.y - c.anchor.y) * t;
-        const midX = (c.anchor.x + endX) / 2;
-        const midY = (c.anchor.y + endY) / 2;
-        const bow = c.anchor.x < 50 ? -5 : 5;
-        return {
-          key: c.label,
-          color: c.color,
-          d: `M ${c.anchor.x} ${c.anchor.y} Q ${midX + bow} ${midY} ${endX} ${endY}`,
-          startX: c.anchor.x,
-          startY: c.anchor.y,
-          endX,
-          endY,
-        };
-      }),
-    [controls]
+      controls.map((c) => ({
+        key: c.label,
+        color: c.color,
+        ...connectorGeometry(c.anchor.x, c.anchor.y, initialGrow),
+      })),
+    [controls, initialGrow]
   );
   return (
     <svg
@@ -525,7 +568,7 @@ function ControlButton({
     <button
       type="button"
       onClick={onTrigger}
-      className={`${motionSafe ? "animate-landing-enter" : ""} pointer-events-auto group inline-flex cursor-pointer select-none items-center gap-2.5 rounded-full border bg-surface/60 py-2 pl-2 pr-4 backdrop-blur-md transition-all duration-200 ease-out-expo hover:-translate-y-0.5 hover:brightness-125 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas`}
+      className={`${motionSafe ? "animate-landing-enter" : ""} pointer-events-auto group inline-flex cursor-pointer select-none items-center gap-2 whitespace-nowrap rounded-full border bg-canvas/55 py-1.5 pl-1.5 pr-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-md transition-all duration-200 ease-out-expo hover:-translate-y-0.5 hover:brightness-125 active:translate-y-0 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas`}
       style={{
         borderColor: hexToRgba(spec.color, active ? 0.6 : 0.32),
         boxShadow: active ? `0 0 16px -6px ${hexToRgba(spec.color, 0.55)}` : undefined,
@@ -535,12 +578,12 @@ function ControlButton({
       }}
     >
       <span
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-        style={{ backgroundColor: hexToRgba(spec.color, 0.14), color: spec.color }}
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+        style={{ backgroundColor: hexToRgba(spec.color, 0.16), color: spec.color }}
       >
-        <Icon className="h-3.5 w-3.5" />
+        <Icon className="h-3 w-3" />
       </span>
-      <span className="font-mono text-[11px] uppercase tracking-wide text-ink-secondary group-hover:text-ink-primary">
+      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-secondary transition-colors duration-200 group-hover:text-ink-primary">
         {spec.label}
       </span>
     </button>
@@ -555,8 +598,8 @@ const statusLabel: Record<string, string> = {
   unsupported: "VOICE INPUT NOT SUPPORTED",
 };
 
-export function VoiceSphere() {
-  const controls = useRandomizedControls();
+export function VoiceSphere({ intro = false, onIntroDone }: { intro?: boolean; onIntroDone?: () => void }) {
+  const controls = CONTROLS;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -566,6 +609,15 @@ export function VoiceSphere() {
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
   const activeTimeoutRef = useRef<number | null>(null);
   const [motionSafe] = useState(() => !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  // The intro only runs with motion allowed; `ready` gates the controls and the mic block.
+  const [introActive] = useState(() => intro && motionSafe);
+  const [ready, setReady] = useState(!introActive);
+  // Canvas backing-store multiplier while the stage is scaled up for the intro, so the enlarged
+  // sphere is rendered at its displayed size instead of being stretched (see resize()).
+  const introScaleRef = useRef(1);
+  const resizeRef = useRef<(() => void) | null>(null);
+  const onIntroDoneRef = useRef(onIntroDone);
+  onIntroDoneRef.current = onIntroDone;
 
   const effectsRef = useRef<Record<EffectKey, number>>({ shake: 0, stretch: 0, scaleUp: 0, glow: 0 });
   // Underdamped spring on top of the hook's smoothed level: lets the field
@@ -646,15 +698,20 @@ export function VoiceSphere() {
       globalAlpha: gl.getUniformLocation(program, "uGlobalAlpha"),
       colorNeutral: gl.getUniformLocation(program, "uColorNeutral"),
       colorAccent: gl.getUniformLocation(program, "uColorAccent"),
+      greyMix: gl.getUniformLocation(program, "uGreyMix"),
+      warm: gl.getUniformLocation(program, "uWarm"),
     };
 
     let dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     function resize() {
-      const rect = parent!.getBoundingClientRect();
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const width = Math.max(1, Math.round(rect.width * dpr));
-      const height = Math.max(1, Math.round(rect.height * dpr));
+      // Layout size, not getBoundingClientRect: the intro scales the stage with a transform, and
+      // the backing store follows that through introScaleRef instead.
+      const width0 = parent!.clientWidth;
+      const height0 = parent!.clientHeight;
+      dpr = Math.min(Math.min(window.devicePixelRatio || 1, 2) * introScaleRef.current, 4);
+      const width = Math.max(1, Math.round(width0 * dpr));
+      const height = Math.max(1, Math.round(height0 * dpr));
       if (canvas!.width !== width || canvas!.height !== height) {
         canvas!.width = width;
         canvas!.height = height;
@@ -662,6 +719,7 @@ export function VoiceSphere() {
       gl!.viewport(0, 0, width, height);
     }
     resize();
+    resizeRef.current = resize;
     const resizeObserver = new ResizeObserver(resize);
     resizeObserver.observe(parent);
 
@@ -689,6 +747,10 @@ export function VoiceSphere() {
     let lastTime = performance.now();
     let rotY = 0;
     const entranceStart = lastTime;
+    // Scroll reaction, in the same spirit as the cursor one: the field spins and tips with the
+    // scroll direction and its surface ripples with scroll speed, then eases back to rest.
+    let lastScrollY = window.scrollY;
+    let scrollVel = 0;
 
     function frame(now: number) {
       const dt = Math.min((now - lastTime) / 1000, 0.1);
@@ -720,20 +782,26 @@ export function VoiceSphere() {
       const viewportCenterOffset = rect.top + rect.height / 2 - window.innerHeight / 2;
       const scrollFactor = clamp(viewportCenterOffset / window.innerHeight, -1, 1);
 
+      const scrollY = window.scrollY;
+      const rawScrollVel = prefersReducedMotion ? 0 : clamp((scrollY - lastScrollY) / Math.max(dt, 1 / 240) / 2400, -1, 1);
+      lastScrollY = scrollY;
+      scrollVel = smoothTowards(scrollVel, rawScrollVel, dt, 0.08, 0.45);
+      const scrollEnergy = Math.abs(scrollVel);
+
       const effects = effectsRef.current;
 
       const idleBreath = prefersReducedMotion ? 0 : Math.sin(now * 0.0006) * 0.012;
-      const scale = 1 + idleBreath + springLevel * 0.055 + effects.scaleUp * 0.26;
+      const scale = 1 + idleBreath + springLevel * 0.055 + effects.scaleUp * 0.26 + scrollEnergy * 0.035;
       // Idle cosmetic shimmer only — SHAKE now drives real 3D flow-field
       // turbulence (uShake below), not this scalar radial ripple.
-      const displacement = 0.01 + idleBreath * 0.4;
+      const displacement = 0.01 + idleBreath * 0.4 + scrollEnergy * 0.07;
       const stretch = effects.stretch * 0.2;
 
       const rotSpeed = (prefersReducedMotion ? 0.012 : 0.08) + levels.bass * 0.1;
-      rotY += rotSpeed * dt;
+      rotY += (rotSpeed + scrollVel * 2.4) * dt;
       const tiltYaw = pointerTilt.current.x * -0.2 + scrollFactor * 0.12;
       const tiltPitch = pointerTilt.current.y * 0.14;
-      const rotX = (prefersReducedMotion ? 0 : Math.sin(now * 0.0003) * 0.03) + levels.treble * 0.04 + tiltPitch;
+      const rotX = (prefersReducedMotion ? 0 : Math.sin(now * 0.0003) * 0.03) + levels.treble * 0.04 + tiltPitch + scrollVel * 0.22;
 
       gl!.useProgram(program);
       gl!.uniform1f(uniforms.time, now * 0.001);
@@ -756,6 +824,11 @@ export function VoiceSphere() {
       gl!.uniform1f(uniforms.globalAlpha, 0.55 + springLevel * 0.08 + effects.glow * 0.12);
       gl!.uniform3fv(uniforms.colorNeutral, COLOR_NEUTRAL);
       gl!.uniform3fv(uniforms.colorAccent, COLOR_ACCENT);
+      // Without the intro the sphere is simply at its settled mix from the first frame.
+      const greyMix = introActive ? clamp((now - entranceStart - INTRO_GREY_START_MS) / INTRO_GREY_MS, 0, 1) : 1;
+      gl!.uniform1f(uniforms.greyMix, greyMix);
+      const warm = introActive ? 1 - clamp((now - entranceStart - INTRO_WARM_FADE_START_MS) / INTRO_WARM_FADE_MS, 0, 1) : 0;
+      gl!.uniform1f(uniforms.warm, warm * warm);
 
       if (glowRef.current) {
         glowRef.current.style.opacity = String(0.028 + springLevel * 0.025 + effects.glow * 0.07);
@@ -784,7 +857,7 @@ export function VoiceSphere() {
       gl.deleteBuffer(tintBuffer);
       gl.deleteBuffer(shellBuffer);
     };
-  }, [sample]);
+  }, [sample, introActive]);
 
   useEffect(() => {
     return () => {
@@ -848,17 +921,15 @@ export function VoiceSphere() {
 
         const conn = connectorRefs.current[i];
         if (conn?.path) {
-          const t = 0.66;
-          const endX = bx + (SPHERE_CENTER.x - bx) * t;
-          const endY = by + (SPHERE_CENTER.y - by) * t;
-          const midX = (bx + endX) / 2;
-          const midY = (by + endY) / 2;
-          const bow = bx < 50 ? -5 : 5;
-          conn.path.setAttribute("d", `M ${bx} ${by} Q ${midX + bow} ${midY} ${endX} ${endY}`);
-          conn.startDot?.setAttribute("cx", String(bx));
-          conn.startDot?.setAttribute("cy", String(by));
-          conn.endDot?.setAttribute("cx", String(endX));
-          conn.endDot?.setAttribute("cy", String(endY));
+          const growT = clamp((elapsed - ARM_DELAY_MS - i * ARM_STAGGER_MS) / ARM_GROW_MS, 0, 1);
+          const grow = 1 - Math.pow(1 - growT, 3); // ease-out cubic
+          const g = connectorGeometry(bx, by, grow);
+          conn.path.setAttribute("d", g.d);
+          conn.startDot?.setAttribute("cx", String(g.startX));
+          conn.startDot?.setAttribute("cy", String(g.startY));
+          conn.startDot?.setAttribute("opacity", String(growT));
+          conn.endDot?.setAttribute("cx", String(g.endX));
+          conn.endDot?.setAttribute("cy", String(g.endY));
         }
       });
 
@@ -870,7 +941,64 @@ export function VoiceSphere() {
       cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
     };
-  }, [controls, motionSafe]);
+  }, [controls, motionSafe, ready]);
+
+  // Load intro: park the stage so the sphere is centred in the viewport and scaled up, then
+  // glide it home. Measured with the transform cleared (StrictMode re-runs this in dev).
+  useLayoutEffect(() => {
+    if (!introActive) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+    let gliding = false;
+    function park() {
+      if (gliding || !stage) return;
+      stage.style.transition = "";
+      stage.style.transform = "none";
+      const rect = stage.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + (rect.height * SPHERE_CENTER.y) / 100;
+      const targetDiameter = Math.min(window.innerWidth * 0.39, window.innerHeight * 0.3, INTRO_MAX_DIAMETER_PX);
+      const scale = Math.max(1, targetDiameter / (rect.width * SPHERE_FRACTION));
+      if (scale !== introScaleRef.current) {
+        introScaleRef.current = scale;
+        resizeRef.current?.();
+      }
+      stage.style.transformOrigin = `50% ${SPHERE_CENTER.y}%`;
+      stage.style.transform = `translate(${window.innerWidth / 2 - centerX}px, ${window.innerHeight / 2 - centerY}px) scale(${scale})`;
+    }
+    // Re-parked every frame until the glide: web fonts arriving, the lazy page settling or a resize
+    // can all move the destination, and one measure per frame for ~2s is cheap.
+    let parkFrame = 0;
+    const parkLoop = () => {
+      park();
+      if (!gliding) parkFrame = requestAnimationFrame(parkLoop);
+    };
+    parkLoop();
+
+    const timers = [
+      window.setTimeout(() => {
+        gliding = true;
+        stage.style.transition = `transform ${INTRO_GLIDE_MS}ms cubic-bezier(0.65, 0, 0.35, 1)`;
+        stage.style.transform = "none";
+      }, INTRO_GLIDE_AT_MS),
+      window.setTimeout(() => onIntroDoneRef.current?.(), INTRO_CONTENT_AT_MS),
+      // The arms live inside the stage, so they ride the last part of the glide with the sphere.
+      window.setTimeout(() => setReady(true), INTRO_CONTROLS_AT_MS),
+      // Back to a normal-resolution canvas only once the stage is at its final size.
+      window.setTimeout(() => {
+        stage.style.transition = "";
+        introScaleRef.current = 1;
+        resizeRef.current?.();
+      }, INTRO_GLIDE_AT_MS + INTRO_GLIDE_MS),
+    ];
+    return () => {
+      cancelAnimationFrame(parkFrame);
+      timers.forEach((id) => window.clearTimeout(id));
+      stage.style.transform = "";
+      stage.style.transition = "";
+      introScaleRef.current = 1;
+    };
+  }, [introActive]);
 
   const isListening = status === "listening";
   const isBusy = status === "requesting";
@@ -894,21 +1022,21 @@ export function VoiceSphere() {
     <div className="relative mx-auto flex w-full max-w-[860px] flex-col items-center">
       {/* Stage: a wide, bounded box so every control position (0-100%) is
           guaranteed to stay inside the viewport with margin to spare. */}
-      <div ref={stageRef} className="relative aspect-[3/2] w-full">
+      <div ref={stageRef} className="relative aspect-[4/3] w-full">
         <div
           ref={glowRef}
-          className="pointer-events-none absolute left-1/2 top-[44%] h-[60%] w-[34%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F3E7D2] blur-[64px]"
+          className="pointer-events-none absolute left-1/2 top-[46%] h-[78%] w-[50%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F3E7D2] blur-[64px]"
           style={{ opacity: 0.045 }}
           aria-hidden="true"
         />
         <div
-          className={`pointer-events-none absolute left-1/2 top-[44%] aspect-square w-[36%] -translate-x-1/2 -translate-y-1/2 rounded-full border transition-opacity duration-500 ${
+          className={`pointer-events-none absolute left-1/2 top-[46%] aspect-square w-[53%] -translate-x-1/2 -translate-y-1/2 rounded-full border transition-opacity duration-500 ${
             isListening ? "border-signal/20 opacity-100 animate-pulse-ring" : "opacity-0"
           }`}
           aria-hidden="true"
         />
 
-        <ConnectorField controls={controls} connectorRefs={connectorRefs} />
+        {ready && <ConnectorField controls={controls} connectorRefs={connectorRefs} initialGrow={motionSafe ? 0 : 1} />}
 
         {/* Canvas is deliberately much larger than the resting sphere's
             visual footprint (compensated via RENDER_SCALE below) so the
@@ -921,7 +1049,7 @@ export function VoiceSphere() {
             enough to reach it. This is not a containment boundary we added;
             it's removing one that was accidentally too tight. */}
         <div
-          className="absolute left-1/2 top-[44%] aspect-square -translate-x-1/2 -translate-y-1/2"
+          className="absolute left-1/2 top-[46%] aspect-square -translate-x-1/2 -translate-y-1/2"
           style={{ width: `${CANVAS_FRACTION * 100}%` }}
         >
           <canvas
@@ -931,26 +1059,36 @@ export function VoiceSphere() {
           />
         </div>
 
-        {controls.map((spec, i) => (
+        {ready && controls.map((spec, i) => (
+          // Outer: parks the control's inner edge on its anchor, pushed outward along its own
+          // angle so the pill never overlaps the sphere. Inner: the breathing transform.
           <div
             key={spec.label}
-            ref={(el) => {
-              controlNodeRefs.current[i] = el;
+            className="absolute z-10 hidden sm:block"
+            style={{
+              left: `${spec.anchor.x}%`,
+              top: `${spec.anchor.y}%`,
+              transform: `translate(${-50 + 50 * Math.cos(spec.angle)}%, ${-50 + 50 * Math.sin(spec.angle)}%)`,
             }}
-            className={`absolute z-10 hidden sm:block ${spec.css}`}
           >
-            <ControlButton
-              spec={spec}
-              active={activeLabel === spec.label}
-              motionSafe={motionSafe}
-              onTrigger={() => handleControlClick(spec)}
-            />
+            <div
+              ref={(el) => {
+                controlNodeRefs.current[i] = el;
+              }}
+            >
+              <ControlButton
+                spec={spec}
+                active={activeLabel === spec.label}
+                motionSafe={motionSafe}
+                onTrigger={() => handleControlClick(spec)}
+              />
+            </div>
           </div>
         ))}
       </div>
 
       {/* Mobile: controls reflow to a row below the stage instead of floating around it */}
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-3 sm:hidden">
+      <div key={`row-${ready}`} className={`mt-6 flex flex-wrap items-center justify-center gap-3 sm:hidden ${ready ? "" : "invisible"}`}>
         {controls.map((spec) => (
           <ControlButton
             key={spec.label}
@@ -962,50 +1100,54 @@ export function VoiceSphere() {
         ))}
       </div>
 
-      <div className="mt-8 flex flex-col items-center gap-4">
+      {/* Kept in the layout during the intro (so nothing shifts), and remounted when ready so
+          its entrance animations play then. */}
+      <div key={`mic-${ready}`} className={`mt-2 flex flex-col items-center gap-4 ${ready ? "" : "invisible"}`}>
         <p
-          className={`text-label uppercase tracking-widest ${status === "denied" ? "text-danger" : "text-ink-tertiary"} ${motionSafe ? "animate-text-materialize" : ""}`}
-          style={motionSafe ? { animationDelay: "480ms" } : undefined}
+          className={`font-mono text-[11px] uppercase tracking-[0.2em] ${status === "denied" ? "text-danger" : isListening ? "text-[#8B98F0]" : "text-ink-secondary"} ${motionSafe ? "animate-rise" : ""}`}
+          style={motionSafe ? { animationDelay: "650ms" } : undefined}
         >
           {statusLabel[status]}
         </p>
-        <button
-          type="button"
-          onClick={handleMicToggle}
-          disabled={isBusy}
-          aria-label={isListening ? "Stop voice interaction" : "Start voice interaction"}
-          className={`relative flex h-14 w-14 items-center justify-center rounded-full border bg-surface/70 text-ink-secondary backdrop-blur-md transition-all duration-200 ease-out-expo hover:text-ink-primary hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas disabled:cursor-wait ${motionSafe ? "animate-landing-enter" : ""}`}
-          style={{ borderColor: hexToRgba(MIC_ACCENT, isListening ? 0.55 : 0.28), ...(motionSafe ? { animationDelay: "540ms" } : undefined) }}
-        >
+        {/* The mic is the page's one live control, so it gets the signal colour and a slow halo
+            instead of the quiet outline it had. Listening swaps to the voice blue-violet. */}
+        <div className={`relative ${motionSafe ? "animate-rise" : ""}`} style={motionSafe ? { animationDelay: "750ms" } : undefined}>
+          {motionSafe && !isListening && (
+            <>
+              <span className="pointer-events-none absolute -inset-3 rounded-full bg-signal/20 blur-xl animate-hero-glow-breathe" aria-hidden="true" />
+              <span className="pointer-events-none absolute inset-0 rounded-full border border-signal/50 animate-pulse-ring [animation-duration:2.6s]" aria-hidden="true" />
+            </>
+          )}
           {isListening && (
             <span
-              className="absolute inset-[-4px] rounded-full border animate-pulse-ring"
-              style={{ borderColor: hexToRgba(MIC_ACCENT, 0.35) }}
+              className="pointer-events-none absolute -inset-1 rounded-full border animate-pulse-ring"
+              style={{ borderColor: hexToRgba(MIC_ACCENT, 0.5) }}
               aria-hidden="true"
             />
           )}
-          <span style={{ color: isListening ? MIC_ACCENT : undefined }}>
-            <MicIcon className="h-5 w-5" />
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={handleMicToggle}
+            disabled={isBusy}
+            aria-label={isListening ? "Stop voice interaction" : "Start voice interaction"}
+            className="relative flex h-16 w-16 items-center justify-center rounded-full text-canvas shadow-[0_10px_40px_-8px_rgba(255,107,74,0.65),inset_0_1px_0_rgba(255,255,255,0.35)] transition-all duration-300 ease-out-expo hover:scale-105 hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal/60 focus-visible:ring-offset-4 focus-visible:ring-offset-canvas disabled:cursor-wait"
+            style={{
+              background: isListening
+                ? `radial-gradient(circle at 35% 30%, #b3bcff, ${MIC_ACCENT})`
+                : "radial-gradient(circle at 35% 30%, #ff9a7f, #ff6b4a 60%, #e5502f)",
+            }}
+          >
+            <MicIcon className="h-6 w-6" />
+          </button>
+        </div>
         <p
-          className={`text-body-sm text-ink-secondary ${motionSafe ? "animate-text-materialize" : ""}`}
-          style={motionSafe ? { animationDelay: "620ms" } : undefined}
+          className={`text-body-sm text-ink-secondary ${motionSafe ? "animate-rise" : ""}`}
+          style={motionSafe ? { animationDelay: "850ms" } : undefined}
         >
           Your voice brings it to life
         </p>
       </div>
 
-      <p
-        className={`mt-10 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 font-mono text-[11px] uppercase tracking-widest text-ink-tertiary ${motionSafe ? "animate-text-materialize" : ""}`}
-        style={motionSafe ? { animationDelay: "760ms" } : undefined}
-      >
-        <span>Transcribe</span>
-        <span aria-hidden="true" className="text-line-default">·</span>
-        <span>Read the tone</span>
-        <span aria-hidden="true" className="text-line-default">·</span>
-        <span>Caption with emotion</span>
-      </p>
     </div>
   );
 }

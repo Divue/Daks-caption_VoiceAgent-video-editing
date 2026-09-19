@@ -262,7 +262,7 @@
      UI element gets its own distinct entrance so the page doesn't read as one
      fade-in repeated everywhere. The sphere's own entrance (VoiceSphere.tsx)
      is untouched and independent of all of these. */
-  --animate-navbar-enter: navbar-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-navbar-enter: navbar-enter 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
   --animate-eyebrow-reveal: eyebrow-reveal 0.7s ease-out both;
   --animate-word-reveal: word-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-subtitle-reveal: subtitle-reveal 0.6s ease-out both;
@@ -282,6 +282,17 @@
      never a pulse/twinkle — each dot overrides duration/delay inline for a
      staggered phase, same pattern as --animate-twinkle above. */
   --animate-dust-drift: dust-drift 40s ease-in-out infinite;
+
+  /* Landing sections below the hero (components/landing/). */
+  --animate-caption-shake: caption-shake 0.36s linear infinite;
+  /* Hero after the sphere intro: a motion-graphics masked line reveal for the headline words, and
+     a slow blur-rise for everything around it. */
+  --animate-mask-up: mask-up 1.25s cubic-bezier(0.19, 1, 0.22, 1) both;
+  --animate-rise: rise 1.2s cubic-bezier(0.19, 1, 0.22, 1) both;
+  --animate-marquee: marquee 60s linear infinite;
+  --animate-marquee-reverse: marquee 60s linear infinite reverse;
+  --animate-shine: shine 3.2s ease-in-out infinite;
+  --animate-scroll-wheel: scroll-wheel 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
 @keyframes pulse-ring {
@@ -316,7 +327,7 @@
 /* Navbar arrives from just above rather than fading in place — distinct
    from every other reveal below, none of which move vertically this far. */
 @keyframes navbar-enter {
-  0% { opacity: 0; transform: translateY(-14px); }
+  0% { opacity: 0; transform: translateY(-100%); }
   100% { opacity: 1; transform: translateY(0); }
 }
 /* Eyebrow: a "focusing into place" reveal — blur clears and the exaggerated
@@ -367,6 +378,48 @@
 }
 /* Barely-there drift for the second dust layer — a couple of pixels over a
    very long cycle, never opacity, so it never reads as twinkling. */
+/* Landing page only (LandingPage.tsx toggles the class on <html>): the native scrollbar is hidden
+   and LandingScrollbar draws an overlay one, so nothing shifts when the intro's scroll lock lifts. */
+.landing-native-scrollbar-hidden {
+  scrollbar-width: none;
+}
+.landing-native-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+/* Angry caption shake, mirroring CaptionRenderer's clock-driven offset (sin/cos of time, x at full
+   amplitude, y at 0.6). --shake is the resolved style.shake in px, set inline per word. */
+/* Each headline word rises out of its own clipped line box, tipping upright as it lands. */
+@keyframes mask-up {
+  from { transform: translateY(115%) rotate(6deg); }
+  to { transform: translateY(0) rotate(0deg); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(26px); filter: blur(6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes caption-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(calc(var(--shake) * 0.9), calc(var(--shake) * -0.5)); }
+  40% { transform: translate(calc(var(--shake) * -0.8), calc(var(--shake) * 0.4)); }
+  60% { transform: translate(calc(var(--shake) * 0.6), calc(var(--shake) * 0.55)); }
+  80% { transform: translate(calc(var(--shake) * -0.95), calc(var(--shake) * -0.3)); }
+}
+/* Two copies of the row sit side by side, so -50% lands exactly where it started. */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+/* A light band sweeping across the primary CTA, then resting off-button most of the cycle. */
+@keyframes shine {
+  0% { transform: translateX(-120%); }
+  45%, 100% { transform: translateX(220%); }
+}
+/* Scroll cue: the mouse wheel dot drops and fades. */
+@keyframes scroll-wheel {
+  0% { opacity: 0; transform: translateY(-3px); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(7px); }
+}
 @keyframes dust-drift {
   0%, 100% { transform: translate(0, 0); }
   50% { transform: translate(3px, -4px); }

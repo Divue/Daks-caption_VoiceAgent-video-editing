@@ -178,7 +178,10 @@ def render_status(project_id: str, render_id: str) -> dict:
     if not response.ok:
         raise HTTPException(502, {"error": "render_status_failed", "detail": response.text[:200]})
     data = response.json()
-    if data.get("projectId") not in (None, project_id):
+    # Exact match only. Accepting a missing projectId let a render created straight against the
+    # render server (which does not require one) be claimed by ANY project id, and its MP4 copied
+    # into that project's S3 prefix.
+    if data.get("projectId") != project_id:
         raise HTTPException(404, {"error": "not_found", "renderId": render_id})  # someone else's render
 
     state = data.get("state", "failed")

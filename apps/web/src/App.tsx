@@ -102,8 +102,9 @@ function App() {
         p.setRate(action.rate)
         return { ok: true, label }
       case 'mute':
-        p.setMuted(action.muted)
-        return { ok: true, label }
+        return p.setMuted(action.muted)
+          ? { ok: true, label }
+          : { ok: false, label: 'No video loaded yet' }
       case 'none':
         return { ok: true, label }
     }
@@ -206,7 +207,12 @@ function App() {
         target &&
         (target.isContentEditable ||
           /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(target.tagName) ||
-          target.closest('[role="tab"],[role="slider"],[role="switch"],[role="checkbox"]'))
+          // Radix renders its menus and selects as divs, so the tagName test above misses them:
+          // with a Select open, Space is how you pick the focused option, not play/pause.
+          target.closest(
+            '[role="tab"],[role="slider"],[role="switch"],[role="checkbox"],' +
+              '[role="listbox"],[role="option"],[role="combobox"],[role="menu"],[role="menuitem"],[role="dialog"]',
+          ))
       ) {
         return
       }

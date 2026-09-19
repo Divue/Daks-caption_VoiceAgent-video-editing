@@ -201,6 +201,15 @@ def test_another_projects_render_is_not_readable_through_this_one(aws, demo_doc,
     assert client().get(f"/projects/demo-project/render/{RID}").status_code == 404
 
 
+def test_a_render_with_no_project_cannot_be_claimed_by_one(aws, demo_doc, fake):
+    """The render server does not require a projectId. Treating a missing one as "mine" let such a
+    render be claimed by ANY project id — and `_deliver` would then copy its MP4 into that
+    project's S3 prefix. The match has to be exact."""
+    seed(demo_doc)
+    fake.state = {"state": "done", "progress": 1, "error": None}
+    assert client().get(f"/projects/demo-project/render/{RID}").status_code == 404
+
+
 @pytest.mark.parametrize("bad", ["x", "ABCDEF012345", "abcdef01234", "abcdef0123456", "../../etc/passwd", "abcdef01234g"])
 def test_a_malformed_render_id_never_reaches_the_render_server(aws, demo_doc, fake, bad):
     seed(demo_doc)

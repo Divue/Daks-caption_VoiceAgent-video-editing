@@ -8,6 +8,7 @@ import {
   STOP_LISTENING,
   UNDO_PHRASES,
   isNotACommand,
+  isBareTransport,
   mergeUtterances,
   parseTransportIntent,
 } from '@/lib/voice-intents'
@@ -19,6 +20,13 @@ import { useWordPatch } from '@/state/word-patch-context'
 import type { useAgentActivity } from '@/hooks/useAgentActivity'
 
 type Activity = ReturnType<typeof useAgentActivity>
+
+/**
+ * How long a bare transport opener stays claimable by the words that follow it. Long enough for a
+ * real thinking pause mid-sentence, short enough that two deliberate commands in a row are never
+ * glued together.
+ */
+const BARE_TRANSPORT_WINDOW_MS = 4000
 
 export interface AgentTurnState {
   /** A turn is in flight. The agent may take many tool rounds, so this can last seconds. */
@@ -106,6 +114,13 @@ export function useAgentCommand(
   const turnRef = useRef<Turn | null>(null)
   const nextId = useRef(1)
 
+  /**
+   * A bare transport opener ("stop", "play") that was acted on but may turn out to have been the
+   * first half of an edit — "stop… making things red". Held for this long so the next final can
+   * claim it; after that it was a real command and the words are dropped.
+   */
+  const bareTransportRef = useRef<{ said: string; at: number; revert: TransportIntent | null } | null>(null)
+
   // The project is read at send time, not at render time, so a turn always posts the newest
   // document even if several commands are fired in a row.
   const projectRef = useRef(project)
@@ -156,7 +171,7 @@ export function useAgentCommand(
 
   const run = useCallback(
     async (rawCommand: string, selection: SelectionContext, source: 'text' | 'voice' = 'text') => {
-      const said = rawCommand.trim()
+      let said = rawCommand.trim()
       if (!said) return
 
       // A live mic produces speech that was never aimed at us. Filter it BEFORE anything else,
@@ -173,6 +188,11 @@ export function useAgentCommand(
           return
         }
       }
+
+      // Any deliberate utterance consumes a pending opener (below); only filler leaves it alone,
+      // because "stop … um … making things red" is still one sentence.
+      const pendingBare = bareTransportRef.current
+      bareTransportRef.current = null
 
       // "Never mind" while the agent is still working means STOP THAT — not "revert my last
       // finished edit". Dispatching UNDO here used to throw away the previous change and then let
@@ -191,13 +211,39 @@ export function useAgentCommand(
 
       // The video's own controls belong to the editor, not to a model that has no playback tool:
       // asking Bedrock to "play the video" cost ~8 s and came back "I can't control playback".
-      // Like "stop listening" it touches neither the agent turn in flight nor a pending question,
-      // so it can be said at any moment — including while the agent is still working.
-      const transport = onTransport ? parseTransportIntent(said, { playing: isPlaying?.() }) : null
+      // It touches no agent turn in flight, so it can be said while the agent is still working.
+      //
+      // TWO things it must not steal:
+      //  - An ANSWER to the agent's own question. "How much bigger?" → "double" is a size, not a
+      //    playback speed, and acting on it also leaves the question hanging forever.
+      //  - The first half of an edit. See `bareTransportRef` below.
+      const transport =
+        onTransport && !awaitingRef.current
+          ? parseTransportIntent(said, { playing: isPlaying?.(), misheard: source === 'voice' })
+          : null
+
       if (transport && onTransport) {
+        const wasPlaying = isPlaying?.() ?? false
         const outcome = await onTransport(transport)
         addEntry(outcome.label, outcome.ok ? 'ok' : 'warn')
+        // A bare opener is provisional: it is exactly what a mid-sentence pause looks like. Keep
+        // the words (and how to undo what we just did) in case the rest of the sentence follows.
+        if (source === 'voice' && isBareTransport(said)) {
+          const revert: TransportIntent | null =
+            transport.type === 'play' || transport.type === 'pause'
+              ? { type: wasPlaying ? 'play' : 'pause' }
+              : null
+          bareTransportRef.current = { said, at: Date.now(), revert }
+        }
         return
+      }
+
+      // Not a transport — so if a bare opener is still warm, this is the rest of its sentence.
+      // Put the player back the way it was and carry the opener into the command, which is what
+      // would have happened if the recogniser had not called the pause a full stop.
+      if (pendingBare && Date.now() - pendingBare.at <= BARE_TRANSPORT_WINDOW_MS) {
+        said = mergeUtterances(pendingBare.said, said)
+        if (pendingBare.revert && onTransport) await onTransport(pendingBare.revert)
       }
 
       // --- who owns this utterance? ---------------------------------------------------------

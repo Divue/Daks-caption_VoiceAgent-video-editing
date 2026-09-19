@@ -15,9 +15,12 @@ services:
       - ./services/api/scripts:/srv/scripts
       - ./packages/shared/fixtures:/srv/fixtures:ro
       - ~/.aws:/root/.aws:ro
-    # The export render server runs natively on the host (`npm run render-server` in remotion/), so the
-    # API reaches it as host.docker.internal. Docker Desktop provides that name; this line makes it work
-    # on Linux as well.
+    environment:
+      # The render service below, on this network. Overridable for anyone still running the render
+      # server natively — but note that on Linux the native route needs RENDER_HOST set too, because
+      # host.docker.internal resolves to the bridge gateway and the server binds loopback.
+      RENDER_SERVICE_URL: "${RENDER_SERVICE_URL:-http://render:3100}"
+    # Kept for the native fallback above; harmless when the render container is used.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # Note: --reload restarts the process on every save, which kills a running pipeline job.
@@ -53,3 +56,24 @@ services:
       LIVEKIT_URL: ws://livekit:7880
     depends_on:
       - livekit
+
+  # Export. Opt-in, because the image carries a headless Chrome and takes a few minutes to build
+  # the first time and nobody needs it to work on captions:
+  #
+  #   docker compose --profile export up -d --build      # start it
+  #   docker compose --profile export down               # stop it
+  #
+  # Without it the API answers Export with a 503 that says how to start it — no silent failure.
+  # Published on 127.0.0.1 only: this endpoint has no auth, fetches whatever URL it is handed and
+  # burns a CPU core per render, so it must never be reachable from the network.
+  render:
+    profiles: ["export"]
+    build:
+      context: .
+      dockerfile: remotion/Dockerfile
+    ports:
+      - "127.0.0.1:3100:3100"
+    # A Chromium render needs 1-2 GB; /dev/shm defaults to 64 MB and headless Chrome crashes on it.
+    shm_size: "1gb"
+    environment:
+      RENDER_HOST: "0.0.0.0"

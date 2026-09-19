@@ -28,6 +28,10 @@ cp .env.example .env
 docker compose up -d --build
 curl localhost:8010/health         # {"ok":true}
 
+# Export (optional, and slow the first time — the image carries a headless Chrome).
+# Skip it unless you're working on Export; without it the Export button says how to start it.
+docker compose --profile export up -d --build
+
 # Frontend
 nvm use && npm install
 cd apps/web && npm run dev
@@ -104,6 +108,7 @@ docker compose exec -T voice-agent python scripts/check_voice_e2e.py
 | Activity says "Listening (browser speech recognition)" | LiveKit isn't reachable, so the editor fell back on purpose — check `docker compose ps` for `livekit` and `voice-agent` |
 | `POST /agent/livekit-token` → 503 | `LIVEKIT_*` missing from `.env` — copy them from `.env.example` |
 | Port 8000 already in use | `API_PORT` is 8010 in `.env.example`; change it if that clashes too |
+| Export says the render server isn't running | you didn't start it: `docker compose --profile export up -d`. **Don't** set `RENDER_HOST=0.0.0.0` — that endpoint has no auth |
 
 ---
 
@@ -130,7 +135,8 @@ rather than rediscovering it.
 | **Agent history (P4's build log)** | `.claude/audits/ai-agent/phase-01` → `phase-08`. Read `phase-05-vision.md`'s correction banner first — its original conclusion is out of date. |
 | **The editor UI** | audits `00`, `09`, `15`, `16` (the design rules: orange has a budget, no fake features), `07` (undo), `13` (why every write goes through one queue) |
 | **Pipeline / API** | audits `11` (speech-to-text + prosody), `12` (persistence and the write contract), and `services/api/README.md` (every endpoint) |
-| **Deploying** | section 4 below, then `services/api/Dockerfile` and `services/voice-agent/README.md` |
+| **Export / rendering** | `.claude/audits/export/phase-01-containerised-render.md`, then `remotion/README.md`. `DEPLOYING-EXPORT.md` for the licence and the AWS options. |
+| **Deploying** | `DEPLOYING-EXPORT.md` first (App Runner is closed to new customers — that changes the API's target too), then section 4 below, `services/api/Dockerfile`, `services/voice-agent/README.md` |
 
 **Don't trust these as current:**
 - `.claude/next-session-prompt.md` — a consumed prompt. Pasting it rebuilds shipped work.
@@ -146,11 +152,11 @@ Nothing is deployed from this repo yet. The intended targets (`CLAUDE.md`) and t
 
 | Part | Target | State |
 |---|---|---|
-| API | App Runner | `services/api/Dockerfile` is production-ready (runs `uvicorn` on `$PORT`, skips dev deps). **No App Runner config in the repo.** |
+| API | ~~App Runner~~ → **undecided** | `services/api/Dockerfile` is production-ready. **AWS closed App Runner to new customers**, so the target written in `CLAUDE.md` may not be available to us — AWS points at ECS Express Mode. Lead decision; see `DEPLOYING-EXPORT.md` §2. |
 | Editor | Amplify | `npm run build` works. **No `amplify.yml`.** |
 | Voice worker | an always-on host | **Undecided (P1).** App Runner is not a fit — it's a long-running process that joins rooms, not an HTTP server. |
 | LiveKit | LiveKit Cloud, or self-hosted | Locally it's `livekit-server --dev`. **Production needs real credentials.** |
-| Export | Remotion Lambda | Not built — `/projects/{id}/render` returns 501 (P2). |
+| Export | Remotion Lambda, or the container | **Works locally.** `remotion/Dockerfile` is the deployable artifact; nothing is deployed. Licence costs us $0 today. See `DEPLOYING-EXPORT.md`. |
 
 **Fix these before anything is reachable from the internet:**
 1. `POST /agent/livekit-token` has **no auth** — anyone who can reach the API can mint a room token.

@@ -21,6 +21,9 @@ const PORT = Number(process.env.RENDER_PORT || 3100)
 const HOST = process.env.RENDER_HOST || '127.0.0.1'
 const CONCURRENCY = Number(process.env.RENDER_CONCURRENCY || 2)
 const MAX_RENDER_MS = Number(process.env.RENDER_TIMEOUT_MS || 15 * 60 * 1000)
+/** Per-frame budget (Remotion's `delayRender`), not per-render. Its own default of 30 s is tight
+ *  when every frame is pulled from a presigned URL over the network. */
+const FRAME_TIMEOUT_MS = Number(process.env.RENDER_FRAME_TIMEOUT_MS || 120_000)
 // Optional: render with an installed Chrome instead of downloading Remotion's headless shell.
 const BROWSER = process.env.REMOTION_BROWSER_EXECUTABLE || undefined
 const KEEP_FILES = 10
@@ -127,6 +130,14 @@ async function runOne(r) {
       concurrency: CONCURRENCY,
       cancelSignal,
       browserExecutable: BROWSER,
+      // Remotion's Docker guide recommends this for a containerised render
+      // (https://www.remotion.dev/docs/docker). Without it, OffthreadVideo's frame fetches stall
+      // and the render dies with "Timeout exceeded rendering the component at frame N" — measured
+      // on Linux: frame 102 of a 720x1280 clip, every time.
+      chromiumOptions: { enableMultiProcessOnLinux: true },
+      // The default delayRender timeout is 30 s, which is per-frame work, not per-render. Pulling
+      // frames out of a remote video over a slow link exceeds it long before anything is wrong.
+      timeoutInMilliseconds: FRAME_TIMEOUT_MS,
       onProgress: ({ progress }) => {
         r.progress = +Math.min(0.99, progress).toFixed(3)
       },

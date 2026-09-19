@@ -172,6 +172,359 @@
     }
 }
 
+/*
+ * Landing page design tokens (src/pages/LandingPage.tsx, src/components/VoiceSphere.tsx).
+ * Ported from the standalone voice-video-editor prototype's tailwind.config.ts (a Tailwind v3
+ * JS config) into this project's Tailwind v4 CSS-based theme. Namespaced under names (canvas,
+ * ink-*, signal, precision, display/heading/body/label/mono-sm) that don't overlap the shadcn
+ * tokens above, so the editor's look is unaffected — see LANDING_DESIGN.md for the source spec.
+ */
+@theme {
+  --color-canvas: #0a0a0c;
+  --color-surface: #111114;
+  --color-surface-raised: #18181c;
+  --color-overlay: #1e1e23;
+  --color-line: #33333a;
+  --color-line-subtle: #242429;
+  --color-line-default: #33333a;
+  --color-ink-primary: #f5f5f7;
+  --color-ink-secondary: #a3a3ad;
+  --color-ink-tertiary: #6b6b75;
+  --color-signal: #ff6b4a;
+  --color-signal-dim: #5c2a20;
+  --color-precision: #4adede;
+  --color-precision-dim: #123b3b;
+  --color-success: #5fd87a;
+  --color-warning: #f5b84a;
+  --color-danger: #f0503c;
+
+  /* Named "--landing-font-display", not "--font-display" — apps/web now has a shared,
+     editor-wide --font-display (Instrument Serif; see the components layer below and
+     DESIGN.md). Reusing that name here would overwrite the one custom property both sides
+     read, silently repointing every editor .font-display element at General Sans. The
+     scoped override just below restores General Sans for the landing page's own
+     .font-display usage (the "Design System" nav label) without touching that component. */
+  --landing-font-display: "General Sans", "Inter", sans-serif;
+
+  --text-display-xl: 4.5rem;
+  --text-display-xl--line-height: 1.05;
+  --text-display-xl--letter-spacing: -0.03em;
+  --text-display-xl--font-weight: 600;
+  --text-display-lg: 3.5rem;
+  --text-display-lg--line-height: 1.08;
+  --text-display-lg--letter-spacing: -0.03em;
+  --text-display-lg--font-weight: 600;
+  --text-display-md: 2.5rem;
+  --text-display-md--line-height: 1.12;
+  --text-display-md--letter-spacing: -0.02em;
+  --text-display-md--font-weight: 600;
+  --text-heading-lg: 1.75rem;
+  --text-heading-lg--line-height: 1.25;
+  --text-heading-lg--font-weight: 600;
+  --text-heading-md: 1.25rem;
+  --text-heading-md--line-height: 1.3;
+  --text-heading-md--font-weight: 600;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.6;
+  --text-body-md: 1rem;
+  --text-body-md--line-height: 1.6;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.5;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.2;
+  --text-label--font-weight: 500;
+  --text-label--letter-spacing: 0.04em;
+  --text-mono-sm: 0.8125rem;
+  --text-mono-sm--line-height: 1.4;
+
+  --shadow-soft: 0 20px 60px -20px rgba(0, 0, 0, 0.5);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-pulse-ring: pulse-ring 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  --animate-glow-drift: glow-drift 8s ease-in-out infinite;
+  --animate-fade-up: fade-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Named "landing-enter", not "enter" — tw-animate-css (imported above) already defines its
+     own @keyframes enter with only a 0% frame; same-named keyframes don't merge, the last one
+     registered wins outright, so reusing "enter" silently drops our 100% end state and every
+     animate-enter element snaps back to its plain (opacity-20, etc.) base style at rest. */
+  --animate-landing-enter: landing-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Text's counterpart to the sphere's particle entrance (VoiceSphere.tsx):
+     the sphere converges from a scattered field with a slight overshoot
+     before settling, so this resolves from an unfocused, drifted state
+     (blurred, offset, slightly undersized) through the same kind of
+     one-sided overshoot — visible past 100% in the 65% frame below — before
+     settling exactly at rest, instead of a plain fade/slide. */
+  --animate-text-materialize: text-materialize 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-scroll-bounce: scroll-bounce 1.8s ease-in-out infinite;
+  --animate-twinkle: twinkle 3s ease-in-out infinite;
+
+  /* Motion-polish pass (LandingPage.tsx / LandingNavbar.tsx): each surrounding
+     UI element gets its own distinct entrance so the page doesn't read as one
+     fade-in repeated everywhere. The sphere's own entrance (VoiceSphere.tsx)
+     is untouched and independent of all of these. */
+  --animate-navbar-enter: navbar-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-eyebrow-reveal: eyebrow-reveal 0.7s ease-out both;
+  --animate-word-reveal: word-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-subtitle-reveal: subtitle-reveal 0.6s ease-out both;
+
+  /* Left-of-sphere hero info block (LandingPage.tsx's HeroProductInfo): three
+     items, three distinct reveal directions, so the block doesn't read as
+     one fade repeated three times. */
+  --animate-info-reveal-left: info-reveal-left 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-info-reveal-up: info-reveal-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-info-reveal-fade: info-reveal-fade 0.6s ease-out both;
+
+  /* Atmospheric hero glow (LandingPage.tsx): a near-imperceptible ambient
+     breathing, not a pulse — see .hero-glow below for the gradient itself. */
+  --animate-hero-glow-breathe: hero-glow-breathe 6.5s ease-in-out infinite;
+
+  /* Hero background orbit (LandingBackground.tsx): only the main orbit ring
+     gets this — the secondary orbit and partial arcs stay fully static, so
+     the background has one very quiet point of motion, not several. */
+  --animate-orbit-breathe: orbit-breathe 14s ease-in-out infinite;
+
+  /* Nebula depth drift (LandingBackground.tsx): the far blob layer drifts
+     slower and slightly scales, the mid layer drifts a bit faster and only
+     translates — two different rates read as depth, not just "two things
+     moving the same way." */
+  --animate-nebula-drift-slow: nebula-drift-slow 26s ease-in-out infinite;
+  --animate-nebula-drift: nebula-drift 17s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.45; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes glow-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(2%, -3%); }
+}
+@keyframes fade-up {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes landing-enter {
+  0% { opacity: 0; transform: translateY(14px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes text-materialize {
+  0% { opacity: 0; transform: translateY(18px) scale(0.92); filter: blur(7px); }
+  65% { opacity: 1; transform: translateY(-2px) scale(1.015); filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+@keyframes scroll-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(5px); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.6; }
+}
+/* Navbar arrives from just above rather than fading in place — distinct
+   from every other reveal below, none of which move vertically this far. */
+@keyframes navbar-enter {
+  0% { opacity: 0; transform: translateY(-14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+/* Eyebrow: a "focusing into place" reveal — blur clears and the exaggerated
+   tracking relaxes down to its resting tracking-widest value (0.1em) at the
+   same time, rather than moving vertically like the headline/subtitle do. */
+@keyframes eyebrow-reveal {
+  0% { opacity: 0; filter: blur(4px); letter-spacing: 0.4em; }
+  100% { opacity: 1; filter: blur(0); letter-spacing: 0.1em; }
+}
+/* One word's motion in the headline's word-by-word reveal (each word gets
+   its own short delay in the component, not baked in here) — quick and
+   plain, no overshoot, so a 4-word headline resolves in well under a
+   second instead of reading like a slideshow. */
+@keyframes word-reveal {
+  0% { opacity: 0; transform: translateY(12px); filter: blur(6px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+/* Subtitle: blur + fade + a smaller rise than the headline words, on a
+   plain ease-out rather than word-reveal's or text-materialize's curve —
+   deliberately the quietest of the three hero reveals, since it follows
+   both. */
+@keyframes subtitle-reveal {
+  0% { opacity: 0; transform: translateY(8px); filter: blur(5px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+/* Item 01 (Voice-First Editing): a horizontal reveal, distinct from the
+   other two items' vertical motion below. */
+@keyframes info-reveal-left {
+  0% { opacity: 0; transform: translateX(-14px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+/* Item 02 (Smart Captions): a slight upward reveal. */
+@keyframes info-reveal-up {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+/* Item 03 (Short-Form Ready): the quietest of the three — a smaller rise
+   than info-reveal-up, plain ease-out, no directional emphasis. */
+@keyframes info-reveal-fade {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+/* Deliberately tiny range (0.85→1 opacity, 1→1.035 scale) — the brief said
+   the viewer should barely register this as animated at all. */
+@keyframes hero-glow-breathe {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.035); }
+}
+/* Even quieter than hero-glow-breathe (0.85→1 vs. flat here at 0.82→1) and
+   much slower (14s vs 6.5s) — this is the background, it should read as
+   "alive" only if you stare at it. */
+@keyframes orbit-breathe {
+  0%, 100% { opacity: 0.82; }
+  50% { opacity: 1; }
+}
+@keyframes nebula-drift-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-1.5%, 2%) scale(1.03); }
+}
+@keyframes nebula-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(1.8%, -1.5%); }
+}
+
+/* Not a themeable Tailwind v4 namespace, so plain utility classes instead of @theme. */
+/* Hero cosmic background (LandingBackground.tsx), replacing the old grid
+   texture. Painted back-to-front as five layers within that component:
+   solid base -> blurred nebula blobs (far, then mid) -> a smooth gradient
+   "wash" (directional tints + the broad central violet aura) -> stars ->
+   orbit SVG -> vignette. Split into far/mid/wash so the nebula reads as
+   layered depth rather than one flat tinted rectangle. This must never
+   compete with the sphere or the .hero-glow directly behind it (kept
+   separate and unduplicated — see LandingPage.tsx): every color here stays
+   inside gradients/blur, never a flat fill, and the page still reads dark
+   first. */
+.landing-background-root {
+  background-color: #05060a;
+}
+/* Base shape all nebula blobs share: an irregular (non-circular) blurred
+   silhouette, so they read as clouds rather than glowing discs. Each named
+   blob below only sets its own size/position/color/blur strength. */
+.landing-blob {
+  position: absolute;
+  filter: blur(70px);
+}
+.landing-blob-left-far {
+  left: -18%;
+  top: -8%;
+  width: 58%;
+  height: 82%;
+  border-radius: 42% 58% 65% 35% / 45% 40% 60% 55%;
+  background: radial-gradient(closest-side, rgba(91, 63, 194, 0.22) 0%, rgba(21, 19, 51, 0.1) 65%, transparent 100%);
+}
+.landing-blob-right-far {
+  right: -20%;
+  top: 2%;
+  width: 60%;
+  height: 78%;
+  border-radius: 55% 45% 40% 60% / 50% 55% 45% 50%;
+  background: radial-gradient(closest-side, rgba(180, 63, 155, 0.24) 0%, rgba(91, 63, 194, 0.1) 65%, transparent 100%);
+}
+.landing-blob-left-mid {
+  left: -6%;
+  top: 28%;
+  width: 32%;
+  height: 44%;
+  filter: blur(50px);
+  border-radius: 60% 40% 55% 45% / 40% 60% 40% 60%;
+  background: radial-gradient(closest-side, rgba(118, 84, 255, 0.16) 0%, transparent 75%);
+}
+.landing-blob-right-mid {
+  right: -8%;
+  top: 10%;
+  width: 38%;
+  height: 48%;
+  filter: blur(55px);
+  border-radius: 45% 55% 60% 40% / 55% 45% 60% 40%;
+  background: radial-gradient(closest-side, rgba(180, 63, 155, 0.18) 0%, transparent 75%);
+}
+.landing-blob-warm {
+  right: 2%;
+  bottom: -10%;
+  width: 28%;
+  height: 32%;
+  filter: blur(60px);
+  border-radius: 50% 50% 40% 60% / 60% 40% 60% 40%;
+  background: radial-gradient(closest-side, rgba(255, 112, 72, 0.14) 0%, rgba(180, 63, 155, 0.08) 60%, transparent 90%);
+}
+.landing-blob-top-left {
+  left: 4%;
+  top: -6%;
+  width: 20%;
+  height: 20%;
+  filter: blur(45px);
+  border-radius: 48% 52% 55% 45% / 50% 45% 55% 50%;
+  background: radial-gradient(closest-side, rgba(118, 84, 255, 0.14) 0%, transparent 80%);
+}
+/* Smooth wash on top of the blurred blobs: no flat background-color of its
+   own (would hide the blobs beneath it) — just soft directional tints plus
+   the broad central violet aura (2-3 sphere diameters, well larger than
+   .hero-glow, which stays untouched and unduplicated) and a deep pool at
+   the very bottom edge. */
+.landing-nebula-wash {
+  background-image:
+    radial-gradient(65% 60% at 50% 44%, rgba(118, 84, 255, 0.16) 0%, rgba(91, 63, 194, 0.09) 40%, rgba(91, 63, 194, 0.03) 65%, transparent 82%),
+    radial-gradient(55% 70% at 6% 45%, rgba(21, 19, 51, 0.5) 0%, rgba(91, 63, 194, 0.07) 55%, transparent 85%),
+    radial-gradient(58% 72% at 96% 42%, rgba(91, 63, 194, 0.09) 0%, rgba(180, 63, 155, 0.08) 55%, transparent 85%),
+    radial-gradient(46% 42% at 88% 92%, rgba(180, 63, 155, 0.07) 0%, rgba(255, 112, 72, 0.05) 55%, transparent 82%),
+    radial-gradient(70% 38% at 50% 104%, rgba(21, 19, 51, 0.55) 0%, transparent 72%);
+}
+/* Topmost decorative layer: a very subtle dark edge vignette that focuses
+   attention centrally without ever reading as an obvious frame. */
+.landing-vignette {
+  background: radial-gradient(120% 100% at 50% 42%, transparent 55%, rgba(5, 6, 10, 0.4) 100%);
+}
+/* Atmospheric hero glow (LandingPage.tsx, positioned behind the sphere).
+   Two overlapping radial gradients rather than one centered circle: a
+   tighter, slightly brighter lobe roughly behind the sphere (36% down the
+   glow box) and a larger, fainter lobe pooling below it (64% down) — that
+   asymmetry is what reads as "light extending downward" instead of a
+   symmetric disc, and the long, many-stop falloff on each is what keeps
+   the edge from ever reading as a hard circle. Color reuses the existing
+   blue-violet already in the palette (VoiceSphere's MIC_ACCENT / the
+   STRETCH control, #8B98F0), not a new brand color. */
+.hero-glow {
+  background:
+    radial-gradient(48% 46% at 50% 36%, rgba(139, 152, 240, 0.22) 0%, rgba(139, 152, 240, 0.11) 42%, rgba(139, 152, 240, 0.04) 65%, transparent 82%),
+    radial-gradient(58% 56% at 50% 66%, rgba(124, 109, 214, 0.13) 0%, rgba(124, 109, 214, 0.05) 50%, transparent 78%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-ring,
+  .animate-glow-drift,
+  .animate-nebula-drift-slow,
+  .animate-nebula-drift,
+  .animate-landing-enter,
+  .animate-text-materialize,
+  .animate-scroll-bounce {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .animate-twinkle {
+    animation: none !important;
+  }
+  .animate-navbar-enter,
+  .animate-eyebrow-reveal,
+  .animate-word-reveal,
+  .animate-subtitle-reveal,
+  .animate-hero-glow-breathe,
+  .animate-orbit-breathe,
+  .animate-info-reveal-left,
+  .animate-info-reveal-up,
+  .animate-info-reveal-fade {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
 @layer components {
   /*
     The brand recognizer. One horizontal band, red -> orange -> yellow -> cream, used where a
@@ -237,4 +590,22 @@
 }
 .dark ::-webkit-scrollbar-thumb:hover {
   background-color: oklch(0.86 0.04 80 / 26%);
+}
+
+/*
+ * Landing-page-scoped .font-display override. The editor's own .font-display (just above,
+ * in @layer components) reads the shared --font-display (Instrument Serif) — correct for the
+ * editor, wrong for the landing page's "Design System" nav label, which was designed against
+ * General Sans (--landing-font-display above). Scoped under .bg-canvas (the landing page's own
+ * root wrapper class, used nowhere else in this app) and left unlayered so it wins over the
+ * components-layer rule regardless of source order, without editing LandingPage.tsx itself or
+ * touching the shared --font-display value the editor depends on.
+ */
+.bg-canvas .font-display {
+  font-family: var(--landing-font-display);
+  /* Cancel the components-layer .font-display's letter-spacing: Tailwind's own layer order
+     (utilities > components) already lets text-heading-md's font-weight win over that rule's
+     font-weight without help, but nothing here competes with its letter-spacing, so it would
+     otherwise still apply to the landing nav label. */
+  letter-spacing: normal;
 }

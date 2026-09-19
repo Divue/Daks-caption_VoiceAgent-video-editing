@@ -27,10 +27,10 @@ import { useWordPatch } from '@/state/word-patch-context'
  */
 export type PresetOverride = Partial<
   Pick<Preset, 'emphasis' | 'emphasisScale' | 'reveal' | 'glowLayers' | 'emotion' | 'stretch' | 'align'>
-> & { wordsPerLine?: number }
+> & { wordsPerLine?: number; baseFontSize?: number }
 
 /** The keys that have a home on the Project. Everything else stays session-only. */
-const STORED_KEYS = ['wordsPerLine', 'emphasis', 'emphasisScale', 'reveal', 'emotion'] as const
+const STORED_KEYS = ['baseFontSize', 'wordsPerLine', 'emphasis', 'emphasisScale', 'reveal', 'emotion'] as const
 
 function splitOverride(patch: PresetOverride): { stored: PresetOverride; session: PresetOverride } {
   const stored: Record<string, unknown> = {}
@@ -113,6 +113,12 @@ export function PresetOverrideProvider({ children }: { children: ReactNode }) {
     () => ({
       ...basePreset,
       ...merged,
+      // A base-size override belongs INSIDE `base`, where the resolver reads it. Putting it on
+      // the preset root would be ignored, and writing it onto every word instead would beat
+      // `emphasisScale` and flatten the emphasis hierarchy — the bug this field exists to fix.
+      base: merged.baseFontSize
+        ? { ...basePreset.base, fontSize: merged.baseFontSize }
+        : basePreset.base,
       // `emphasis` is a Partial<Style>, so a shallow spread of the override would replace the
       // whole face instead of changing one of its keys.
       emphasis: { ...basePreset.emphasis, ...merged.emphasis },

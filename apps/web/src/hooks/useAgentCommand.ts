@@ -109,7 +109,18 @@ export function useAgentCommand(activity: Activity) {
           history,
           controller.signal,
         )
-        const trace = response.log.map((entry) => entry.message)
+
+        // The backend's log is three different things in one list: an echo of the command, one
+        // line per tool call, and the agent's own closing sentence. Showing them undifferentiated
+        // buried the actual REPLY as a numbered step — the user could see that six tools ran but
+        // not what the agent said it did. Split them here.
+        const steps = response.log
+          .map((entry) => entry.message)
+          .filter((message) => message.startsWith("Tool '"))
+        const reply = response.log
+          .map((entry) => entry.message)
+          .filter((message) => !message.startsWith("Tool '") && !message.startsWith('Command received:'))
+          .at(-1)
 
         if (response.status === 'needs_input' && response.question) {
           // The agent is asking rather than guessing. Remember what it was asked about, so
@@ -119,22 +130,21 @@ export function useAgentCommand(activity: Activity) {
           historyRef.current = [...history, asked]
           awaitingRef.current = asked
           setState({ busy: false, pendingCommand: null, awaitingAnswer: asked })
-          updateEntry(entryId, { status: 'question', message: response.question, trace })
+          updateEntry(entryId, { status: 'question', message: response.question, trace: steps })
           return
         }
 
         if (response.status !== 'ok') {
           // `unsupported` and `not_implemented` are the agent being honest about a capability it
           // does not have. They are not failures and they are not successes — never a green tick.
-          const last = response.log.at(-1)?.message
           updateEntry(entryId, {
             status: response.status === 'error' ? 'error' : 'warn',
             message:
-              last ??
+              reply ??
               (response.status === 'error'
                 ? 'The agent could not finish that.'
                 : 'The editor cannot do that yet.'),
-            trace,
+            trace: steps,
           })
           return
         }
@@ -142,8 +152,8 @@ export function useAgentCommand(activity: Activity) {
         if (response.patches.length === 0) {
           updateEntry(entryId, {
             status: 'warn',
-            message: last(response.log) ?? 'Nothing changed.',
-            trace,
+            message: reply ?? 'Nothing changed.',
+            trace: steps,
           })
           return
         }
@@ -162,17 +172,21 @@ export function useAgentCommand(activity: Activity) {
                 ? `Applied ${result.applied} of ${result.total} changes, then hit an error. ${result.error}`
                 : result.error,
             lines,
-            trace,
+            trace: steps,
             undoSteps: result.resynced ? 2 : 1,
           })
           return
         }
 
         updateEntry(entryId, {
+          // The agent's own sentence is the reply; the mechanical count is a subtitle. Showing
+          // "51 words changed" as the headline and hiding "Done! …" in the trace told the user
+          // what happened to the data but not what the agent thought it did.
           status: 'ok',
-          message: summariseTurn(response.patches),
+          message: reply ?? summariseTurn(response.patches),
+          summary: summariseTurn(response.patches),
           lines,
-          trace,
+          trace: steps,
           undoSteps: 1,
         })
       } catch (cause) {
@@ -204,8 +218,4 @@ export function useAgentCommand(activity: Activity) {
   }, [])
 
   return { ...state, run, cancel, dismissQuestion }
-}
-
-function last(log: { message: string }[]): string | undefined {
-  return log.at(-1)?.message
 }

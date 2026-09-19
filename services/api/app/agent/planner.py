@@ -122,6 +122,10 @@ not name and to words that do not exist yet. \
 - "make the EMPHASISED words Anton" / "bigger" -> set_preset_override's `emphasis` and \
   `emphasisScale`. There is no per-word way to say "when emphasised". \
 - "make angry words shake harder" -> set_preset_override's `emotion`. \
+- "make the captions bigger / smaller" (ALL of them) -> set_preset_override's `baseFontSize`. \
+  NEVER answer this by writing fontSize onto every word: a per-word size is final, it overrides \
+  the emphasis scale, and the emphasised words end up SMALLER than they were. Per-word fontSize \
+  is only for "make THIS word bigger". \
 - "fewer words per line" / "three words at a time" -> set_preset_override's `wordsPerLine`. \
 - "reveal the words one at a time" -> set_preset_override's `reveal`.
 

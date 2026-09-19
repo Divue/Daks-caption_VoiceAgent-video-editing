@@ -135,6 +135,20 @@ function TurnEntry({
         <p className="mt-1 pl-5.5 text-[11px] text-muted-foreground">Waiting for your answer</p>
       )}
 
+      {/* The agent's own sentence is the headline; this is the mechanical count beside it, so
+          the user can see both what it said and what it actually touched. */}
+      {entry.summary && (
+        <p className="mt-0.5 pl-5.5 text-[11px] text-muted-foreground tabular-nums">{entry.summary}</p>
+      )}
+
+      {/* What the user actually said, once the headline has become the agent's reply — without
+          it a finished turn shows an answer with no question above it. */}
+      {entry.command && entry.command !== entry.message && status !== 'pending' && (
+        <p className="mt-0.5 pl-5.5 text-[11px] text-muted-foreground/70 italic">
+          you said: “{entry.command}”
+        </p>
+      )}
+
       <EntryDetail
         entry={entry}
         onUndoTurn={onUndoTurn}

@@ -27,9 +27,11 @@ export interface AgentLogEntry {
    * it succeeded, the thing the user said disappeared and the log stopped being a conversation.
    */
   command?: string
+  /** A short mechanical count ("51 words changed") shown beside the agent's own reply. */
+  summary?: string
   /** One line per change, already phrased for a human by lib/agent-summary.ts. */
   lines?: string[]
-  /** The agent's own tool trace (its `log[]`), shown only when the user asks for it. */
+  /** The tool calls the turn made — just the steps, not the agent's reply or the echo. */
   trace?: string[]
   /**
    * How many UNDO dispatches take this turn back, so "Undo that" is exact. A turn that ended in

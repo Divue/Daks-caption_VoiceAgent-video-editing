@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 
 from .agent.router import router as agent_router
 from .config import get_settings
-from .routers import costs, projects, render
+from .routers import costs, demo_media, projects, render
 
 settings = get_settings()  # fail fast at startup, listing every missing variable
 
@@ -42,3 +42,4 @@ app.include_router(costs.router)
 # that one request, never the process. BEDROCK_MODEL_ID stays required by config.get_settings().
 app.include_router(agent_router)
 app.include_router(render.router)
+app.include_router(demo_media.router)

@@ -229,6 +229,10 @@ class SetPresetOverrideArgs(BaseModel):
     to the preset's own value. At least one of the two must do something.
     """
 
+    baseFontSize: Annotated[
+        float | None,
+        Field(default=None, gt=0, description="The BASE caption size in px at 1080p."),
+    ]
     wordsPerLine: Annotated[int | None, Field(default=None, ge=1, le=8)]
     emphasis: Annotated[
         StylePatch | None,

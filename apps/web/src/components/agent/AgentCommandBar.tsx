@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { ChevronDown, Send, X } from 'lucide-react'
+import { ChevronDown, MessageCircleQuestion, Send, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -21,11 +21,16 @@ const REFUSAL_LABEL = "won't work — on purpose"
 interface AgentCommandBarProps {
   micStatus: MicStatus
   busy: boolean
+  /** The question the agent is waiting on, if it asked one. The next thing sent is the answer. */
+  awaitingQuestion: string | null
+  onDismissQuestion: () => void
   /** The command currently running, echoed back so the user sees what was heard. */
   pendingCommand: string | null
   /** Live, not-yet-final speech. Shown, never submitted — an interim guess is not a command. */
   interimTranscript: string | null
   onToggleMic: () => void
+  /** Ends the voice session. Offered as text too, not only as the mic button's second meaning. */
+  onStopMic: () => void
   onSubmitCommand: (command: string) => void
   onCancel: () => void
 }
@@ -33,13 +38,23 @@ interface AgentCommandBarProps {
 export function AgentCommandBar({
   micStatus,
   busy,
+  awaitingQuestion,
+  onDismissQuestion,
   pendingCommand,
   interimTranscript,
   onToggleMic,
+  onStopMic,
   onSubmitCommand,
   onCancel,
 }: AgentCommandBarProps) {
   const [value, setValue] = useState('')
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  // A question is a prompt to answer, so put the cursor where the answer goes. Without this
+  // the agent asks and the user has to find the field again before they can reply.
+  useEffect(() => {
+    if (awaitingQuestion && !busy) inputRef.current?.focus()
+  }, [awaitingQuestion, busy])
   const [showAll, setShowAll] = useState(false)
 
   function handleSubmit(event: FormEvent) {
@@ -57,12 +72,19 @@ export function AgentCommandBar({
     setShowAll(false)
   }
 
+  // Whether there is a voice session to end — computed apart from `status`, because the status
+  // line shows the agent's work or the interim transcript while the mic is still open, and the
+  // way out must not disappear exactly when someone is talking or waiting.
+  const micOn = micStatus === 'listening' || micStatus === 'processing' || micStatus === 'connecting'
+
   const status = busy
     ? { text: pendingCommand ?? 'Working…', tone: 'text-muted-foreground' as const }
     : interimTranscript
       ? { text: interimTranscript, tone: 'text-muted-foreground/70' as const }
-      : micStatus === 'listening'
+      : micStatus === 'listening' || micStatus === 'processing'
         ? { text: 'Listening…', tone: 'text-primary' as const }
+        : micStatus === 'connecting'
+          ? { text: 'Connecting the microphone…', tone: 'text-muted-foreground' as const }
         : micStatus === 'denied'
           ? {
               text: 'Microphone blocked. Allow it in your browser to use voice.',
@@ -73,6 +95,34 @@ export function AgentCommandBar({
   return (
     <div className="shrink-0 border-t border-border/60 bg-card px-4 py-3">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
+        {/*
+          A pending question sits ABOVE the field, not in the status line: the user is reading
+          it WHILE they type the answer, so it has to stay on screen rather than being swapped
+          out the moment they start. Agent text is untrusted — rendered as a text node only.
+        */}
+        {awaitingQuestion && !busy && (
+          <div className="flex items-start gap-2 rounded-lg border border-border/70 bg-muted/40 px-3 py-2">
+            <MessageCircleQuestion className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+            <div className="flex-1">
+              <p className="text-sm text-foreground">{awaitingQuestion}</p>
+              {micStatus === 'listening' && (
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Just say the answer — the mic is still on.
+                </p>
+              )}
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Dismiss question"
+              onClick={onDismissQuestion}
+              className="shrink-0 text-muted-foreground"
+            >
+              <X />
+            </Button>
+          </div>
+        )}
         {/*
           Voice is the product's headline interaction, so the bar reads as one object — mic,
           field and send inside a single bordered shell that lights up on focus — rather than as
@@ -87,9 +137,16 @@ export function AgentCommandBar({
         >
           <MicButton status={micStatus} onToggle={onToggleMic} />
           <Input
+            ref={inputRef}
             value={value}
             onChange={(event) => setValue(event.target.value)}
-            placeholder={busy ? 'Working on it…' : 'Ask the editor to do something…'}
+            placeholder={
+              busy
+                ? 'Working on it…'
+                : awaitingQuestion
+                  ? 'Answer the question…'
+                  : 'Ask the editor to do something…'
+            }
             className="h-8 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
           />
           {busy ? (
@@ -118,10 +175,21 @@ export function AgentCommandBar({
 
         {/* One line that is either what we are hearing or what we are doing — never both, and
             never a fabricated "thinking" message when nothing is running. */}
-        {status ? (
-          <p className={cn('truncate px-1 text-xs', status.tone)} aria-live="polite">
-            {status.text}
-          </p>
+        {status || micOn ? (
+          <div className="flex items-center gap-2 px-1">
+            <p className={cn('min-w-0 flex-1 truncate text-xs', status?.tone)} aria-live="polite">
+              {status?.text ?? 'Listening…'}
+            </p>
+            {micOn && (
+              <button
+                type="button"
+                onClick={onStopMic}
+                className="shrink-0 rounded-md border border-border/70 px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+              >
+                Stop listening <span className="text-muted-foreground/60">· Esc</span>
+              </button>
+            )}
+          </div>
         ) : (
           /* Three chips inline — the bar is the headline control and must stay one line tall.
              The other eight (including the refusal) are one click away in a list that closes as

@@ -95,6 +95,7 @@ def set_preset_override(args: SetPresetOverrideArgs, project: Project) -> SetPre
     them can be written onto words (audit 17 §4). That makes this the only
     route to four of the most natural things a short-form creator asks for:
 
+      "make the captions bigger"         -> baseFontSize
       "fewer words per line"            -> wordsPerLine
       "make the emphasised words bigger" -> emphasis / emphasisScale
       "make angry words shake harder"    -> emotion
@@ -110,6 +111,7 @@ def set_preset_override(args: SetPresetOverrideArgs, project: Project) -> SetPre
     set_fields = {
         key: value
         for key, value in (
+            ("baseFontSize", args.baseFontSize),
             ("wordsPerLine", args.wordsPerLine),
             ("emphasis", args.emphasis),
             ("emphasisScale", args.emphasisScale),
@@ -232,7 +234,11 @@ default_registry.register(
             "multiple of the base size), `emotion` (what a tone does to the words in its run, e.g. "
             "angry shake or colour), and `reveal` ('none' | 'dim' | 'hidden', how words ahead of "
             "the playhead are drawn). Merges per key; `clearKeys` puts a key back to the preset's "
-            "own value. Use this for 'fewer words per line', 'make the emphasised words bigger', "
+            "own value. `baseFontSize` is the BASE caption size in px at 1080p — this is what "
+            "'make the captions bigger/smaller' means. Do NOT answer that by writing fontSize "
+            "onto every word: a per-word size is final and overrides the emphasis scale, so it "
+            "shrinks the emphasised words and flattens the hierarchy. "
+            "Use this for 'fewer words per line', 'make the emphasised words bigger', "
             "'make angry words shake harder' and 'reveal the words one at a time'. IMPORTANT: "
             "'make every word Anton' is update_caption_style over all word ids; 'make the "
             "EMPHASISED words Anton' is this tool's `emphasis.fontFamily`. They are different."

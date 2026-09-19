@@ -116,6 +116,16 @@ export type Overlay = z.infer<typeof Overlay>
  * (`dict[Emotion, …]`) means. `z.partialRecord` is the partial one.
  */
 export const PresetOverride = z.object({
+  /**
+   * The preset's BASE caption size (px at 1080p), overriding `Preset.base.fontSize`.
+   *
+   * This is what "make the captions bigger" has to change. Writing an explicit per-word
+   * `style.fontSize` onto every word looks equivalent and is not: the resolver treats an
+   * explicit per-word size as final (`caption-style.ts` — it bypasses `sizeMultiplier`), so a
+   * blanket per-word size DESTROYS the emphasis hierarchy. Measured: asking for "bigger" took
+   * the emphasised word from 33.5px down to 18.3px while every other word grew.
+   */
+  baseFontSize: z.number().positive().optional(),
   wordsPerLine: z.number().int().min(1).max(8).optional(),
   /** Layered onto emphasised words only — a full face, not a weight bump (see Preset.emphasis). */
   emphasis: Style.partial().optional(),

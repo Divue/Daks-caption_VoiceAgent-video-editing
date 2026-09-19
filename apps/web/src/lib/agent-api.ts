@@ -12,7 +12,17 @@ import type { AgentPatch } from '@/state/project-reducer'
  * something; `not_implemented` is a capability that exists in the catalogue but is not wired.
  * Neither is an error, and neither may be rendered as success.
  */
-export type AgentStatus = 'ok' | 'unsupported' | 'error' | 'not_implemented'
+export type AgentStatus = 'ok' | 'unsupported' | 'needs_input' | 'error' | 'not_implemented'
+
+/**
+ * One earlier "you asked / it asked back" round, replayed to the agent as data.
+ * The agent is stateless per request, so without this a follow-up answer arrives with no
+ * idea what it is answering.
+ */
+export interface ClarificationTurn {
+  command: string
+  question: string
+}
 
 /** Mirrors contracts.py's AgentLogEntry field-for-field; `timestamp` is epoch ms. */
 export interface AgentLogEntry {
@@ -25,6 +35,8 @@ export interface AgentCommandResponse {
   status: AgentStatus
   patches: AgentPatch[]
   log: AgentLogEntry[]
+  /** Set only when status is `needs_input`: the one question to put to the user. */
+  question?: string | null
 }
 
 /**
@@ -34,6 +46,21 @@ export interface AgentCommandResponse {
  * Blocks are derived on the fly and their indices shift as you edit (audit 17 §2), so the EDITOR
  * resolves the active block to word ids here and the agent only ever works in word ids.
  */
+/**
+ * What the active preset actually looks like. The agent cannot see this on its own — `Preset`
+ * lives only in TypeScript — so without it "get rid of the red" turns off the tone layer and
+ * leaves every emphasised word red, because the agent never knew they were red.
+ */
+export interface ActivePreset {
+  presetId?: string
+  name?: string
+  baseColor?: string
+  emphasisColor?: string
+  emphasisFontFamily?: string
+  emotionColors?: Record<string, string>
+  wordsPerLine?: number
+}
+
 export interface SelectionContext {
   selectedWordId?: string | null
   selectedWordIds?: string[] | null
@@ -47,11 +74,13 @@ export function submitTextCommand(
   command: string,
   project: Project,
   selection: SelectionContext,
+  history: ClarificationTurn[],
+  activePreset: ActivePreset,
   signal?: AbortSignal,
 ): Promise<AgentCommandResponse> {
   return request('/agent/command', {
     method: 'POST',
-    body: { command, project, selection },
+    body: { command, project, selection, history, activePreset },
     signal,
   })
 }
@@ -65,11 +94,13 @@ export function submitVoiceTranscript(
   transcript: string,
   project: Project,
   selection: SelectionContext,
+  history: ClarificationTurn[],
+  activePreset: ActivePreset,
   signal?: AbortSignal,
 ): Promise<AgentCommandResponse> {
   return request('/agent/voice-command', {
     method: 'POST',
-    body: { transcript, project, selection },
+    body: { transcript, project, selection, history, activePreset },
     signal,
   })
 }

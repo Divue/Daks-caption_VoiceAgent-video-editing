@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { ChevronDown, SquareSplitVertical } from 'lucide-react'
 import type { CaptionBlock, Emotion, Word } from '@captions/shared'
 import { cn } from '@/lib/utils'
-import { formatTimestamp } from '@/lib/format'
+import { formatTimecode } from '@/lib/format'
 import { renderedText } from '@/lib/caption-style'
 import { EMOTION_BADGE, EMOTION_DOT, EMOTION_OPTIONS } from '@/lib/emotion'
 import {
@@ -94,7 +94,7 @@ export function CaptionList({
             <button
               type="button"
               onClick={() => onSeekToBlock(block)}
-              title={`Jump to ${formatTimestamp(block.startMs)}`}
+              title={`Jump to ${blockTime(block.startMs)}`}
               className="w-6 shrink-0 text-left text-xs tabular-nums text-muted-foreground hover:text-foreground"
             >
               {index + 1}
@@ -116,11 +116,56 @@ export function CaptionList({
               ))}
             </div>
 
+            <BlockTime block={block} words={words} />
+
             <BlockToneMenu block={block} onSetEmotion={onSetBlockEmotion} />
           </li>
         )
       })}
     </ol>
+  )
+}
+
+/**
+ * One time, in the editor's short form: `0:03.2`. Tenths, because a caption block can be
+ * 250 ms long (MIN_BLOCK_MS) and whole seconds would print two consecutive blocks identically.
+ * `formatTimecode` is the existing formatter — the time ruler below the video already labels
+ * itself with it, so the two agree by construction rather than by luck.
+ */
+const blockTime = (ms: number) => formatTimecode(ms, 100)
+
+/**
+ * A caption block's own start and end.
+ *
+ * Read straight off the block on every render and never stored: blocks are DERIVED by
+ * `deriveBlocks`, so their times are a function of the words and belong nowhere else.
+ *
+ * A `single` block holds exactly one word — rule 4 fences such a word on both sides, and
+ * `mergeShortBlocks` never folds it away — so the block's start/end ARE that word's own solo
+ * times. That is why there is no second code path for it here, only a tooltip that names the
+ * word, so "solo from here to here" is readable rather than inferred.
+ */
+function BlockTime({ block, words }: { block: CaptionBlock; words: Word[] }) {
+  const range = `${blockTime(block.startMs)}\u2013${blockTime(block.endMs)}`
+  const seconds = `${((block.endMs - block.startMs) / 1000).toFixed(1)}s`
+  const solo = block.isSingle ? words[0] : undefined
+
+  return (
+    <span
+      // Secondary information: small, muted, tabular so the digits do not shift column to
+      // column, and deliberately not accented — orange is spent on the playhead, the primary
+      // action and the selection (audit 16 §3.3), and a timestamp is none of those.
+      title={
+        solo
+          ? `\u201c${solo.text}\u201d alone for ${range} (${seconds})`
+          : `This caption runs ${range} (${seconds})`
+      }
+      className="shrink-0 self-start pt-1 text-[10px] leading-none tabular-nums text-muted-foreground/70"
+    >
+      {blockTime(block.startMs)}
+      <span className="px-0.5 text-muted-foreground/40">&ndash;</span>
+      {blockTime(block.endMs)}
+    </span>
   )
 }
 

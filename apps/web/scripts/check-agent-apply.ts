@@ -14,11 +14,13 @@
  */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Project } from '@captions/shared'
+import { Project, deriveBlocks } from '@captions/shared'
 import { applyAgentPatch, createInitialState, projectReducer } from '../src/state/project-reducer'
 import type { AgentPatch, ProjectHistoryState } from '../src/state/project-reducer'
 import { summarisePatches, summariseTurn } from '../src/lib/agent-summary'
+import { FILLER, MIN_VOICE_CHARS, STOP_LISTENING, UNDO_PHRASES, mergeUtterances } from '../src/lib/voice-intents'
 import { DEFAULT_CHIPS, DEMO_PROMPTS, isRefusalPrompt } from '../src/lib/demo-prompts'
+import { formatTimecode } from '../src/lib/format'
 
 let failures = 0
 function check(label: string, ok: boolean, detail = '') {
@@ -241,6 +243,87 @@ console.log('\ndemo prompts — the tested set cannot drift')
   check('the default chips are real prompts', DEFAULT_CHIPS.every((c) => DEMO_PROMPTS.includes(c)))
   check('there are 1-4 default chips', DEFAULT_CHIPS.length >= 1 && DEFAULT_CHIPS.length <= 4, `got ${DEFAULT_CHIPS.length}`)
   check('no default chip is the refusal', !DEFAULT_CHIPS.some(isRefusalPrompt))
+}
+
+console.log('\ncaption block timings — what the transcript rows print')
+{
+  // The caption list shows each block's start and end with `formatTimecode(ms, 100)`. That
+  // branch of the formatter had no coverage, and a wrong one is the kind of bug you only catch
+  // by reading a number that was never quite right: tenths silently rounding, or a minute
+  // printing as 72 seconds.
+  const t = (ms: number) => formatTimecode(ms, 100)
+  check('zero prints a full time, not an empty one', t(0) === '0:00.0', t(0))
+  check('sub-second keeps its tenth', t(250) === '0:00.2', t(250))
+  check('a tenth is truncated, never rounded up past its second', t(1950) === '0:01.9', t(1950))
+  check('the last tenth of a second stays in that second', t(999) === '0:00.9', t(999))
+  check('over a minute rolls into minutes', t(72_300) === '1:12.3', t(72_300))
+  check('an exact minute is 1:00.0, not 0:60.0', t(60_000) === '1:00.0', t(60_000))
+  check('a negative time clamps to zero', t(-5) === '0:00.0', t(-5))
+
+  // The row for a `single` word claims to be showing THAT WORD's own start and end. It gets
+  // away with reading them off the block only because rule 4 fences a single word into a block
+  // of exactly one and mergeShortBlocks never folds it away. If that ever stops being true the
+  // transcript starts attributing a neighbour's time to a solo word, so assert it here.
+  const words = fixture.words.map((word, index) => (index === 3 ? { ...word, single: true } : word))
+  const blocks = deriveBlocks(words)
+  const soloBlocks = blocks.filter((block) => block.isSingle)
+  check('marking a word single yields exactly one single block', soloBlocks.length === 1, `got ${soloBlocks.length}`)
+  const solo = soloBlocks[0]
+  check('the single block holds only that word', solo?.wordIds.length === 1 && solo.wordIds[0] === words[3].id)
+  check(
+    "the single block's times ARE the word's own times",
+    solo?.startMs === words[3].startMs && solo?.endMs === words[3].endMs,
+    `${solo?.startMs}-${solo?.endMs} vs ${words[3].startMs}-${words[3].endMs}`,
+  )
+}
+
+console.log('\nvoice — what never reaches the agent')
+{
+  // A live mic hears things that were never aimed at us. Each one that gets through is a
+  // Bedrock round trip, a spinner, and a history entry saying "I'm not sure what you meant".
+  const junk = ['uh', 'ummm', 'hmm', 'okay', 'so', 'yeah', 'a', 'I']
+  check('filler is recognised as filler', junk.every((w) => FILLER.test(w)), junk.filter((w) => !FILLER.test(w)).join(','))
+
+  const real = ['make it red', 'stop making things red', 'bigger', 'put a fire emoji on bekaar']
+  check('real commands are NOT filtered', real.every((w) => !FILLER.test(w)), real.filter((w) => FILLER.test(w)).join(','))
+
+  check('a command shorter than the minimum is dropped', 'no'.length < MIN_VOICE_CHARS)
+  check('a short real command survives', 'red'.length >= MIN_VOICE_CHARS)
+
+  const stops = ["stop listening", "mic off", "that's all", "I'm done"]
+  check('stop phrases are recognised', stops.every((w) => STOP_LISTENING.test(w)), stops.filter((w) => !STOP_LISTENING.test(w)).join(','))
+  check('"stop making things red" is NOT a stop phrase', !STOP_LISTENING.test('stop making things red'))
+
+  const undos = ['undo', 'undo that', 'take that back', 'never mind']
+  check('undo phrases are recognised locally', undos.every((w) => UNDO_PHRASES.test(w)), undos.filter((w) => !UNDO_PHRASES.test(w)).join(','))
+  check('"undo the red on that word" is NOT a bare undo', !UNDO_PHRASES.test('undo the red on that word'))
+}
+
+console.log('\nvoice — a pause is not the end of an instruction')
+{
+  const merged = mergeUtterances('Hey, increase the size of the white font.', 'From 10 s marker to 12 s.')
+  check(
+    'the reported case keeps BOTH halves',
+    merged.includes('increase the size of the white font') && merged.includes('From 10 s marker to 12 s'),
+    merged,
+  )
+  check('the pause-period between the halves is dropped', !merged.includes('font. From'), merged)
+
+  check('a repeated final is not doubled', mergeUtterances('make it red', 'Make it red.') === 'make it red')
+  check(
+    'an engine re-sending the whole utterance, extended, replaces rather than doubles',
+    mergeUtterances('make it red', 'make it red and bigger') === 'make it red and bigger',
+  )
+  check(
+    'a question mark said on purpose survives',
+    mergeUtterances('can you make it red?', 'and bigger').startsWith('can you make it red?'),
+  )
+  check('an empty first half yields the second', mergeUtterances('', 'bigger') === 'bigger')
+  check('an empty second half yields the first', mergeUtterances('make it red', '  ') === 'make it red')
+  check(
+    'three fragments accumulate in order',
+    mergeUtterances(mergeUtterances('make the word pagal', 'blue'), 'and shake it') === 'make the word pagal blue and shake it',
+  )
 }
 
 console.log(failures === 0 ? '\nAll checks passed.\n' : `\n${failures} check(s) FAILED.\n`)

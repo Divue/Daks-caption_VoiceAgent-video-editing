@@ -91,6 +91,8 @@ class EmotionOverride(BaseModel):
 
 
 class PresetOverride(BaseModel):
+    """Mirror of packages/shared/src/project.ts's PresetOverride."""
+
     """Persisted tweaks to the active preset's CONDITIONAL layers. Mirrors PresetOverride in
     packages/shared/src/project.ts — an explicit allow-list, deliberately NOT a partial Preset.
 
@@ -98,6 +100,9 @@ class PresetOverride(BaseModel):
     here when a user/agent command has to survive a reload. `emotion` is a PARTIAL map (the zod
     side needs `z.partialRecord`, because zod v4's `z.record(enum, …)` demands every key).
     """
+    # See project.ts: 'bigger' must move the BASE size, never every word's own size,
+    # or the emphasis hierarchy collapses.
+    baseFontSize: Optional[float] = Field(default=None, gt=0)
     wordsPerLine: Optional[int] = Field(default=None, ge=1, le=8)
     emphasis: Optional[StylePatch] = None
     emphasisScale: Optional[float] = Field(default=None, gt=0)

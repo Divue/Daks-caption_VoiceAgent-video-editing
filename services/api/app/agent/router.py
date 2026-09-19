@@ -102,6 +102,7 @@ def run_voice_command(
             project=request.project,
             transcript=request.transcript,
             selection=request.selection,
+            history=request.history,
             client=client,
         )
     except Exception:

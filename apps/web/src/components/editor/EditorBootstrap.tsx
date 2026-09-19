@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Project } from '@captions/shared'
-import demoProject from '@captions/shared/fixtures/demo-project.json'
+import { API_BASE } from '@/lib/api'
+import demoProject from '@captions/shared/fixtures/normal-project.json'
 import App from '@/App'
 import { EditorMessage } from '@/components/editor/EditorMessage'
 import { getProject, isApiError, startProcess } from '@/lib/api'
@@ -43,12 +44,16 @@ export function EditorBootstrap({ fixture = false }: { fixture?: boolean }) {
 
   useEffect(() => {
     if (fixture) {
-      // The fixture's videoUrl is a placeholder ("demo.mp4"), not a file that exists. Left in
-      // place it mounts a <video> that never loads, never fires `error` under the dev server's
-      // SPA fallback, and so stays attached as the playback clock reporting currentTime 0 —
-      // which freezes the transport, the timeline and the caption preview. Fixture mode has no
-      // video, so it says so, and PlaybackProvider's fallback clock drives the playhead instead.
-      const parsed = Project.safeParse({ ...demoProject, videoUrl: '' })
+      // The fixture carries a bare filename ("Normal.mp4"), which is not a URL: the <video>
+      // would never load and `analyze_frame` would refuse it, so vision could not run in the
+      // app at all. The API serves the bake-off clips at /demo-media/<name> in dev, so the
+      // demo gets a real, playable, analysable video instead of an empty stage.
+      //
+      // If that URL is wrong the <video> never loads and stays attached as the playback clock
+      // at currentTime 0, which freezes the transport, the timeline and the caption preview —
+      // so this must point at something that really serves, not merely at something plausible.
+      const demoVideoUrl = `${API_BASE}/demo-media/${demoProject.videoUrl}`
+      const parsed = Project.safeParse({ ...demoProject, videoUrl: demoVideoUrl })
       if (parsed.success) {
         setState({ k: 'loaded', project: parsed.data, version: 0 })
         setLifecycle({ k: 'ready' })

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AgentActivityPanel } from '@/components/agent/AgentActivityPanel'
 import { AgentCommandBar } from '@/components/agent/AgentCommandBar'
 import { CaptionStylePanel } from '@/components/inspector/CaptionStylePanel'
@@ -13,6 +13,7 @@ import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { resolveEmphasis } from '@captions/shared'
 import type { CaptionBlock, Emotion, Word } from '@captions/shared'
+import type { MicStatus } from '@/hooks/useAgentActivity'
 import { useAgentActivity } from '@/hooks/useAgentActivity'
 import { useAgentCommand } from '@/hooks/useAgentCommand'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
@@ -56,7 +57,12 @@ function App() {
 
   useUndoRedoShortcuts()
 
-  const agent = useAgentCommand(activity)
+  // The mic and the turn runner each need the other: the runner must be able to stop
+  // listening when you say "that's all", and the mic must hand transcripts to the runner. A
+  // ref breaks the cycle without making either of them re-create itself every render.
+  const stopVoiceRef = useRef<() => void>(() => {})
+  const stopListening = useCallback(() => stopVoiceRef.current(), [])
+  const agent = useAgentCommand(activity, stopListening)
 
   /**
    * Everything the editor knows about what the user is pointing at, resolved at send time.
@@ -84,15 +90,41 @@ function App() {
   )
 
   const voice = useVoiceInput(handleVoiceTranscript)
+  // Assigned in an effect, not during render: a ref written while rendering is read by
+  // whatever runs first, and React can discard a render pass entirely.
+  useEffect(() => {
+    stopVoiceRef.current = voice.stop
+  }, [voice.stop])
 
-  // A transcript in flight to the agent keeps the mic control showing "working", so the two
-  // halves of one voice turn read as one thing rather than as a mic that went quiet.
-  const micStatus = agent.busy && voice.status === 'listening' ? 'processing' : voice.status
+  // The mic reports transport state; the agent reports whether it is working. Showing them as
+  // one control is a VIEW concern and is derived here, so neither side can leave the other
+  // stuck in a state it has no way to clear.
+  const micStatus: MicStatus = agent.busy && voice.status === 'listening' ? 'processing' : voice.status
+
+  // One definition of "the mic is on", shared by the button, the Stop link and Esc, so they can
+  // never disagree about whether there is anything to stop. `connecting` counts: a start still
+  // in flight is exactly what someone clicks again to cancel.
+  const micIsOn = voice.status === 'listening' || voice.status === 'connecting'
+
+  const stopVoice = useCallback(() => {
+    voice.stop()
+    addEntry('Voice input stopped')
+  }, [voice, addEntry])
+
+  // Esc ends a voice session from anywhere — including while typing, since the one thing Esc
+  // should never mean while the mic is open is "keep listening".
+  useEffect(() => {
+    if (!micIsOn) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') stopVoice()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [micIsOn, stopVoice])
 
   function handleToggleMic() {
-    if (voice.status === 'listening' || voice.status === 'processing') {
-      voice.stop()
-      addEntry('Voice input stopped')
+    if (micIsOn) {
+      stopVoice()
       return
     }
     // Which transport actually started is logged, not assumed: LiveKit falls back to the
@@ -102,6 +134,8 @@ function App() {
       if (result === 'livekit') addEntry('Listening (LiveKit)')
       else if (result === 'browser') addEntry('Listening (browser speech recognition)')
       else if (result === 'denied') addEntry('Microphone blocked by the browser', 'error')
+      // Stopped before it finished connecting: the stop was already logged, say nothing more.
+      else if (result === 'cancelled') return
       else addEntry('No microphone transport available', 'error')
     })
   }
@@ -111,6 +145,18 @@ function App() {
   }
 
   /** Dispatches the same UNDO the toolbar and Ctrl+Z use — one history, one mechanism. */
+  // The agent's reply is the thing you want to see the moment you ask for something — and in
+  // a voice-first product you are not looking at the panel when you start talking. Switching
+  // on the first turn only: after that the user's own choice of tab is theirs to keep.
+  const [rightTab, setRightTab] = useState('inspector')
+  const hasShownAgent = useRef(false)
+  useEffect(() => {
+    if (agent.busy && !hasShownAgent.current) {
+      hasShownAgent.current = true
+      setRightTab('agent')
+    }
+  }, [agent.busy])
+
   const handleUndoTurn = useCallback(
     (steps: number) => {
       for (let i = 0; i < steps; i += 1) dispatch({ type: 'UNDO' })
@@ -217,7 +263,11 @@ function App() {
               width="lg:w-[340px] w-full"
               bare
             >
-              <Tabs defaultValue="inspector" className="flex h-full min-h-0 flex-col gap-0">
+              <Tabs
+                value={rightTab}
+                onValueChange={setRightTab}
+                className="flex h-full min-h-0 flex-col gap-0"
+              >
                 <TabsList className="h-9 w-full shrink-0 justify-start gap-0 rounded-none border-b border-border/60 bg-transparent p-0">
                   {/* Underline tabs, per DESIGN.md's segmented-tab: the active one is marked by a
                       2px primary rule, not a filled pill. */}
@@ -271,9 +321,12 @@ function App() {
         <AgentCommandBar
           micStatus={micStatus}
           busy={agent.busy}
+          awaitingQuestion={agent.awaitingAnswer?.question ?? null}
+          onDismissQuestion={agent.dismissQuestion}
           pendingCommand={agent.pendingCommand}
           interimTranscript={voice.interim}
           onToggleMic={handleToggleMic}
+          onStopMic={stopVoice}
           onSubmitCommand={handleSubmitCommand}
           onCancel={agent.cancel}
         />

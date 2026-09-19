@@ -10,7 +10,9 @@ why they moved here instead of being "flipped in place").
 """
 from __future__ import annotations
 
-from app.schema import Project
+from difflib import SequenceMatcher
+
+from app.schema import Project, Word
 
 from .errors import ToolExecutionError
 from .registry import ToolSpec, ToolStatus, default_registry
@@ -78,6 +80,31 @@ def get_timeline(args: GetTimelineArgs, project: Project) -> GetTimelineResult:
     )
 
 
+#: How alike two words must sound to count as the same one. Tuned on the real failure
+#: ("bekaar"/"bekar", "birthday"/"birth day") to be loose enough for a recogniser's slip and
+#: tight enough that "hai" does not match "hain" across a whole transcript.
+_FUZZY_RATIO = 0.78
+
+
+def _fuzzy(query: str, words: list[Word]) -> list[Word]:
+    """Words that sound close to `query`, best first.
+
+    Only ever a SUGGESTION: the planner still has to decide whether the match is what the user
+    meant, and the prompt tells it to ask rather than widen the scope when nothing is close.
+    """
+    scored = []
+    for w in words:
+        text = w.text.lower()
+        ratio = SequenceMatcher(None, query, text).ratio()
+        # A query of several words ("birth day") against one transcript word, and vice versa.
+        if " " in query:
+            ratio = max(ratio, SequenceMatcher(None, query.replace(" ", ""), text).ratio())
+        if ratio >= _FUZZY_RATIO:
+            scored.append((ratio, w))
+    scored.sort(key=lambda pair: -pair[0])
+    return [w for _, w in scored]
+
+
 def find_words(args: FindWordsArgs, project: Project) -> FindWordsResult:
     """Locate word(s) by text.
 
@@ -101,6 +128,8 @@ def find_words(args: FindWordsArgs, project: Project) -> FindWordsResult:
 
     if args.matchType == "exact":
         matched = [w for w in project.words if w.text.lower() == query]
+    elif args.matchType == "fuzzy":
+        matched = _fuzzy(query, project.words)
     else:
         matched = [w for w in project.words if query in w.text.lower()]
 

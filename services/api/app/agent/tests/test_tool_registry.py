@@ -174,7 +174,7 @@ EXPECTED_ALL_TOOLS = {
     "set_emoji", "shift_timing", "set_position", "update_caption_style",
     "emphasise_peaks",
     # project-level
-    "apply_preset", "set_settings", "set_preset_override",
+    "apply_preset", "set_settings", "set_preset_override", "reset_styling",
     # vision
     "analyze_frame",
     # registered but DISABLED — nothing renders an overlay, so it is never offered

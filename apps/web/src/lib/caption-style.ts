@@ -104,13 +104,22 @@ export function resolveWordStyle(
 
   const color = merged.color ?? preset.base.color
 
+  // A word's OWN colour beats a gradient it merely inherited. A gradient fill paints over `color`
+  // (see `glowColor` below), so without this, "make that word red" — from the inspector or from the
+  // agent — wrote a colour that never appeared on any emphasised word under a preset whose emphasis
+  // layer is a gradient (Hinglish Bold, Chamak). The write succeeded, the pixels did not change.
+  // Setting a colour on one word is the narrowest, most deliberate signal there is; the preset's
+  // conditional layer is the broadest. A word that wants a gradient still says so itself.
+  const wordOwnsColor = word.style?.color != null
+  const keepGradient = !wordOwnsColor || word.style?.gradient != null || word.style?.gradientStops != null
+
   return {
     fontFamily: merged.fontFamily ?? preset.base.fontFamily,
     fontSize,
     italic: merged.italic ?? false,
     color,
-    gradient: merged.gradient as [string, string] | undefined,
-    gradientStops: merged.gradientStops,
+    gradient: keepGradient ? (merged.gradient as [string, string] | undefined) : undefined,
+    gradientStops: keepGradient ? merged.gradientStops : undefined,
     weight: merged.weight ?? preset.base.weight,
     textCase: merged.textCase ?? 'none',
     glow: (merged.glow ?? 0) * scale,

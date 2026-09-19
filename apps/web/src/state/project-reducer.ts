@@ -65,7 +65,11 @@ function mergePresetOverride(
   current: PresetOverride | undefined,
   change: Partial<PresetOverride> | null,
 ): PresetOverride | undefined {
-  if (change === null) return undefined
+  // `undefined` too, not just null: the key is meant to arrive as an explicit JSON null, and a
+  // serializer that drops it (exactly what `response_model_exclude_none=True` did on the first
+  // version of the agent's reset) would otherwise reach `Object.entries(undefined)` and throw
+  // inside the reducer. Absent and null have the same only real producer, so they mean the same.
+  if (change === null || change === undefined) return undefined
   const merged: Record<string, unknown> = { ...(current ?? {}) }
   for (const [key, value] of Object.entries(change)) {
     if (value === null || value === undefined) delete merged[key]

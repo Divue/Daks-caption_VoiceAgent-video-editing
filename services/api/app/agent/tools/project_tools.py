@@ -27,10 +27,14 @@ from app.schema import Overlay, Project
 from ..contracts import (
     AddOverlayAction,
     AgentPresetOverridePatch,
+    AgentStylePatch,
     SetPresetAction,
     SetPresetOverrideAction,
     SetSettingsAction,
     SettingsPatch,
+    UpdateWordAction,
+    WordPatch,
+    _STYLE_KEYS,
 )
 from ..validation import PatchError, apply_patch
 from .errors import ToolExecutionError
@@ -40,6 +44,8 @@ from .schemas import (
     AddOverlayResult,
     ApplyPresetArgs,
     ApplyPresetResult,
+    ResetStylingArgs,
+    ResetStylingResult,
     SetPresetOverrideArgs,
     SetPresetOverrideResult,
     SetSettingsArgs,
@@ -141,6 +147,50 @@ def set_preset_override(args: SetPresetOverrideArgs, project: Project) -> SetPre
     except PatchError as exc:
         raise ToolExecutionError(str(exc)) from exc
     return SetPresetOverrideResult(patch=patch)
+
+
+def reset_styling(args: ResetStylingArgs, project: Project) -> ResetStylingResult:
+    """Put the look back to the preset as it ships.
+
+    "Go back to the original preset" means two different layers, and a creator saying it means
+    both: the preset OVERRIDE (emphasis face, emotion styling, reveal, words per line, base size)
+    and every per-word style override. They are cleared by two different mechanisms — a whole-object
+    null for the first, an explicit null per style key for the second — which is why this exists as
+    one tool instead of asking the model to orchestrate it.
+
+    It does NOT change which preset is selected: switching preset is `apply_preset`, and someone
+    who says "back to normal" almost never means "and also change the preset".
+    """
+    patches: list = []
+
+    if args.scope in ("preset_tweaks", "everything"):
+        # A whole-object null. `mergePresetOverride` in the reducer reads it as "drop everything".
+        patches.append(SetPresetOverrideAction(override=None))
+
+    if args.scope in ("word_styles", "everything"):
+        wanted = set(args.wordIds)
+        targets = [w for w in project.words if not wanted or w.id in wanted]
+        if wanted:
+            missing = sorted(wanted - {w.id for w in targets})
+            if missing:
+                raise ToolExecutionError(f"no such word id(s): {', '.join(missing)}")
+        # Only words that actually carry an override — clearing the rest would be a no-op write
+        # per word, and on a 94-word reel that is 94 pointless patches in the undo step.
+        styled = [w for w in targets if w.style and w.style.model_dump(exclude_none=True)]
+        cleared = AgentStylePatch(cleared=sorted(_STYLE_KEYS))
+        patches.extend(
+            UpdateWordAction(wordId=w.id, patch=WordPatch(style=cleared)) for w in styled
+        )
+
+    if not patches:
+        raise ToolExecutionError("nothing to reset: the captions are already the preset's own look")
+
+    for patch in patches:
+        try:
+            apply_patch(project, patch)
+        except PatchError as exc:
+            raise ToolExecutionError(str(exc)) from exc
+    return ResetStylingResult(patches=patches)
 
 
 def add_overlay(args: AddOverlayArgs, project: Project) -> AddOverlayResult:
@@ -254,4 +304,33 @@ default_registry.register(
         ),
     ),
     set_preset_override,
+)
+
+
+default_registry.register(
+    ToolSpec(
+        name="reset_styling",
+        description=(
+            "Put the captions back to the preset's own look, undoing styling edits. Use it for "
+            "'go back to the original preset', 'reset the captions', 'undo all my styling', "
+            "'remove everything I changed', 'back to normal'. `scope` picks how much: "
+            "'everything' (the default — both layers, which is what people mean), "
+            "'preset_tweaks' (only the conditional layers: emphasis face, emotion styling, "
+            "reveal, words per line, base size), or 'word_styles' (only per-word style "
+            "overrides). Pass `wordIds` to reset just those words ('put that word back to "
+            "normal'); leave it empty for all of them. This does NOT change which preset is "
+            "selected — use apply_preset for that. It is a normal edit, so one Ctrl+Z undoes it."
+        ),
+        input_model=ResetStylingArgs,
+        output_model=ResetStylingResult,
+        reads=True,
+        writes=True,
+        status=ToolStatus.AVAILABLE,
+        notes=(
+            "Emits SET_PRESET_OVERRIDE with a whole-object null (the reducer's "
+            "`mergePresetOverride(current, null)` clears everything) plus one UPDATE_WORD per "
+            "word that actually carries a style override, each clearing every style key."
+        ),
+    ),
+    reset_styling,
 )

@@ -96,8 +96,13 @@ class GetTimelineResult(BaseModel):
 
 # --- find_words --------------------------------------------------------------
 class FindWordsArgs(BaseModel):
+    """`fuzzy` exists because every command may arrive through a speech recogniser. Hinglish
+    words and names are mangled constantly ("birthday" came back as "but the two"), so a target
+    that is not in the transcript verbatim usually means it was MISHEARD, not that the user meant
+    something else."""
+
     query: str = Field(min_length=1)
-    matchType: Literal["exact", "contains"] = "contains"
+    matchType: Literal["exact", "contains", "fuzzy"] = "contains"
 
 
 class FindWordsResult(BaseModel):
@@ -275,6 +280,27 @@ class SetPresetOverrideArgs(BaseModel):
 
 class SetPresetOverrideResult(BaseModel):
     patch: SetPresetOverrideAction
+
+
+# --- reset_styling -----------------------------------------------------------
+class ResetStylingArgs(BaseModel):
+    """Put the look back to the preset as it ships.
+
+    Two independent layers can hold edits, and "go back to the original" almost always means
+    both: the preset OVERRIDE (the conditional layers) and every per-word style override.
+    Clearing them one key and one word at a time is possible but takes many calls and is easy to
+    leave half-done, which is worse than not offering it.
+    """
+
+    scope: Literal["preset_tweaks", "word_styles", "everything"] = "everything"
+    #: Limit the word half to these words ("put THAT word back to normal"). Empty means all of them.
+    wordIds: list[str] = Field(default_factory=list)
+
+
+class ResetStylingResult(BaseModel):
+    #: Spelled out rather than reusing `AgentPatch`: this module deliberately imports the concrete
+    #: action types, and a forward reference to the union would leave the model undefined here.
+    patches: list[SetPresetOverrideAction | UpdateWordAction]
 
 
 # --- add_overlay -------------------------------------------------------------

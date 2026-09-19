@@ -76,17 +76,22 @@ def apply_patch(project: Project, patch: AgentPatch) -> Project:
         # reducer's SET_PRESET_OVERRIDE case implements. An override emptied
         # of every key is dropped rather than stored as `{}`, so the document
         # never carries a meaningless object.
-        override_patch = patch.override.model_dump(mode="json")
-        merged = {**(data.get("presetOverride") or {})}
-        for key, value in override_patch.items():
-            if value is None:
-                merged.pop(key, None)
-            else:
-                merged[key] = value
-        if merged:
-            data["presetOverride"] = merged
-        else:
+        # A whole-object null is not a key-by-key merge: it is "put it all back to the preset",
+        # the same thing the reducer's `mergePresetOverride(current, null)` does.
+        if patch.override is None:
             data.pop("presetOverride", None)
+        else:
+            override_patch = patch.override.model_dump(mode="json")
+            merged = {**(data.get("presetOverride") or {})}
+            for key, value in override_patch.items():
+                if value is None:
+                    merged.pop(key, None)
+                else:
+                    merged[key] = value
+            if merged:
+                data["presetOverride"] = merged
+            else:
+                data.pop("presetOverride", None)
 
     elif isinstance(patch, AddOverlayAction):
         data["overlays"].append(patch.overlay.model_dump(mode="json"))

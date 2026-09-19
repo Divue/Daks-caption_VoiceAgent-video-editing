@@ -97,6 +97,36 @@ for (const [id, expected] of Object.entries(EXPECTED_EMPHASIS_PX) as [PresetId, 
 }
 
 // ---------------------------------------------------------------------------
+console.log('\na word\u2019s own colour vs a gradient it only inherited')
+// ---------------------------------------------------------------------------
+// Reported: "single word colour changes are not there". Under a preset whose EMPHASIS layer is a
+// gradient (Hinglish Bold, Chamak), an emphasised word inherited that gradient, a gradient fill
+// paints over `color`, and so every per-word recolour — from the inspector AND from the agent —
+// was written, saved, and invisible. The narrowest signal has to win.
+{
+  const emph = { emphasis: true }
+  for (const id of ['hinglish-bold', 'chamak'] as PresetId[]) {
+    const inherited = resolveWordStyle(word(emph), PRESETS[id], SETTINGS, FRAME)
+    check(`${id}: an emphasised word with no colour of its own keeps the preset gradient`,
+      Boolean(inherited.gradient ?? inherited.gradientStops))
+
+    const recoloured = resolveWordStyle(
+      word({ ...emph, style: { color: '#00FF00' } }), PRESETS[id], SETTINGS, FRAME)
+    check(`${id}: its own colour wins and the inherited gradient is dropped`,
+      recoloured.color === '#00FF00' && !recoloured.gradient && !recoloured.gradientStops,
+      `color=${recoloured.color} gradient=${JSON.stringify(recoloured.gradient ?? recoloured.gradientStops)}`)
+
+    const asked = resolveWordStyle(
+      word({ ...emph, style: { color: '#00FF00', gradient: ['#111111', '#222222'] } }),
+      PRESETS[id], SETTINGS, FRAME)
+    check(`${id}: a word that asks for its OWN gradient still gets one`,
+      JSON.stringify(asked.gradient) === JSON.stringify(['#111111', '#222222']))
+  }
+  const plain = resolveWordStyle(word({ style: { color: '#00FF00' } }), PRESETS['hinglish-bold'], SETTINGS, FRAME)
+  check('a plain word is unaffected by the rule', plain.color === '#00FF00' && !plain.gradient)
+}
+
+// ---------------------------------------------------------------------------
 console.log('\nmeasured base values')
 // ---------------------------------------------------------------------------
 const rangmanch = resolveWordStyle(word(), PRESETS.rangmanch, SETTINGS, FRAME)

@@ -187,7 +187,24 @@ class SetPresetOverrideAction(BaseModel):
     """
 
     type: Literal["SET_PRESET_OVERRIDE"] = "SET_PRESET_OVERRIDE"
-    override: AgentPresetOverridePatch
+    #: `None` means "clear every override, put it back to the preset" — the whole-object null the
+    #: reducer's `mergePresetOverride(current, null)` has always understood. The contract simply
+    #: could not say it until now, so "go back to the original preset" had no single expression.
+    override: AgentPresetOverridePatch | None
+
+    @model_serializer(mode="wrap")
+    def _keep_a_whole_object_null(self, handler) -> dict[str, Any]:
+        """Put `override: null` back after exclusion, the same trick `cleared` uses above.
+
+        `response_model_exclude_none=True` would otherwise drop the key entirely, and an ABSENT
+        override is not the same instruction as a null one: the reducer clears on `=== null` and
+        would throw on `undefined`. Verified on the wire, not assumed — the first version of this
+        shipped `{"type": "SET_PRESET_OVERRIDE"}` with the null silently stripped.
+        """
+        data = handler(self)
+        if self.override is None:
+            data["override"] = None
+        return data
 
 
 class AddOverlayAction(BaseModel):

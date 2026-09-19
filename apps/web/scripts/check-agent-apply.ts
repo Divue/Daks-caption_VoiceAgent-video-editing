@@ -184,6 +184,15 @@ console.log('\nagent apply — preset overrides')
     patches: [{ type: 'SET_PRESET_OVERRIDE', override: null }],
   })
   check('a whole-object null clears every override', all.present.presetOverride === undefined)
+
+  // The null has to make it across the wire to get here. It is written by a serializer that runs
+  // after `response_model_exclude_none=True`, and the first version of the agent's reset lost it:
+  // the client received `{type:'SET_PRESET_OVERRIDE'}` with no key at all. Don't throw on that.
+  const absent = projectReducer(merged, {
+    type: 'APPLY_AGENT_PATCHES',
+    patches: [{ type: 'SET_PRESET_OVERRIDE' } as never],
+  })
+  check('a MISSING override clears too, rather than throwing', absent.present.presetOverride === undefined)
   check('the project still validates with no override key at all', Project.safeParse(all.present).success)
 }
 

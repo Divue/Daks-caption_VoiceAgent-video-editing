@@ -116,6 +116,9 @@ def test_semantics_repairs_bad_line_ranges():
 
 def test_semantics_all_neutral_when_bedrock_is_unusable(monkeypatch):
     from app.pipeline import semantics
-    monkeypatch.setattr(semantics.boto3, "client", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no creds")))
+    # Patched at the factory semantics actually calls. It used to import boto3 itself; since the
+    # temporary credential shim (app/aws_fallback.py) it builds its client through
+    # aws_fallback.client, so patching semantics.boto3 raised AttributeError before the test ran.
+    monkeypatch.setattr(semantics.aws_fallback, "client", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no creds")))
     sem = semantics.analyze([{"text": "a", "startMs": 0, "endMs": 1}])
     assert sem.tones == ["neutral"] and sem.ok is False

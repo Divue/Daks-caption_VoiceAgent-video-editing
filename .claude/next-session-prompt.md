@@ -1,3 +1,8 @@
+> **STALE — do not paste this into a session (2026-09-19).** The work it asks for — the frontend
+> editor shell and captions workflow — has shipped, and has been built on heavily since. Pasting it
+> would ask Claude to rebuild existing code. Kept only as history. For where things stand now, start
+> from `ONBOARDING.md` at the repo root.
+
 # Next session prompt — build the frontend editor shell + captions workflow (P3)
 
 Paste the block below into a fresh Claude Code session.

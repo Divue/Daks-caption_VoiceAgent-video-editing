@@ -83,7 +83,7 @@ variable "deploy_services" {
 
 variable "api_image_tag" {
   type    = string
-  default = "v1"
+  default = "v2"
 }
 
 variable "voice_image_tag" {
@@ -93,7 +93,7 @@ variable "voice_image_tag" {
 
 variable "render_image_tag" {
   type    = string
-  default = "v1"
+  default = "v2"
 }
 
 variable "extra_cors_origins" {

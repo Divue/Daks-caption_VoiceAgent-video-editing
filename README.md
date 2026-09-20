@@ -19,7 +19,9 @@ Once it is open, a few things worth doing:
 1. Press play and watch the captions. The shouted and stretched words are drawn differently on purpose.
 2. Click a word in the transcript on the left and change its style. Ctrl+Z undoes it.
 3. Type in the bar at the bottom, *"make the captions bigger"*, or click the mic and say it.
-4. Press **Export**. It takes about three minutes, then you can download the MP4 with the captions burned in.
+4. Drag across empty space on the **Preset** row of the timeline to mark a stretch of the video, then pick
+   a look in the **Presets** tab. It changes only that stretch.
+5. Press **Export**. It takes about three minutes, then you can download the MP4 with the captions burned in.
 
 Want to use your own video? [Start a new project](https://4ofryng45bbr7en765off7otja0yuamo.lambda-url.ap-south-1.on.aws/editor)
 and drop in a reel of up to 90 seconds and 200 MB. A short reel is captioned in under a minute.
@@ -29,9 +31,7 @@ on a [second address](https://master.dnb761en5gcll.amplifyapp.com), and the
 [API health check](https://pra22j2hgp.ap-south-1.awsapprunner.com/health) should say `{"ok":true}`.
 Everything runs in `ap-south-1` (Mumbai).
 
-A few caveats. There is no login yet, so please be kind to it. The live site runs the code from the
-last deploy, so two newer features (a different preset for a stretch of the video, and hand-editing
-a word's text and timing) reach it on the next one.
+One caveat: there is no login yet, so please be kind to it.
 
 ## What it does
 
@@ -45,7 +45,8 @@ shaking. Seven presets set the base look (`rangmanch`, `chamak`, `nazm`, `dhamak
 **Editing by talking.** Type in the bar, or click the mic and say *"make that line angry"*, *"the
 word bahut in blue"*, *"minimal preset from two to four seconds"*. The agent can also look at the
 video, so *"put the captions where my hand is"* and stickers that sit on a face both work. Every
-agent turn is one undo.
+agent turn is one undo. And when typing is quicker than explaining, you can fix a word's text or
+its timing by hand in the inspector.
 
 **Your own media on top.** Two tracks of images and clips over the video: move, scale, rotate,
 trim, split, delete. The main video is never cut or re-timed. That is a deliberate line, not a

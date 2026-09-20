@@ -1,4 +1,4 @@
-import { ArrowLeft, FilePlus2, Pencil, Share2 } from 'lucide-react'
+import { ArrowLeft, FilePlus2, Home, Pencil, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRoute } from '@/router'
 import { useSync } from '@/state/sync-context'
@@ -18,6 +18,23 @@ export function AppHeader({ projectId }: AppHeaderProps) {
     <header className="shrink-0">
       <div className="flex h-12 items-center justify-between gap-4 bg-card px-3">
       <div className="flex min-w-0 items-center gap-3">
+        {/*
+          Back to the landing page. The sidebar rail has the same destination, but icon-only at
+          56px it reads as decoration — with a video open there was no labelled way out of the
+          editor. No confirmation dialog: every edit is written through to the API as it is made
+          (useWordPatch -> lib/api), and the editor has no unsaved-changes guard to follow.
+        */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground"
+          onClick={() => navigate('/')}
+          title="Back to home"
+        >
+          <Home className="size-4" />
+          <span className="hidden sm:inline">Home</span>
+        </Button>
         {/*
           `/editor` with no `?id=` IS the projects screen — dropzone plus recent projects
           (EmptyEditor). This used to go to `/`, the marketing landing page, which made the label

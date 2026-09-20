@@ -21,9 +21,10 @@ import { useMotionSafe } from './dark/useMotionSafe'
     tone and the stretch on "saaaal". They are drawn by the editor's own resolver
     (lib/caption-style.ts), not a marketing approximation, so what the frame shows is what the
     editor would render for that preset at that frame width.
-  - The frames carry no footage on purpose. The test clips are real people's reels and nobody
-    has cleared them for a public page, so each frame is a plain, lit backdrop until licensed
-    footage exists. Swap the backdrop for a <video> then; the caption layer does not change.
+  - The frames now carry footage: one cleared demo reel (public/demo-reel.mp4), the same file in
+    all three, cropped to each frame's shape. The caption layer did not change — it draws over
+    the video exactly as it drew over the backdrop, which stays underneath as the fallback if
+    the file is missing or still loading.
   - The numbers in the cards are counted from the schema and preset list, not written by hand,
     so they cannot drift from what the product actually does. No speed, accuracy or language
     claims: none of those have been measured.
@@ -38,6 +39,13 @@ const CLIP_END_MS = SAMPLE_WORDS[SAMPLE_WORDS.length - 1].endMs
 const HOLD_MS = 1400
 // Whole megabytes for marketing copy ("200 MB", not lib/format's "200.0 MB"), same source value.
 const UPLOAD_LIMIT_MB = Math.round(UPLOAD_MAX_BYTES / (1024 * 1024))
+
+// Root paths, not bundler imports: the clip is a static asset that must not be hashed into the
+// JS graph, and all three frames point at the same file so the browser fetches it once.
+const DEMO_VIDEO_SRC = '/demo-reel.mp4'
+// The clip's own first frame, so a card is never blank while the video loads — and the whole of
+// what a reduced-motion visitor sees, since nothing autoplays for them.
+const DEMO_POSTER_SRC = '/demo-reel-poster.jpg'
 
 interface ShowcaseFrame {
   preset: Preset
@@ -135,6 +143,32 @@ function CaptionFrame({ frame, timeMs }: { frame: ShowcaseFrame; timeMs: number 
         className="relative w-full overflow-hidden rounded-xl border border-line-subtle shadow-soft transition-colors duration-300 group-hover:border-line-default"
         style={{ aspectRatio: frame.aspect, background: frame.backdrop }}
       >
+        {/* The clip is portrait and the frames are 1:1, 9:16 and 16:9 — object-cover crops it to
+            each shape rather than letterboxing or squashing it. All four of muted/loop/playsInline/
+            autoPlay are required together, or mobile Safari refuses to autoplay. */}
+        {motionSafe ? (
+          <video
+            className="absolute inset-0 h-full w-full object-cover"
+            src={DEMO_VIDEO_SRC}
+            poster={DEMO_POSTER_SRC}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+        ) : (
+          <img className="absolute inset-0 h-full w-full object-cover" src={DEMO_POSTER_SRC} alt="" aria-hidden="true" />
+        )}
+        {/* Scrim between the footage and the captions. A gradient, not a text-shadow: the presets
+            already own their own stroke/glow, and darkening the plate is what keeps every preset
+            legible over a moving image instead of only the heavy ones. */}
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/65"
+          aria-hidden="true"
+        />
         <CaptionWords words={SAMPLE_WORDS} preset={preset} settings={SAMPLE_SETTINGS} width={width} timeMs={timeMs} motionSafe={motionSafe} />
         {/* Playhead: same signal colour and 2px weight as the editor's own timeline accent. */}
         <div className="absolute inset-x-0 bottom-0 h-[2px] bg-ink-primary/10">

@@ -125,7 +125,7 @@ the better answer only once render volume is high, which is not a 3-day problem.
 - [ ] Auth on the render server (shared-secret header), reject requests carrying an `Origin`,
       allowlist `videoUrl` to our own bucket, cap the queue, bound `width`/`height`/`durationMs`.
 - [ ] Prune failed renders — today only successful ones are cleaned up, so failures leak files.
-- [ ] The seven pre-existing blockers in `ONBOARDING.md` §4 (unauthenticated
+- [ ] The seven pre-existing blockers in [`getting-started.md`](getting-started.md) §4 (unauthenticated
       `/agent/livekit-token`, the public `devkey`/`secret`, `/demo-media`, `VITE_USE_FIXTURE`, CORS,
       `FALLBACK_AWS_*`, `livekit-api` in the production image).
 

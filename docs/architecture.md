@@ -2,8 +2,8 @@
 
 Hinglish short-form video in, **tone-aware captions** out (emphasis, stretched words, angry shake), editable **by voice**,
 exportable as an **MP4**. This page is the one-page picture of how it is built and how it runs on AWS.
-Diagrams are [Mermaid](https://mermaid.js.org/) — GitHub draws them; `architecture-system.png` is the same main
-diagram as an image for chat/slides. More detail: `DEPLOYMENT.md` (the *why* of every choice, scalability, limits).
+Diagrams are [Mermaid](https://mermaid.js.org/) — GitHub draws them; [`images/architecture-system.png`](images/architecture-system.png) is the same main
+diagram as an image for chat/slides. More detail: [`deployment.md`](deployment.md) (the *why* of every choice, scalability, limits).
 
 ## 1. The system at a glance
 
@@ -169,7 +169,7 @@ Consequences that shape the architecture:
 | Voice worker | LiveKit Agents (Python) → Transcribe streaming | ECS Fargate, private subnet | `services/voice-agent` |
 | Storage | S3 (videos, exports), DynamoDB (projects, jobs, cost events) | managed | — |
 | Real-time audio | LiveKit Cloud | managed (external) | — |
-| Infrastructure | Terraform | `infra/new-deploy/` | — |
+| Infrastructure | Terraform | `infra/aws/` | — |
 
 ## 5. Design decisions (short)
 
@@ -180,7 +180,7 @@ Consequences that shape the architecture:
 5. **Everything is Terraform.** `terraform plan` shows no drift against the running system.
 6. **Editor on Lambda, not CloudFront:** CloudFront is refused on this AWS account and the microphone needs HTTPS; a Lambda Function URL gives HTTPS with no domain.
 
-## 6. Limits worth knowing (full list in `DEPLOYMENT.md` §11)
+## 6. Limits worth knowing (full list in [`deployment.md`](deployment.md) §11)
 
 - Export renders **one video at a time** (state is in the render task's memory). Scaling path: shared job state + queue, or Remotion Lambda.
 - The caption pipeline runs **inside the API process**; a restart kills a running job (reported as "worker lost" after 120 s). Path: queue + worker.

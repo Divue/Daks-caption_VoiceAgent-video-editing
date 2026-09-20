@@ -2,47 +2,48 @@ import { useEffect, useRef, useState } from "react";
 import { useRoute } from "../../router";
 import { ChevronDownIcon, ArrowRightIcon, MenuIcon, CloseIcon } from "../../icons";
 
-type NavKey = "features" | "how-it-works" | "voice-editing" | "for-creators";
+type NavKey = "features" | "how-it-works" | "hear-the-difference" | "made-for-hinglish";
 
-const NAV_ITEMS: { key: NavKey; label: string }[] = [
-  { key: "features", label: "Features" },
-  { key: "how-it-works", label: "How It Works" },
-  { key: "voice-editing", label: "Voice Editing" },
-  { key: "for-creators", label: "For Creators" },
-];
+interface NavEntry {
+  label: string;
+  /** A section anchor on this page — every one of these ids exists on a landing section. */
+  href: string;
+}
 
-const FEATURES = [
-  { title: "Voice Editing", description: "Edit your video using natural voice commands." },
-  { title: "Smart Captions", description: "Generate and refine captions without manual timeline work." },
-  { title: "Creator Controls", description: "Use intuitive voice-driven controls to shape your video." },
-  { title: "Audio-Responsive Experience", description: "Interact naturally with a visual interface that responds to your voice." },
-];
-
-const FLOW_CARDS = [
-  { from: "Voice", to: "Edit" },
-  { from: "Speak", to: "Create" },
-  { from: "Social", to: "Share" },
-];
-
-const STEPS = [
-  { n: "01", title: "Speak", description: "Tell the editor what you want." },
-  { n: "02", title: "Edit", description: "Your voice becomes editing instructions." },
-  { n: "03", title: "Refine", description: "Adjust the result naturally through voice." },
-  { n: "04", title: "Share", description: "Create content ready for your social platform." },
-];
-
-const VOICE_POINTS = [
-  { title: "Speak Naturally", description: "Use your own words instead of hunting through a timeline." },
-  { title: "Control Your Edit", description: "Navigate and modify your video through voice." },
-  { title: "Create Without Friction", description: "Stay focused on the story instead of the interface." },
-];
-
-const WAVEFORM_BARS = [6, 14, 9, 20, 12, 18, 8, 15];
-
-const CREATOR_CATEGORIES = [
-  { title: "Short-Form", items: ["Reels", "Shorts", "TikTok-style vertical content"] },
-  { title: "Long-Form", items: ["YouTube", "Podcasts", "Video essays"] },
-  { title: "Workflow", items: ["Voice-first editing", "Captions", "Fast content iteration"] },
+/**
+ * The bar's four items. An item either drops down a short list of section anchors, or is itself
+ * a single anchor ("Made for Hinglish").
+ *
+ * These used to open panels of standalone marketing copy that pointed nowhere. The page now has
+ * stable section ids, so every entry here is a real destination on it.
+ */
+const NAV_ITEMS: { key: NavKey; label: string; href?: string; entries?: NavEntry[] }[] = [
+  {
+    key: "features",
+    label: "Features",
+    entries: [
+      { label: "Tone aware captions", href: "#showcase" },
+      { label: "Edit by voice", href: "#edit-by-voice" },
+      { label: "Hear the difference", href: "#hear-the-difference" },
+    ],
+  },
+  {
+    key: "how-it-works",
+    label: "How It Works",
+    entries: [
+      { label: "Under the hood", href: "#under-the-hood" },
+      { label: "How it works", href: "#how-it-works" },
+    ],
+  },
+  {
+    key: "hear-the-difference",
+    label: "Hear the difference",
+    entries: [
+      { label: "Tone aware captions", href: "#showcase" },
+      { label: "Hear the difference", href: "#hear-the-difference" },
+    ],
+  },
+  { key: "made-for-hinglish", label: "Made for Hinglish", href: "#made-for-hinglish" },
 ];
 
 // A small ring of dots standing in for the hero's particle sphere, rather
@@ -74,92 +75,31 @@ function staggerStyle(motionSafe: boolean, index: number, baseMs = 70, stepMs = 
   return motionSafe ? { animationDelay: `${baseMs + index * stepMs}ms` } : undefined;
 }
 
-function PanelContent({ menuKey, motionSafe }: { menuKey: NavKey; motionSafe: boolean }) {
-  const itemClass = motionSafe ? "animate-fade-up" : "";
-
-  if (menuKey === "features") {
-    return (
-      <div className="grid grid-cols-1 gap-8 sm:grid-cols-[1fr_auto]">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          {FEATURES.map((f, i) => (
-            <div key={f.title} className={itemClass} style={staggerStyle(motionSafe, i)}>
-              <p className="text-body-sm font-medium text-ink-primary">{f.title}</p>
-              <p className="mt-1 text-body-sm text-ink-tertiary">{f.description}</p>
-            </div>
-          ))}
-        </div>
-        <div
-          className={`hidden w-44 shrink-0 flex-col gap-2 border-l border-line-subtle pl-8 sm:flex ${itemClass}`}
-          style={staggerStyle(motionSafe, FEATURES.length)}
-        >
-          {FLOW_CARDS.map((c) => (
-            <div key={c.from} className="rounded-lg border border-line-subtle bg-surface-raised px-3 py-2.5">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-ink-tertiary">{c.from}</p>
-              <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-ink-primary">&rarr; {c.to}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (menuKey === "how-it-works") {
-    return (
-      <div className="relative grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
-        <div className="pointer-events-none absolute inset-x-0 top-[10px] hidden border-t border-dashed border-line-default sm:block" aria-hidden="true" />
-        {STEPS.map((s, i) => (
-          <div key={s.n} className={`relative bg-surface ${itemClass}`} style={staggerStyle(motionSafe, i)}>
-            <p className="font-mono text-heading-md text-ink-tertiary">{s.n}</p>
-            <p className="mt-2 text-body-sm font-medium text-ink-primary">{s.title}</p>
-            <p className="mt-1 text-body-sm text-ink-tertiary">{s.description}</p>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (menuKey === "voice-editing") {
-    return (
-      <div className="grid grid-cols-1 gap-8 sm:grid-cols-[1fr_auto]">
-        <div className="grid grid-cols-1 gap-5">
-          {VOICE_POINTS.map((p, i) => (
-            <div key={p.title} className={itemClass} style={staggerStyle(motionSafe, i)}>
-              <p className="text-body-sm font-medium text-ink-primary">{p.title}</p>
-              <p className="mt-1 text-body-sm text-ink-tertiary">{p.description}</p>
-            </div>
-          ))}
-        </div>
-        <div
-          className={`hidden w-36 shrink-0 items-end gap-1 border-l border-line-subtle pl-8 sm:flex ${itemClass}`}
-          style={staggerStyle(motionSafe, VOICE_POINTS.length)}
-        >
-          {WAVEFORM_BARS.map((h, i) => (
-            <span
-              key={i}
-              className="w-1.5 animate-pulse rounded-full bg-signal/50"
-              style={{ height: `${h}px`, animationDelay: `${i * 90}ms` }}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
+// A dropdown's body: real anchors, one per section, so they are keyboard-reachable and the
+// browser does the scrolling (smooth, and offset by each section's own scroll-margin-top).
+function PanelContent({
+  entries,
+  motionSafe,
+  onNavigate,
+}: {
+  entries: NavEntry[];
+  motionSafe: boolean;
+  onNavigate: () => void;
+}) {
   return (
-    <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
-      {CREATOR_CATEGORIES.map((cat, i) => (
-        <div key={cat.title} className={itemClass} style={staggerStyle(motionSafe, i)}>
-          <p className="font-mono text-[11px] uppercase tracking-widest text-ink-tertiary">{cat.title}</p>
-          <ul className="mt-3 space-y-2">
-            {cat.items.map((item) => (
-              <li key={item} className="text-body-sm text-ink-secondary">
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
+    <ul className="flex flex-col gap-0.5">
+      {entries.map((entry, i) => (
+        <li key={entry.label} className={motionSafe ? "animate-fade-up" : ""} style={staggerStyle(motionSafe, i)}>
+          <a
+            href={entry.href}
+            onClick={onNavigate}
+            className={`block rounded-lg px-3 py-2.5 text-body-sm text-ink-secondary transition-colors duration-200 hover:bg-surface-raised hover:text-ink-primary ${FOCUS_RING}`}
+          >
+            {entry.label}
+          </a>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
@@ -180,6 +120,9 @@ export function LandingNavbar() {
   const [mobileExpanded, setMobileExpanded] = useState<NavKey | null>(null);
 
   const navRef = useRef<HTMLElement>(null);
+  // The panel is a sibling of <nav>, not a descendant, so the nav's own blur check would call a
+  // Tab into the panel "focus left the menu" and close it before its links could be reached.
+  const panelRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<number | null>(null);
   const unmountTimerRef = useRef<number | null>(null);
 
@@ -282,35 +225,47 @@ export function LandingNavbar() {
         <nav
           className="hidden justify-self-center lg:flex lg:items-center lg:gap-1"
           onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) closeNow();
+            const next = e.relatedTarget as Node | null;
+            if (!e.currentTarget.contains(next) && !panelRef.current?.contains(next)) closeNow();
           }}
         >
-          {NAV_ITEMS.map((item) => (
-            <div key={item.key} onMouseEnter={() => openMenu(item.key)} onMouseLeave={scheduleClose}>
-              <button
-                type="button"
-                aria-haspopup="true"
-                aria-expanded={activeMenu === item.key}
-                aria-controls={`nav-panel-${item.key}`}
-                onFocus={() => openMenu(item.key)}
-                onClick={() => openMenu(item.key)}
-                className={`relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-body-sm transition-colors duration-200 ease-out-expo after:absolute after:-bottom-0.5 after:left-4 after:right-4 after:h-px after:origin-left after:scale-x-0 after:bg-signal after:transition-transform after:duration-300 after:ease-out-expo after:content-[''] hover:after:scale-x-100 ${FOCUS_RING} ${
-                  activeMenu === item.key ? "bg-surface-raised text-ink-primary" : "text-ink-secondary hover:text-ink-primary"
-                }`}
-              >
-                {item.label}
-                <ChevronDownIcon
-                  className={`h-3 w-3 transition-transform duration-200 ${activeMenu === item.key ? "rotate-180" : ""}`}
-                />
-              </button>
-            </div>
-          ))}
+          {NAV_ITEMS.map((item) => {
+            const triggerClass = `relative inline-flex items-center gap-1 rounded-full px-4 py-2 text-body-sm transition-colors duration-200 ease-out-expo after:absolute after:-bottom-0.5 after:left-4 after:right-4 after:h-px after:origin-left after:scale-x-0 after:bg-signal after:transition-transform after:duration-300 after:ease-out-expo after:content-[''] hover:after:scale-x-100 ${FOCUS_RING} ${
+              activeMenu === item.key ? "bg-surface-raised text-ink-primary" : "text-ink-secondary hover:text-ink-primary"
+            }`;
+            // No dropdown: the item is the link. Hovering it still dismisses whichever panel is
+            // open, so moving along the bar never leaves a stale one behind.
+            if (!item.entries) {
+              return (
+                <div key={item.key} onMouseEnter={closeNow}>
+                  <a href={item.href} onFocus={closeNow} className={triggerClass}>
+                    {item.label}
+                  </a>
+                </div>
+              );
+            }
+            return (
+              <div key={item.key} onMouseEnter={() => openMenu(item.key)} onMouseLeave={scheduleClose}>
+                <button
+                  type="button"
+                  aria-haspopup="true"
+                  aria-expanded={activeMenu === item.key}
+                  aria-controls={`nav-panel-${item.key}`}
+                  onFocus={() => openMenu(item.key)}
+                  onClick={() => openMenu(item.key)}
+                  className={triggerClass}
+                >
+                  {item.label}
+                  <ChevronDownIcon
+                    className={`h-3 w-3 transition-transform duration-200 ${activeMenu === item.key ? "rotate-180" : ""}`}
+                  />
+                </button>
+              </div>
+            );
+          })}
         </nav>
 
         <div className="flex items-center justify-self-end gap-2">
-          <button type="button" className={`hidden rounded-md px-1 text-body-sm text-ink-secondary transition-colors duration-200 hover:text-ink-primary lg:inline-block ${FOCUS_RING}`}>
-            Sign In
-          </button>
           <button
             type="button"
             onClick={handleStartCreating}
@@ -338,9 +293,16 @@ export function LandingNavbar() {
 
         {panelKey && (
           <div
+            ref={panelRef}
             onMouseEnter={clearTimers}
             onMouseLeave={scheduleClose}
-            className={`absolute left-1/2 top-full hidden w-[min(880px,92vw)] -translate-x-1/2 pt-2 transition-all duration-200 ease-out-expo lg:block ${
+            onBlur={(e) => {
+              const next = e.relatedTarget as Node | null;
+              if (!e.currentTarget.contains(next) && !navRef.current?.contains(next)) closeNow();
+            }}
+            // Narrower than the old copy panels: it holds two or three links now, not a grid of
+            // marketing blurbs. Still centred under the bar, as before.
+            className={`absolute left-1/2 top-full hidden w-[min(320px,92vw)] -translate-x-1/2 pt-2 transition-all duration-200 ease-out-expo lg:block ${
               panelVisible ? "translate-y-0 scale-100 opacity-100" : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0"
             }`}
           >
@@ -348,9 +310,14 @@ export function LandingNavbar() {
               id={`nav-panel-${panelKey}`}
               role="group"
               aria-label={NAV_ITEMS.find((i) => i.key === panelKey)?.label}
-              className="rounded-2xl border border-line-subtle bg-surface p-8 shadow-soft"
+              className="rounded-2xl border border-line-subtle bg-surface p-2 shadow-soft"
             >
-              <PanelContent key={openSession} menuKey={panelKey} motionSafe={motionSafe} />
+              <PanelContent
+                key={openSession}
+                entries={NAV_ITEMS.find((i) => i.key === panelKey)?.entries ?? []}
+                motionSafe={motionSafe}
+                onNavigate={closeNow}
+              />
             </div>
           </div>
         )}
@@ -362,31 +329,40 @@ export function LandingNavbar() {
         }`}
       >
         <div className="flex flex-col gap-1 px-4 py-6">
-          {NAV_ITEMS.map((item) => (
-            <div key={item.key} className="border-b border-line-subtle py-1">
-              <button
-                type="button"
-                aria-expanded={mobileExpanded === item.key}
-                onClick={() => setMobileExpanded((k) => (k === item.key ? null : item.key))}
-                className={`flex w-full items-center justify-between rounded-md py-3 text-left text-body-lg text-ink-primary ${FOCUS_RING}`}
-              >
-                {item.label}
-                <ChevronDownIcon
-                  className={`h-3.5 w-3.5 transition-transform duration-200 ${mobileExpanded === item.key ? "rotate-180" : ""}`}
-                />
-              </button>
-              {mobileExpanded === item.key && (
-                <div className="pb-4">
-                  <PanelContent menuKey={item.key} motionSafe={motionSafe} />
-                </div>
-              )}
-            </div>
-          ))}
+          {NAV_ITEMS.map((item) =>
+            item.entries ? (
+              <div key={item.key} className="border-b border-line-subtle py-1">
+                <button
+                  type="button"
+                  aria-expanded={mobileExpanded === item.key}
+                  onClick={() => setMobileExpanded((k) => (k === item.key ? null : item.key))}
+                  className={`flex w-full items-center justify-between rounded-md py-3 text-left text-body-lg text-ink-primary ${FOCUS_RING}`}
+                >
+                  {item.label}
+                  <ChevronDownIcon
+                    className={`h-3.5 w-3.5 transition-transform duration-200 ${mobileExpanded === item.key ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {mobileExpanded === item.key && (
+                  <div className="pb-2">
+                    <PanelContent entries={item.entries} motionSafe={motionSafe} onNavigate={() => setMobileOpen(false)} />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div key={item.key} className="border-b border-line-subtle py-1">
+                <a
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={`block rounded-md py-3 text-body-lg text-ink-primary ${FOCUS_RING}`}
+                >
+                  {item.label}
+                </a>
+              </div>
+            ),
+          )}
 
           <div className="mt-4 flex flex-col gap-3">
-            <button type="button" className={`rounded-md py-2 text-left text-body-md text-ink-secondary ${FOCUS_RING}`}>
-              Sign In
-            </button>
             <button
               type="button"
               onClick={handleStartCreating}

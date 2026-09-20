@@ -52,7 +52,11 @@ export function LandingScrollbar({ visible }: { visible: boolean }) {
       const root = document.documentElement
       const ratio = (root.scrollHeight - window.innerHeight) / (track.clientHeight - thumb.clientHeight)
       const startY = event.clientY
-      const move = (e: PointerEvent) => window.scrollTo(0, startScroll + (e.clientY - startY) * ratio)
+      const move = (e: PointerEvent) =>
+        // 'instant', not the default 'auto': html has scroll-behavior:smooth for anchor links
+        // (index.css), and letting a drag inherit it would animate toward a target that every
+        // pointermove replaces, so the thumb would lag behind the cursor.
+        window.scrollTo({ top: startScroll + (e.clientY - startY) * ratio, behavior: 'instant' })
       const up = () => {
         window.removeEventListener('pointermove', move)
         window.removeEventListener('pointerup', up)
@@ -72,7 +76,7 @@ export function LandingScrollbar({ visible }: { visible: boolean }) {
       const fraction = (event.clientY - rect.top - thumb.clientHeight / 2) / (rect.height - thumb.clientHeight)
       const root = document.documentElement
       const target = Math.min(1, Math.max(0, fraction)) * (root.scrollHeight - window.innerHeight)
-      window.scrollTo(0, target)
+      window.scrollTo({ top: target, behavior: 'instant' })
       dragFrom(event, target)
     }
     thumb.addEventListener('pointerdown', onThumbDown)

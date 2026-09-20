@@ -100,7 +100,10 @@ export default function LandingPage() {
   const [introDone, setIntroDone] = useState(() => {
     if (!motionSafe) return true;
     window.history.scrollRestoration = "manual";
-    window.scrollTo(0, 0);
+    // 'instant', not the default 'auto': html now has scroll-behavior:smooth for the navbar's
+    // anchor links (index.css), and the intro's reset must be a jump — the sphere measures where
+    // it lands immediately after this, and an animated scroll would still be in flight.
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     // Scroll is locked for the whole intro (owner's call). Locked here, not in an effect, so the
     // scrollbar is already gone when the sphere measures where it will land.
     document.documentElement.style.overflow = "hidden";
@@ -127,10 +130,19 @@ export default function LandingPage() {
   }, [introDone]);
   const { navigate } = useRoute();
   const heroRef = useRef<HTMLElement>(null);
-  // 0 while the hero's top is at the top of the viewport, 1 once it has scrolled 1.2 screens —
-  // wide on purpose, so the exit reads as a scroll-length gesture rather than snapping after a
-  // single wheel tick.
-  useScrollVar(heroRef, "--hero-p", 0, -1.2, motionSafe);
+  // 0 while the hero's top is at the top of the viewport, 1 once it has scrolled 2.2 screens.
+  //
+  // This is the hero's SCROLL-LINKED animation: --hero-p is a 0..1 progress value written from a
+  // scroll listener, and everything that moves on scroll (LINE_SPLIT's 24vw title split and its
+  // opacity, fadeOnScroll, the sphere's drift/scale, ScrollCue) reads it through calc(). It is not
+  // a transition or a one-shot animation, so duration and easing don't apply — the only thing that
+  // controls how fast it reads is how much scroll maps to that 0..1 range.
+  //
+  // Widened from 1.2 screens to 2.2 (~1.8x) because the old range made it twitchy: the title lines
+  // were fully transparent by p≈0.87 (opacity is `1 - p * 1.15`) and everything under them by
+  // p≈0.63 (`1 - p * 1.6`), so roughly a single screen of scroll consumed the whole gesture and a
+  // small wheel movement threw the lines a long way apart. Same motion, spread over more scroll.
+  useScrollVar(heroRef, "--hero-p", 0, -2.2, motionSafe);
 
   const reveal = (delay: number): { className: string; style?: CSSProperties } =>
     motionSafe ? { className: "animate-rise", style: { animationDelay: `${delay}ms` } } : { className: "" };
@@ -239,10 +251,10 @@ export default function LandingPage() {
       </section>
 
       <CaptionShowcaseSection />
+      <HinglishSection />
       <ToneSection />
       <SignalsSection />
       <TalkToEditSection />
-      <HinglishSection />
       <StepsSection />
       <ClosingSection />
       <LandingFooter />

@@ -50,6 +50,18 @@ const PRESET_CHOICES: PresetId[] = ['rangmanch', 'dhamaka', 'nazm', 'hinglish-bo
 const TONE_DOT: Record<Emotion, string> = { neutral: 'bg-ink-tertiary', excited: 'bg-[#FFB83E]', angry: 'bg-signal' }
 
 /**
+ * Footage for the angry moment only ("rona machne wala hai"). Root paths, not bundler imports —
+ * these are static assets that must not be hashed into the JS graph.
+ *
+ * The frame is shared by all three moments, but this clip is the angry one's own footage, so it
+ * would be showing someone crying under the birthday line if it played for the others. Neutral and
+ * Excited keep the plain gradient until their own footage exists (owner's call, Sep 20).
+ */
+const ANGRY_VIDEO_SRC = '/rona-reel.mp4'
+/** The clip's own first frame: shown while it loads, and instead of it under reduced motion. */
+const ANGRY_POSTER_SRC = '/rona-reel-poster.jpg'
+
+/**
  * Waveform strip under the frame. Each word gets a cluster of thin bars, as many as its duration
  * allows, whose overall height is that word's MEASURED loudness; the rise-and-fall within a
  * cluster is only a drawing envelope. Played words light up, emphasised ones in signal.
@@ -93,7 +105,7 @@ export function ToneSection() {
   const { ref: clockRef, timeMs } = useLoopClock(clip[0].startMs, clip[clip.length - 1].endMs, 1800, motionSafe)
 
   return (
-    <section id="features" className="scroll-mt-20 border-t border-line-subtle py-24 sm:py-32">
+    <section id="hear-the-difference" className="scroll-mt-20 border-t border-line-subtle py-24 sm:py-32">
       <div className="mx-auto max-w-[1200px] px-4 sm:px-8">
         <SectionHeading eyebrow="Hear the difference" lines={['Same reel.', 'Three moods.']} motionSafe={motionSafe}>
           Most captions treat a whisper and a rant the same. Ours read the tone of every word from the
@@ -111,6 +123,34 @@ export function ToneSection() {
                   'radial-gradient(80% 50% at 50% 24%, rgba(255, 184, 62, 0.14), transparent 70%), radial-gradient(90% 60% at 50% 105%, rgba(255, 107, 74, 0.14), transparent 70%), linear-gradient(180deg, #19171a, #0c0c0e)',
               }}
             >
+              {/* Footage, angry moment only — see ANGRY_VIDEO_SRC above. The clip is portrait and
+                  so is this 9:16 frame, so object-cover crops rather than letterboxes either way.
+                  muted/loop/playsInline/autoPlay are required together or mobile Safari won't
+                  autoplay. Under reduced motion the poster renders as a static <img> instead: no
+                  video element at all, so there is nothing that could autoplay. */}
+              {moment.tone === 'angry' &&
+                (motionSafe ? (
+                  <video
+                    className="absolute inset-0 h-full w-full object-cover"
+                    src={ANGRY_VIDEO_SRC}
+                    poster={ANGRY_POSTER_SRC}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    aria-hidden="true"
+                    tabIndex={-1}
+                  />
+                ) : (
+                  <img className="absolute inset-0 h-full w-full object-cover" src={ANGRY_POSTER_SRC} alt="" aria-hidden="true" />
+                ))}
+              {/* Scrim between footage and the caption/badge/waveform layers — a gradient, not a
+                  text-shadow, so every preset stays legible over moving footage rather than only
+                  the heavy ones. Only drawn when there is footage to darken. */}
+              {moment.tone === 'angry' && (
+                <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/65" aria-hidden="true" />
+              )}
               <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-line-subtle bg-canvas/70 px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-ink-secondary backdrop-blur-sm">
                 <span className={`h-1.5 w-1.5 rounded-full ${TONE_DOT[moment.tone]}`} />
                 Detected · {moment.tone}

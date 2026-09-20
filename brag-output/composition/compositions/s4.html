@@ -1,0 +1,74 @@
+<template>
+  <div data-hf-id="hf-bsr7" id="s4" data-composition-id="s4" data-width="1920" data-height="1080" data-duration="3.5">
+    <div data-hf-id="hf-b6j1" id="s4-wrap">
+      <div data-hf-id="hf-2l5h" id="s4-well">
+        <div data-hf-id="hf-aw9s" id="s4-stage-line">
+          <span data-hf-id="hf-5j2n" class="w w-angry">itna</span>
+          <span data-hf-id="hf-h2jl" class="w w-angry" id="s4-bekaar">bekaar<span data-hf-id="hf-lk5t" id="s4-fire" style="opacity: 0">🔥</span></span>
+          <span data-hf-id="hf-2cam" class="w w-angry">tha</span>
+          <span data-hf-id="hf-u5i9" class="w w-body">yaar</span>
+        </div>
+      </div>
+      <div data-hf-id="hf-zpz1" id="s4-col">
+        <div data-hf-id="hf-l3zs" id="s4-head" class="display">
+          <div data-hf-id="hf-rou0" id="s4-h1">You don’t need to edit.</div>
+          <div data-hf-id="hf-9v09" id="s4-h2" class="coral">Just talk.</div>
+        </div>
+        <div data-hf-id="hf-d26e" id="s4-chips">
+          <div data-hf-id="hf-dlhl" class="chip s4-chip" style="opacity: 0">
+            <span data-hf-id="hf-ke0a" class="tool">find_words</span><span data-hf-id="hf-6cz4">query "bekaar" · matchType contains</span>
+          </div>
+          <div data-hf-id="hf-mi9p" class="chip s4-chip" style="opacity: 0">
+            <span data-hf-id="hf-1hfw" class="tool">set_emoji</span><span data-hf-id="hf-5ydo">wordIds [w12] · emoji 🔥</span>
+          </div>
+          <div data-hf-id="hf-9i4y" class="chip chip-ok s4-chip" style="opacity: 0">
+            <span data-hf-id="hf-2eq6">validated · 1 word updated</span>
+          </div>
+        </div>
+        <div data-hf-id="hf-dhiv" id="s4-input">
+          <div data-hf-id="hf-92fa" id="s4-mic"><span data-hf-id="hf-u159" class="stop"></span><span data-hf-id="hf-ntug" id="s4-ping"></span></div>
+          <div data-hf-id="hf-yeow"><span data-hf-id="hf-udj8" id="s4-typed"></span><span data-hf-id="hf-4t65" id="s4-caret"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    /* S4 "You don't need to edit. Just talk." — scene-local 0–3.5 (global 11.5–15.0).
+       Headline verbatim from TalkToEditSection.tsx:98. The command is a real
+       tested prompt from apps/web/src/lib/demo-prompts.ts, and the two chips use
+       the real registered tool names and their real argument shapes:
+         find_words(query: str, matchType: "exact"|"contains"|"fuzzy")
+         set_emoji(wordIds: list[str], emoji: str)
+       (services/api/app/agent/tools/schemas.py:99, :190). The agent never edits
+       pixels — it returns a validated JSON patch, which is why the last chip
+       says "validated" before the frame changes. */
+    (function () {
+      var CMD = "put a fire emoji on the word bekaar";
+      var typed = document.getElementById("s4-typed");
+      var tl = gsap.timeline({ paused: true });
+
+      tl.fromTo("#s4-well", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 0.05)
+        .fromTo("#s4-h1", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 0.1)
+        .fromTo("#s4-h2", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 0.24)
+        .fromTo("#s4-input", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, 0.1);
+
+      // mic goes live — finite ping count, never repeat:-1
+      var cycles = Math.max(0, Math.floor(2.4 / 0.8) - 1);
+      tl.fromTo("#s4-ping", { opacity: 0.85, scale: 1 }, { opacity: 0, scale: 1.55, duration: 0.8, ease: "power2.out", repeat: cycles }, 0.22);
+
+      for (var c = 1; c <= CMD.length; c++) {
+        tl.call((function (n) { return function () { typed.textContent = CMD.slice(0, n); }; })(c), [], 0.22 + c * 0.0138);
+      }
+      tl.fromTo("#s4-caret", { opacity: 1 }, { opacity: 0.15, duration: 0.24, yoyo: true, repeat: 5, ease: "none" }, 0.75);
+
+      tl.fromTo(".s4-chip:nth-child(1)", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.24, ease: "power3.out" }, 0.8)
+        // beat-locked: global 12.65s (strongCue 1.00) — the validated patch lands on the word
+        .fromTo(".s4-chip:nth-child(2)", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.24, ease: "power3.out" }, 1.15)
+        .fromTo("#s4-fire", { opacity: 0, scale: 0.3, y: 14 }, { opacity: 1, scale: 1, y: 0, duration: 0.34, ease: "back.out(3.4)" }, 1.15)
+        .fromTo(".s4-chip:nth-child(3)", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.24, ease: "power3.out" }, 1.6)
+        .to("#s4-wrap", { opacity: 0, duration: 0.22, ease: "power1.in" }, 3.28);
+      tl.seek(0);
+      window.__timelines["s4"] = tl;
+    })();
+  </script>
+</template>

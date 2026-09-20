@@ -1,0 +1,67 @@
+<template>
+  <div data-hf-id="hf-unc3" id="s2" data-composition-id="s2" data-width="1920" data-height="1080" data-duration="3.5">
+    <div data-hf-id="hf-lm34" class="inner">
+      <div data-hf-id="hf-qpy1" class="cap-line" id="s2-line">
+        <span data-hf-id="hf-of0v" class="w w-body s2-w" id="s2-itna">itna</span>
+        <span data-hf-id="hf-za77" class="w w-body s2-w" id="s2-bekaar">bekaar</span>
+        <span data-hf-id="hf-1zw3" class="w w-body s2-w" id="s2-tha">tha</span>
+        <span data-hf-id="hf-54u8" class="w w-body" id="s2-yaar">yaar</span>
+        <span data-hf-id="hf-xasu" class="w emoji" id="s2-emoji" style="opacity: 0">😒</span>
+      </div>
+      <div data-hf-id="hf-wvez" id="s2-badge" style="opacity: 0">
+        <span data-hf-id="hf-9gry" class="dot"></span><span data-hf-id="hf-5s27">Detected · angry</span>
+      </div>
+    </div>
+  </div>
+  <script>
+    /* S2 "It heard you get angry" — scene-local 0–3.5 (global 3.5–7.0).
+       demo-project.json: itna / bekaar / tha are emotion:"angry" (bekaar at
+       loudnessZ 2.6, pitchZ 2.0, emoji U+1F612); yaar stays neutral, which is
+       what makes the boundary legible. The angry layer is the shipped default:
+       uppercase + weight 900 + colour + shake (presets.ts:295).
+
+       The shake is ported from CaptionRenderer.tsx:230 —
+         x = sin(t/18) * amp,  y = cos(t/13) * amp * 0.6
+       clock-driven, not a CSS keyframe loop. The two periods are
+       incommensurable so the motion never visibly repeats, and because it is a
+       pure function of scene time it is identical under seek. */
+    (function () {
+      var FPS = 30, DUR = 3.5;
+      var words = ["s2-itna", "s2-bekaar", "s2-tha"].map(function (id) { return document.getElementById(id); });
+      var FLIP = 2.3; // local time of the anger flip = global 5.80 strong cue
+
+      function shake(tMs, amp) {
+        return { x: Math.sin(tMs / 18) * amp, y: Math.cos(tMs / 13) * amp * 0.6 };
+      }
+      function drawFrame(f) {
+        var t = f / FPS;
+        if (t < FLIP) return;
+        var s = shake(t * 1000, 3); // Rangmanch angry shake amplitude = 3
+        for (var i = 0; i < words.length; i++) {
+          words[i].style.transform = "translate(" + s.x.toFixed(3) + "px," + s.y.toFixed(3) + "px)";
+        }
+      }
+
+      var tl = gsap.timeline({ paused: true });
+      for (var f = Math.floor(FLIP * FPS); f < Math.round(DUR * FPS); f++) {
+        tl.call((function (n) { return function () { drawFrame(n); }; })(f), [], f / FPS);
+      }
+      // beat grid: 3.90 / 4.23 / 4.49 / 4.75 global
+      var starts = [0.4, 0.73, 0.99, 1.25];
+      var ids = ["#s2-itna", "#s2-bekaar", "#s2-tha", "#s2-yaar"];
+      for (var w = 0; w < 4; w++) {
+        tl.fromTo(ids[w], { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.26, ease: "power3.out" }, starts[w]);
+      }
+      // beat-locked: global 5.80s (strongCue 1.00) — the anger lands
+      tl.call(function () {
+        for (var i = 0; i < words.length; i++) words[i].className = "w w-angry s2-w";
+      }, [], FLIP)
+        .fromTo(".s2-w", { scale: 1 }, { scale: 1.04, duration: 0.14, ease: "power2.out", yoyo: true, repeat: 1, immediateRender: false }, FLIP)
+        .fromTo("#s2-emoji", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.26, ease: "back.out(3)" }, 2.4)
+        .fromTo("#s2-badge", { opacity: 0, x: 26 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out" }, 2.45)
+        .to(["#s2-line", "#s2-badge"], { opacity: 0, duration: 0.2, ease: "power1.in" }, 3.32);
+      tl.seek(0);
+      window.__timelines["s2"] = tl;
+    })();
+  </script>
+</template>

@@ -198,6 +198,43 @@ export const PresetOverride = z.object({
 })
 export type PresetOverride = z.infer<typeof PresetOverride>
 
+/**
+ * A stretch of the video drawn with a DIFFERENT preset from the project's.
+ *
+ * The project's `presetId` is the base look; a segment overrides it for `startMs`..`endMs`. A
+ * word belongs to the segment containing its `startMs` — one lookup, no ambiguity for a word that
+ * straddles a boundary. A word in no segment falls back to `Project.presetId`/`presetOverride`.
+ *
+ * `presetOverride` is the SAME shape and the SAME merge as the project's (`resolvePreset`), so a
+ * segment can carry "chamak, but two words per line" exactly the way the whole project can. It
+ * replaces the project's override rather than stacking on it: two overrides merged in sequence
+ * would make "clear this one key" depend on which level last wrote it.
+ *
+ * Segments must be SORTED, DISJOINT and non-empty (`endMs > startMs`) — enforced below rather
+ * than left to the renderer, because "which preset is this word in" has to have one answer.
+ * `apps/web/src/lib/preset-segments.ts` normalises a list into that shape before it is written.
+ */
+export const PresetSegment = z.object({
+  id: z.string().min(1),
+  startMs: z.number().int().min(0),
+  endMs: z.number().int().min(0),
+  presetId: PresetId,
+  presetOverride: PresetOverride.optional(),
+})
+export type PresetSegment = z.infer<typeof PresetSegment>
+
+/** Same reasoning as MAX_LAYER_ITEMS: generous, and far inside the store's 350 KB document limit. */
+export const MAX_PRESET_SEGMENTS = 40
+
+/** Sorted, non-overlapping, non-empty. Exported so the editor can check before it writes. */
+export function arePresetSegmentsValid(segments: readonly { startMs: number; endMs: number }[]): boolean {
+  return segments.every(
+    (segment, index) =>
+      segment.endMs > segment.startMs &&
+      (index === 0 || segment.startMs >= segments[index - 1].endMs),
+  )
+}
+
 export const Project = z.object({
   id: z.string(),
   videoUrl: z.string(),
@@ -213,6 +250,15 @@ export const Project = z.object({
   // Optional and additive, like presetOverride above: stored documents parse unchanged, so no
   // migration and no SCHEMA_VERSION bump. Absent and [] mean the same thing.
   layers: z.array(LayerItem).max(MAX_LAYER_ITEMS).optional(),
+  // Optional and additive, like `layers` and `presetOverride` above: stored documents parse
+  // unchanged, so no migration and no SCHEMA_VERSION bump. Absent and [] mean the same thing.
+  presetSegments: z
+    .array(PresetSegment)
+    .max(MAX_PRESET_SEGMENTS)
+    .refine(arePresetSegmentsValid, {
+      message: 'presetSegments must be sorted, non-overlapping and non-empty',
+    })
+    .optional(),
   settings: z.object({
     emojis: z.boolean(),
     emotionLayer: z.boolean(),

@@ -176,7 +176,7 @@ export function CaptionShowcaseSection() {
           caption style you pick. Below is a real Hinglish clip, in three of them.
         </SectionHeading>
 
-        <RevealItem motionSafe={motionSafe} style={{ animationDelay: '120ms' }} className="mt-10 flex justify-center">
+        <RevealItem motionSafe={motionSafe} size="lg" style={{ animationDelay: '120ms' }} className="mt-10 flex justify-center">
           <div className="flex w-full max-w-xl flex-col items-stretch gap-2 rounded-2xl border border-line-subtle bg-surface/50 p-2 sm:flex-row sm:items-center sm:rounded-full sm:pl-5">
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2 py-2 text-body-sm text-ink-tertiary sm:justify-start sm:py-0">
               <Upload className="size-4 shrink-0" />
@@ -202,7 +202,8 @@ export function CaptionShowcaseSection() {
             <RevealItem
               key={frame.preset.id}
               motionSafe={motionSafe}
-              style={{ animationDelay: `${200 + index * 90}ms` }}
+              size="lg"
+              style={{ animationDelay: `${200 + Math.min(index, 5) * 90}ms` }}
               className={frame.className}
             >
               <CaptionFrame frame={frame} timeMs={timeMs} />
@@ -212,7 +213,7 @@ export function CaptionShowcaseSection() {
 
         <div className="mt-16 grid gap-4 sm:mt-20 sm:grid-cols-3">
           {FACTS.map((fact, index) => (
-            <RevealItem key={fact.label} motionSafe={motionSafe} style={{ animationDelay: `${index * 90}ms` }}>
+            <RevealItem key={fact.label} motionSafe={motionSafe} size="lg" style={{ animationDelay: `${Math.min(index, 5) * 90}ms` }}>
               <FactCard fact={fact} />
             </RevealItem>
           ))}

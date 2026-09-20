@@ -1,5 +1,5 @@
 import { Project } from '@captions/shared'
-import type { LayerItem, Overlay, PresetId, PresetOverride, Word } from '@captions/shared'
+import type { LayerItem, Overlay, PresetId, PresetOverride, PresetSegment, Word } from '@captions/shared'
 import { applyStyleChange } from '@/lib/style-change'
 import type { StyleChange } from '@/lib/style-change'
 
@@ -22,6 +22,10 @@ export type ProjectAction =
   /** The media layers as the whole list they should now be — a split or a delete has no clean
    *  per-item expression. `[]` removes the key, so absent and empty stay the same thing. */
   | { type: 'SET_LAYERS'; layers: LayerItem[] }
+  /** The preset segments as the whole list they should now be, for the same reason as SET_LAYERS:
+   *  creating one carves the ranges of the segments it lands on, so there is no clean per-item
+   *  expression. `[]` removes the key, so absent and empty stay the same thing. */
+  | { type: 'SET_PRESET_SEGMENTS'; presetSegments: PresetSegment[] }
   | { type: 'APPLY_AGENT_PATCHES'; patches: AgentPatch[] }
   | { type: 'UNDO' }
   | { type: 'REDO' }
@@ -35,7 +39,14 @@ export type ProjectAction =
 export type AgentPatch = Extract<
   ProjectAction,
   {
-    type: 'UPDATE_WORD' | 'SET_PRESET' | 'SET_SETTINGS' | 'SET_PRESET_OVERRIDE' | 'ADD_OVERLAY' | 'SET_LAYERS'
+    type:
+      | 'UPDATE_WORD'
+      | 'SET_PRESET'
+      | 'SET_SETTINGS'
+      | 'SET_PRESET_OVERRIDE'
+      | 'ADD_OVERLAY'
+      | 'SET_LAYERS'
+      | 'SET_PRESET_SEGMENTS'
   }
 >
 
@@ -66,7 +77,7 @@ function commit(state: ProjectHistoryState, candidate: Project): ProjectHistoryS
  * JSON.stringify, so a removal expressed that way would never reach the server. A whole-object
  * null clears every override ("put it back to the preset").
  */
-function mergePresetOverride(
+export function mergePresetOverride(
   current: PresetOverride | undefined,
   change: Partial<PresetOverride> | null,
 ): PresetOverride | undefined {
@@ -115,6 +126,11 @@ export function applyAgentPatch(project: Project, patch: AgentPatch): Project {
     case 'SET_LAYERS': {
       if (patch.layers.length > 0) return { ...project, layers: patch.layers }
       const { layers: _dropped, ...rest } = project
+      return rest as Project
+    }
+    case 'SET_PRESET_SEGMENTS': {
+      if (patch.presetSegments.length > 0) return { ...project, presetSegments: patch.presetSegments }
+      const { presetSegments: _dropped, ...rest } = project
       return rest as Project
     }
   }
@@ -192,6 +208,7 @@ export function projectReducer(state: ProjectHistoryState, action: ProjectAction
     }
 
     case 'SET_PRESET_OVERRIDE':
+    case 'SET_PRESET_SEGMENTS':
     case 'SET_LAYERS': {
       return commit(state, applyAgentPatch(state.present, action))
     }

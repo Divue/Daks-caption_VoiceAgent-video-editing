@@ -1,11 +1,10 @@
 import { useMemo } from 'react'
 import { AbsoluteFill, Img, OffthreadVideo, Sequence, useCurrentFrame, useVideoConfig } from 'remotion'
-import { MIN_BLOCK_MS, PRESETS, Project, deriveBlocks, resolveEmphasis } from '@captions/shared'
-import type { CaptionBlock, LayerItem, Word } from '@captions/shared'
+import { MIN_BLOCK_MS, Project } from '@captions/shared'
+import type { LayerItem } from '@captions/shared'
 import { CaptionRenderer } from '@/components/preview/CaptionRenderer'
+import { buildCaptionTimeline, findBlockIndexAt } from '@/lib/caption-timeline'
 import { layerBoxStyle } from '@/lib/layers'
-import { resolvePreset } from '@/lib/resolve-preset'
-import type { PresetOverride } from '@/lib/resolve-preset'
 import { collectFontFamilies, useCaptionFonts } from './fonts'
 import './caption-utilities.css'
 
@@ -22,10 +21,11 @@ export interface CaptionVideoProps {
 /**
  * The exported video: the source video with the editor's captions drawn over it.
  *
- * This is deliberately NOT a second implementation of the captions. It calls the same functions the
- * editor calls, in the same order — `deriveBlocks` -> `resolveEmphasis` -> `resolvePreset` — and hands
- * the result to the SAME `CaptionRenderer` component the preview uses. Anything the preview draws, this
- * draws; anything changed in the caption look changes both. The only thing that differs is the clock:
+ * This is deliberately NOT a second implementation of the captions. It calls the same ONE function the
+ * editor's `useCaptionBlocks` calls — `buildCaptionTimeline`, which does `deriveBlocks` ->
+ * `resolveEmphasis` -> `resolvePreset` per preset segment — and hands the result to the SAME
+ * `CaptionRenderer` component the preview uses. Anything the preview draws, this draws; anything
+ * changed in the caption look changes both. The only thing that differs is the clock:
  * the editor reads `video.currentTime`, this reads the frame Remotion is rendering, so a frame is a
  * pure function of its number and the output is identical however fast or slow the machine is.
  */
@@ -36,24 +36,30 @@ export function CaptionVideo({ project: rawProject, videoUrl, mediaUrls = {} }: 
   // Validate once: a malformed project should fail the render with a readable error, not draw nonsense.
   const project = useMemo(() => Project.parse(rawProject), [rawProject])
 
-  const timeline = useMemo(() => {
-    const base = PRESETS[project.presetId]
-    // Only the SAVED override can be exported. Session-only tweaks (glow layers, stretch, align) live in
-    // the browser tab and are not part of the project; the export dialog says so.
-    const stored = (project.presetOverride ?? {}) as PresetOverride
-    const preset = resolvePreset(base, stored)
-    const blocks = deriveBlocks(project.words, {
-      maxWords: project.presetOverride?.wordsPerLine ?? base.wordsPerLine,
-      mergeShorterThanMs: MIN_BLOCK_MS, // the editor's default view; "merge short captions" is on
-    })
-    const emphasis = resolveEmphasis(project.words, blocks, preset.emphasisEveryBlocks)
-    const wordById = new Map<string, Word>(project.words.map((word) => [word.id, word]))
-    const wordsOf = (block: CaptionBlock) =>
-      block.wordIds.map((id) => wordById.get(id)).filter((word): word is Word => word !== undefined)
-    return { preset, blocks, emphasisIds: emphasis.ids, wordsOf }
-  }, [project])
+  // Only the SAVED overrides and segments can be exported. Session-only tweaks (glow layers,
+  // stretch, align) live in the browser tab and are not part of the project; the export dialog
+  // says so. `mergeShorterThanMs` is the editor's default view — "merge short captions" is on.
+  const timeline = useMemo(
+    () => buildCaptionTimeline(project, { mergeShorterThanMs: MIN_BLOCK_MS }),
+    [project],
+  )
 
-  const fonts = useMemo(() => [...collectFontFamilies([timeline.preset, project.words.map((w) => w.style)])], [timeline.preset, project.words])
+  const timeMs = (frame / fps) * 1000
+  // The preset of the block ON SCREEN, not one preset for the whole video: with `presetSegments`
+  // each block has its own, and CaptionRenderer draws exactly one block. Outside every block
+  // there is nothing to draw, so the project's own preset is only ever a placeholder here.
+  const activeIndex = findBlockIndexAt(timeline.blocks, timeMs)
+  const activePreset =
+    activeIndex === -1 ? timeline.presetAt(timeMs) : timeline.presetOfBlock(timeline.blocks[activeIndex].id)
+
+  // EVERY segment's fonts, not just the active one's: a face that starts loading when its segment
+  // arrives would draw its first frames in the fallback. `collectFontFamilies` is a recursive walk,
+  // so an array of presets needs no change to it.
+  const presets = useMemo(
+    () => timeline.blocks.map((block) => timeline.presetOfBlock(block.id)),
+    [timeline],
+  )
+  const fonts = useMemo(() => [...collectFontFamilies([presets, project.words.map((w) => w.style)])], [presets, project.words])
   const sample = useMemo(() => project.words.map((w) => w.text).join(' '), [project.words])
   useCaptionFonts(fonts, sample)
 
@@ -65,9 +71,9 @@ export function CaptionVideo({ project: rawProject, videoUrl, mediaUrls = {} }: 
         blocks={timeline.blocks}
         wordsOf={timeline.wordsOf}
         project={project}
-        preset={timeline.preset}
+        preset={activePreset}
         emphasisIds={timeline.emphasisIds}
-        timeMs={(frame / fps) * 1000}
+        timeMs={timeMs}
         frameWidth={width}
         selectedWordId={null}
       />

@@ -1,0 +1,49 @@
+<template>
+  <div data-hf-id="hf-to4d" id="s1" data-composition-id="s1" data-width="1920" data-height="1080" data-duration="3.5">
+    <div data-hf-id="hf-lm34" class="inner">
+      <div data-hf-id="hf-ztaw" id="s1-label" class="eyebrow">every other captioning app</div>
+      <div data-hf-id="hf-pa9u" id="s1-stack">
+        <div data-hf-id="hf-yxwj" id="s1-flat">
+          <div data-hf-id="hf-9r0f" class="cap-line">
+            <span data-hf-id="hf-43ej" class="w w-flat">Hello</span>
+            <span data-hf-id="hf-l2g1" class="w w-flat">bhai</span>
+            <span data-hf-id="hf-skjl" class="w w-flat">log</span>
+          </div>
+        </div>
+        <div data-hf-id="hf-zmu7" id="s1-rich" style="opacity: 0">
+          <div data-hf-id="hf-598f" class="cap-line">
+            <span data-hf-id="hf-shal" class="w w-emph" id="s1-hello">Hello<span data-hf-id="hf-tdj9" class="s1-o" style="opacity: 0">o</span><span data-hf-id="hf-ts0p" class="s1-o" style="opacity: 0">o</span><span data-hf-id="hf-uyxs" class="s1-o" style="opacity: 0">o</span><span data-hf-id="hf-ukmr" class="s1-o" style="opacity: 0">o</span><span data-hf-id="hf-sl3m" class="s1-o" style="opacity: 0">o</span></span>
+            <span data-hf-id="hf-sji6" class="w w-emph">bhai</span>
+            <span data-hf-id="hf-u3ti" class="w w-body">log</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    /* S1 "The same line, twice" — scene-local time 0–3.5 (global 0–3.5).
+       The flat line is what every captioning app writes. The rich line is the
+       same audio through Rangmanch: `Hello` and `bhai` are emphasis:true in
+       demo-project.json, so both draw in the emphasis face (Anton, UPPERCASE,
+       #E2452A). `Hello` additionally carries stretch 2.6 / extraMs 646, and
+       renderedText() turns 646ms into exactly 5 repeated final letters
+       (646/120, rounded, capped at maxRepeats 5) — so they type in one by one. */
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+      var label = document.getElementById("s1-label");
+      tl.fromTo(label, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.1)
+        .fromTo("#s1-flat", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, 0.15)
+        // beat-locked: 1.60s (strongCue 1.00)
+        .to("#s1-flat", { opacity: 0, duration: 0.16, ease: "power1.in" }, 1.56)
+        .to(label, { opacity: 0, duration: 0.12 }, 1.5)
+        .fromTo("#s1-rich", { opacity: 0, scale: 0.88 }, { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2.2)" }, 1.6)
+        .call(function () { label.textContent = "same audio"; }, [], 1.62)
+        .to(label, { opacity: 1, duration: 0.2 }, 1.66)
+        .to(".s1-o", { opacity: 1, duration: 0.01, stagger: 0.06 }, 1.78)
+        .to("#s1-rich", { opacity: 0, duration: 0.22, ease: "power1.in" }, 3.28)
+        .to(label, { opacity: 0, duration: 0.22 }, 3.28);
+      tl.seek(0);
+      window.__timelines["s1"] = tl;
+    })();
+  </script>
+</template>

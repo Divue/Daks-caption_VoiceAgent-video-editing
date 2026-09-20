@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode, RefObject } from 'react'
 import type { Preset, Project, Word } from '@captions/shared'
 import { glowWrapperCss, renderedText, resolveWordStyle, revealOpacity, styleToCss } from '@/lib/caption-style'
+import { useAnimationLifecycle, useInView } from '@/hooks/useInView'
 
 // Shared by the landing sections that draw real captions. Everything here goes through the
 // editor's own resolver (lib/caption-style.ts), so a landing frame shows what the editor would.
@@ -155,36 +156,92 @@ interface SectionHeadingProps {
   align?: 'center' | 'left'
 }
 
+const SECTION_STAGGER_BASE_MS = 80
+const SECTION_STAGGER_STEP_MS = 70
+
 /**
- * The landing's section opener. Mirrors the hero's scroll split in reverse: as the heading scrolls
- * into view, line one slides in from the left and line two from the right, meeting in place.
+ * The landing's section opener. Plays the hero headline's own reveal language — each word rises
+ * out of its own masked line, staggered, then the body copy fades up — the first time the section
+ * scrolls into view (see HeroHeadline/`reveal` in pages/LandingPage.tsx for the same technique).
  */
 export function SectionHeading({ eyebrow, lines, children, motionSafe, align = 'center' }: SectionHeadingProps) {
-  const ref = useRef<HTMLDivElement>(null)
-  // 0 when the heading's top enters at the bottom of the viewport, 1 by the time it is 60% up.
-  useScrollVar(ref, '--in', 1, 0.6, motionSafe)
-  const slide = (dir: -1 | 1): CSSProperties | undefined =>
-    motionSafe
-      ? { transform: `translate3d(calc((1 - var(--in, 1)) * ${dir * 14}vw), 0, 0)`, opacity: 'calc(0.15 + var(--in, 1) * 0.85)' }
-      : undefined
+  const { ref, isInView, shouldAnimate } = useInView<HTMLDivElement>(0.3)
   const centered = align === 'center'
+  // Eyebrow and body copy share one isInView/shouldAnimate (both belong to the same heading), but
+  // finish animating at different times (different delays, same duration) — will-change is gated
+  // off whichever finishes LAST (the body copy, when there is one) so it isn't torn down on both
+  // elements the moment the earlier-finishing eyebrow completes, while the body is still moving.
+  const isAnimating = isInView && shouldAnimate
+  const { style: liveStyle, onAnimationEnd } = useAnimationLifecycle(isAnimating)
+
+  // Word-reveal: same mask-clip technique as HeroHeadline, staggered across both lines. Entering
+  // on a downward scroll plays the animation; re-entering on an upward scroll (isInView true,
+  // shouldAnimate false) snaps straight to the settled look instead of replaying it.
+  const wordReveal = (delayMs: number): { className: string; style?: CSSProperties } => {
+    if (!motionSafe) return { className: '' }
+    if (!isInView) return { className: '', style: { transform: 'translateY(115%) rotate(6deg)' } }
+    if (!shouldAnimate) return { className: '' }
+    return { className: 'animate-mask-up', style: { animationDelay: `${delayMs}ms` } }
+  }
+  // Reveal for the eyebrow and body copy — index.css's --animate-reveal-sm, a dedicated keyframe
+  // for this scroll-reveal system (opacity + translateY only, no filter: blur — the hero's own
+  // `rise` bakes in a blur, and the body copy here can be a fairly large text block; every section
+  // entering on a downward scroll now runs many of these staggered at once, so keeping this path
+  // compositor-cheap, plus the will-change hint below, is what keeps the scroll itself smooth).
+  const reveal = (delayMs: number): { className: string; style?: CSSProperties } => {
+    if (!motionSafe) return { className: '' }
+    if (!isInView) return { className: '', style: { opacity: 0, transform: 'translateY(20px)' } }
+    if (!shouldAnimate) return { className: '' }
+    return { className: 'animate-reveal-sm', style: { animationDelay: `${delayMs}ms`, ...liveStyle } }
+  }
+
+  const lineWords = lines.map((line) => line.split(' '))
+  const wordCount = lineWords[0].length + lineWords[1].length
+  const headingStart = SECTION_STAGGER_BASE_MS + 120
+  const bodyDelay = headingStart + wordCount * SECTION_STAGGER_STEP_MS + 150
+  // The body copy (when present) always has the larger delay, so it's always the last of the two
+  // to finish — that's the one whose animationend should retire the shared will-change hint.
+  const lastToFinishHandlesEnd = !children
 
   return (
     <div ref={ref} className={`flex flex-col gap-4 ${centered ? 'items-center text-center' : 'items-start text-left'}`}>
-      <p className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-signal">
+      <p
+        className={`inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-signal ${reveal(SECTION_STAGGER_BASE_MS).className}`}
+        style={reveal(SECTION_STAGGER_BASE_MS).style}
+        onAnimationEnd={lastToFinishHandlesEnd ? onAnimationEnd : undefined}
+      >
         <span className="h-px w-6 bg-signal/60" aria-hidden="true" />
         {eyebrow}
       </p>
       <h2 className="font-display text-[clamp(2rem,6vw,3.5rem)] font-bold leading-[1.02] tracking-[-0.035em] text-ink-primary">
-        <span className="block will-change-transform" style={slide(-1)}>
-          {lines[0]}
-        </span>
-        <span className="block text-signal will-change-transform" style={slide(1)}>
-          {lines[1]}
-        </span>
+        {lineWords.map((words, lineIdx) => (
+          <span key={lineIdx} className={`block ${lineIdx === 1 ? 'text-signal' : ''}`}>
+            {words.map((word, i) => {
+              const wordIdx = lineIdx === 0 ? i : lineWords[0].length + i
+              const delay = headingStart + wordIdx * SECTION_STAGGER_STEP_MS
+              const { className, style } = wordReveal(delay)
+              return (
+                <Fragment key={`${lineIdx}-${i}`}>
+                  <span className="-mb-[0.14em] inline-block overflow-hidden pb-[0.14em] align-bottom">
+                    <span className={`inline-block origin-bottom-left ${className}`} style={style}>
+                      {word}
+                    </span>
+                  </span>
+                  {i < words.length - 1 ? ' ' : ''}
+                </Fragment>
+              )
+            })}
+          </span>
+        ))}
       </h2>
       {children && (
-        <div className="max-w-2xl text-body-md text-ink-secondary sm:text-body-lg">{children}</div>
+        <div
+          className={`max-w-2xl text-body-md text-ink-secondary sm:text-body-lg ${reveal(bodyDelay).className}`}
+          style={reveal(bodyDelay).style}
+          onAnimationEnd={onAnimationEnd}
+        >
+          {children}
+        </div>
       )}
     </div>
   )

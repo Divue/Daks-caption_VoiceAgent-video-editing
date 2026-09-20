@@ -11,7 +11,6 @@ import { CollapsiblePanel } from '@/components/shell/CollapsiblePanel'
 import { Timeline } from '@/components/timeline/Timeline'
 import { TranscriptPanel } from '@/components/transcript/TranscriptPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { resolveEmphasis } from '@captions/shared'
 import type { CaptionBlock, Emotion, Word } from '@captions/shared'
 import type { MicStatus } from '@/hooks/useAgentActivity'
 import { useAgentActivity } from '@/hooks/useAgentActivity'
@@ -19,6 +18,7 @@ import { useAgentCommand } from '@/hooks/useAgentCommand'
 import type { TransportOutcome } from '@/hooks/useAgentCommand'
 import { getProject } from '@/lib/api'
 import { resolveTransport } from '@/lib/voice-intents'
+import { resolvePreset } from '@/lib/resolve-preset'
 import type { TransportIntent } from '@/lib/voice-intents'
 import { useVoiceInput } from '@/hooks/useVoiceInput'
 import { findBlockIndexAt, useCaptionBlocks } from '@/hooks/useCaptionBlocks'
@@ -54,25 +54,37 @@ function App() {
   const activity = useAgentActivity()
   const { entries, addEntry } = activity
   const { patch: patchWord, patchWords, undo } = useWordPatch()
-  const { preset } = usePresetOverride()
+  const { preset, sessionOverride } = usePresetOverride()
 
   // A view preference, not project data: local state, never Project.settings (a schema
   // change) and never the reducer (it would land in the undo history).
   const [mergeShort, setMergeShort] = useState(true)
   const [revealBlockId, setRevealBlockId] = useState<string | null>(null)
 
-  const { blocks, wordsOf } = useCaptionBlocks(mergeShort)
-
-  // Which words RENDER emphasised: the pipeline's own plus the rhythm rule's promotions. Computed
-  // once here and handed to both the preview and the caption list, so the two can never disagree
-  // about which word is the big one.
+  // Blocks, emphasis and the preset each block is drawn with, all from ONE build so they cannot
+  // disagree — and so the preview and the export agree, since remotion/src/CaptionVideo.tsx calls
+  // the same `buildCaptionTimeline`. Emphasis used to be resolved again here with the single
+  // active preset's `emphasisEveryBlocks`; with `presetSegments` there are several, and the
+  // timeline resolves it per segment (see lib/caption-timeline.ts).
+  const { blocks, wordsOf, emphasisIds, promotedIds, presetOfBlock } = useCaptionBlocks(mergeShort)
   const emphasis = useMemo(
-    () => resolveEmphasis(project.words, blocks, preset.emphasisEveryBlocks),
-    [project.words, blocks, preset.emphasisEveryBlocks],
+    () => ({ ids: emphasisIds, promoted: promotedIds }),
+    [emphasisIds, promotedIds],
   )
 
   const activeBlockIndex = findBlockIndexAt(blocks, timeMs)
   const activeBlockId = activeBlockIndex === -1 ? null : blocks[activeBlockIndex].id
+
+  // The preset the PREVIEW draws with: the one belonging to the block on screen, which is what
+  // the export uses too (remotion/src/CaptionVideo.tsx), plus this session's unsaved tweaks. Not
+  // `preset` from the context — that is scoped to the PLAYHEAD, and at a segment boundary the
+  // playhead can already be in the next segment while the caption on screen belongs to the
+  // previous one. `preset` still drives the style panel, which is about editing, not drawing.
+  const previewPreset = useMemo(
+    () =>
+      activeBlockId === null ? preset : resolvePreset(presetOfBlock(activeBlockId), sessionOverride),
+    [activeBlockId, presetOfBlock, sessionOverride, preset],
+  )
 
   useUndoRedoShortcuts()
 
@@ -419,7 +431,7 @@ function App() {
                     blocks={blocks}
                     wordsOf={wordsOf}
                     project={project}
-                    preset={preset}
+                    preset={previewPreset}
                     emphasisIds={emphasis.ids}
                     timeMs={timeMs}
                     frameWidth={frameWidth}

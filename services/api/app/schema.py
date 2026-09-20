@@ -1,7 +1,7 @@
 """Python mirror of packages/shared/src/project.ts. Change both together (lead only)."""
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 Emotion = Literal["neutral", "angry", "excited"]
 # Renamed "kathmandu" -> "rangmanch" in schema v2; stored rows are migrated on read
@@ -142,6 +142,25 @@ class PresetOverride(BaseModel):
     emotion: Optional[dict[Emotion, EmotionOverride]] = None
 
 
+#: Mirrors MAX_PRESET_SEGMENTS in project.ts.
+MAX_PRESET_SEGMENTS = 40
+
+
+class PresetSegment(BaseModel):
+    """Mirrors `PresetSegment` in packages/shared/src/project.ts — read its comment.
+
+    A stretch of the video drawn with a different preset from the project's. A word belongs to
+    the segment containing its `startMs`; a word in no segment uses `Project.presetId`. The
+    segment's `presetOverride` REPLACES the project's rather than stacking on it.
+    """
+
+    id: str = Field(min_length=1)
+    startMs: int = Field(ge=0)
+    endMs: int = Field(ge=0)
+    presetId: PresetId
+    presetOverride: Optional[PresetOverride] = None
+
+
 class Project(BaseModel):
     id: str
     videoUrl: str
@@ -156,4 +175,22 @@ class Project(BaseModel):
     overlays: list[Overlay]
     # Optional and additive, like presetOverride: stored documents parse unchanged.
     layers: Optional[list[LayerItem]] = Field(default=None, max_length=MAX_LAYER_ITEMS)
+    # Optional and additive, like `layers`: stored documents parse unchanged.
+    presetSegments: Optional[list[PresetSegment]] = Field(default=None, max_length=MAX_PRESET_SEGMENTS)
     settings: Settings
+
+    @model_validator(mode="after")
+    def _preset_segments_sorted_and_disjoint(self) -> "Project":
+        """Mirrors `arePresetSegmentsValid` in project.ts.
+
+        Enforced here as well as in the editor because "which preset is this word in" must have
+        exactly one answer; an overlap would make it depend on iteration order in two renderers.
+        """
+        previous_end = None
+        for segment in self.presetSegments or []:
+            if segment.endMs <= segment.startMs:
+                raise ValueError("presetSegments must be non-empty (endMs > startMs)")
+            if previous_end is not None and segment.startMs < previous_end:
+                raise ValueError("presetSegments must be sorted and non-overlapping")
+            previous_end = segment.endMs
+        return self

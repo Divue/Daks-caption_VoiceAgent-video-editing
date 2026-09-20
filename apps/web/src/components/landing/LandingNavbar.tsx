@@ -261,8 +261,8 @@ export function LandingNavbar() {
   return (
     <header
       ref={navRef}
-      className={`fixed inset-x-0 top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-500 ${
-        scrolled ? "border-b border-line-subtle bg-canvas/80 backdrop-blur-xl" : "border-b border-transparent bg-transparent"
+      className={`fixed inset-x-0 top-0 z-50 transition-[background-color,border-color] duration-500 ${
+        scrolled ? "border-b border-line-subtle bg-canvas" : "border-b border-transparent bg-transparent"
       } ${motionSafe ? "animate-navbar-enter" : ""}`}
     >
       {/* Scroll progress hairline, in the signal colour, along the bar's bottom edge. */}

@@ -430,18 +430,28 @@ Everything else follows the brief. No schema field beyond `presetSegments` was n
 
 ## Git / Change Scope
 
-Branch `master`, seven commits `a323a2b`..`2059a1c` plus the docs commit `6b5346b`, split
-by owned folder (see **Ownership** for the one deliberate crossover). 28 files,
-+1932/-149 excluding this audit. Nothing pushed, no PR opened.
+Branch `master`. Ten commits, `a323a2b`..`1e49992`. The working tree is **clean** —
+`git status` is empty and nothing is pushed.
 
-**Uncommitted at the time of writing, at the repo owner's request** (they are committing
-it themselves): `remotion/scripts/check-export-segments.mjs`, the
-`check:export-segments` line in `remotion/package.json`, and this audit's render section.
-That is P2's share and belongs in one commit of its own.
+The first eight are the ones written here, split by owned folder (see **Ownership** for
+the one deliberate crossover): `a323a2b` (schema, lead), `045a7bc` + `678ffa0`
+(`apps/web`, P3), `1e925d4` (`remotion/`, P2), `1cb29bd` (`services/api`, P1), `5f6b5dd`
++ `2059a1c` (agent, P4), `6b5346b` (this audit and its INDEX row). 28 files,
++1932/-149 excluding this audit.
 
-`git status` shows one unrelated modified file:
-`.claude/audits/word-editing/phase-01-text-and-timing.md`, which was **already dirty at
-the start of this session** and was left untouched — it is not in any of these commits.
+The last two were made by the **repo owner**, not by this session, and do not follow the
+folder split:
+
+- `89350af "yoo"` — `remotion/scripts/check-export-segments.mjs` (an earlier draft of it)
+  **plus** `.claude/audits/word-editing/phase-01-text-and-timing.md`. That second file was
+  **already dirty before this session started** and had deliberately been kept out of every
+  commit above; it is unrelated to preset segments and is now in the history alongside them.
+  Recorded here because a later reader tracing that file's change to this commit would
+  otherwise attribute it to this work.
+- `1e49992 "rendered"` — the finished version of that script, the
+  `check:export-segments` line in `remotion/package.json`, and this audit's render section.
+  That is P2's share.
+
 A temporary `remotion/tsconfig.check.json` was created for a typecheck and deleted; it is
 not in the tree or in any commit.
 

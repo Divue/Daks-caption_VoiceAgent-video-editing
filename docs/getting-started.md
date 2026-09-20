@@ -37,8 +37,12 @@ nvm use && npm install
 cd apps/web && npm run dev
 ```
 
-Open **http://localhost:5173/editor?demo=1** — a bundled 28-second project with real video and 51
-captioned words. It needs no upload and no pipeline run, so it is the fastest way to see everything.
+Open **http://localhost:5173/editor?demo=1** — a 28-second demo project with 51 captioned words. It
+needs no upload and no pipeline run, so it is the fastest way to see everything, **if you have the
+clip**: `Normal.mp4` is not in the repo. Put it in `services/api/scripts/stt_bakeoff/clips/`
+(git-ignored; ask a teammate). Without it the captions load over a blank player, and
+`/demo-media/Normal.mp4` answers 404. The URL also needs `VITE_USE_FIXTURE=true` in `.env`; with
+`false` it opens the upload screen instead. No clip? Upload your own reel at `/editor`.
 
 ### Which AWS access you need
 
@@ -103,7 +107,8 @@ docker compose exec -T voice-agent python scripts/check_voice_e2e.py
 |---|---|
 | API exits on boot: `missing required environment variables` | `.env` lacks one of `AWS_REGION`, `S3_BUCKET`, `DYNAMO_TABLE`, `DEV_PREFIX`, `BEDROCK_MODEL_ID` |
 | Agent replies `status="error"` about the model | `BEDROCK_MODEL_ID` is unset, or your account can't reach it in `ap-south-1` (see `FALLBACK_AWS_*`) |
-| Editor loads but the video is blank | the API isn't on `localhost:8010`, so `/demo-media/Normal.mp4` never loads — check `VITE_API_URL` and `API_PORT` |
+| Editor loads but the video is blank | on `?demo=1`: `Normal.mp4` is missing from `services/api/scripts/stt_bakeoff/clips/` (`/demo-media/Normal.mp4` answers 404), or the API isn't on `localhost:8010` — check `VITE_API_URL` and `API_PORT` |
+| `/editor?demo=1` shows the upload screen | `VITE_USE_FIXTURE` is `false` in `.env`; the demo URL only works when it is `true` |
 | Mic connects but nothing you say appears | the voice worker can't reach streaming Transcribe — check `docker compose logs voice-agent` and that **your** `~/.aws` has Transcribe |
 | Activity says "Listening (browser speech recognition)" | LiveKit isn't reachable, so the editor fell back on purpose — check `docker compose ps` for `livekit` and `voice-agent` |
 | `POST /agent/livekit-token` → 503 | `LIVEKIT_*` missing from `.env` — copy them from `.env.example` |

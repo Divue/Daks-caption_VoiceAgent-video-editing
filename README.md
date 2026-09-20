@@ -68,8 +68,12 @@ nvm use && npm install
 cd apps/web && npm run dev
 ```
 
-Open <http://localhost:5173/editor?demo=1>. It loads a bundled 28-second project with real video
-and captions, so you can try everything without uploading or running the pipeline.
+Open <http://localhost:5173/editor?demo=1> for a 28-second demo project with 51 captioned words, so
+you can poke at the editor without uploading anything. Two things it needs: `VITE_USE_FIXTURE=true`
+in `.env` (the example file sets it), and the demo clip itself. The clip is not in the repo. Drop a
+file named `Normal.mp4` into `services/api/scripts/stt_bakeoff/clips/` (git-ignored; ask a
+teammate for it), or the captions load over a blank player. Without the clip, upload your own reel
+at `/editor` instead.
 
 Export is opt-in, because its image carries a headless Chrome and takes a few minutes to build the
 first time: `docker compose --profile export up -d --build`.

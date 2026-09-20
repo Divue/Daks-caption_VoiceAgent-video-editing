@@ -19,7 +19,16 @@ import { DEFAULT_EMPHASIS_EVERY_BLOCKS, MIN_BLOCK_MS, PRESETS, Project } from '@
 import type { PresetSegment, Word } from '@captions/shared'
 import { buildCaptionTimeline, findBlockIndexAt } from '@/lib/caption-timeline'
 import { resolvePreset } from '@/lib/resolve-preset'
-import { normaliseSegments, removeSegment, segmentAt, setSegment } from '@/lib/preset-segments'
+import {
+  MIN_SEGMENT_MS,
+  moveSegmentTo,
+  normaliseSegments,
+  removeSegment,
+  resizeSegmentEnd,
+  resizeSegmentStart,
+  segmentAt,
+  setSegment,
+} from '@/lib/preset-segments'
 import { assertPresetFontsLoadable } from '@/lib/caption-style'
 import { collectFontFamilies } from '../../../remotion/src/fonts'
 
@@ -51,6 +60,20 @@ console.log('normaliseSegments — the shape the schema demands')
       'a,b',
   )
   check('drops a zero-length segment', normaliseSegments([seg('a', 1000, 1000)], DURATION).length === 0)
+  check(
+    `drops a sliver shorter than ${MIN_SEGMENT_MS}ms`,
+    normaliseSegments([seg('a', 1000, 1000 + MIN_SEGMENT_MS - 1)], DURATION).length === 0,
+  )
+  check(
+    'keeps one exactly at the minimum',
+    normaliseSegments([seg('a', 1000, 1000 + MIN_SEGMENT_MS)], DURATION).length === 1,
+  )
+  // A carve can leave a remnant a few ms wide; it is dropped, not stored as an unclickable sliver.
+  check(
+    'a carve that would leave a sliver drops it instead',
+    setSegment([seg('a', 1000, 5000)], seg('n', 1050, 5000, 'nazm'), DURATION).map((s) => `${s.startMs}-${s.endMs}`).join() ===
+      '1050-5000',
+  )
   check(
     'clamps a segment past durationMs to the end of the video',
     normaliseSegments([seg('a', 9000, 99_000)], DURATION)[0].endMs === DURATION,
@@ -124,6 +147,26 @@ console.log('\nsetSegment — create, move and resize are one carve')
       '2000-9000',
   )
   check('removeSegment removes exactly one', removeSegment(base, 'a', DURATION).length === 0)
+  // Found in a real browser: dragging the LEFT edge past the right one used to clamp to
+  // `endMs - 1`, leaving a 1 ms segment that had silently replaced a real one and could not be
+  // clicked or removed. Both edges now stop MIN_SEGMENT_MS apart.
+  check(
+    'the left edge cannot be dragged past the right one',
+    resizeSegmentStart(seg('a', 2000, 6000), 99_000).startMs === 6000 - MIN_SEGMENT_MS,
+  )
+  check(
+    'the right edge cannot be dragged past the left one',
+    resizeSegmentEnd(seg('a', 2000, 6000), 0, DURATION).endMs === 2000 + MIN_SEGMENT_MS,
+  )
+  check('the right edge cannot be dragged past the video', resizeSegmentEnd(seg('a', 2000, 6000), 99_000, DURATION).endMs === DURATION)
+  check('the left edge cannot go negative', resizeSegmentStart(seg('a', 2000, 6000), -500).startMs === 0)
+  check(
+    'moving keeps the length and stays inside the video',
+    (() => {
+      const moved = moveSegmentTo(seg('a', 2000, 6000), 99_000, DURATION)
+      return moved.endMs === DURATION && moved.endMs - moved.startMs === 4000
+    })(),
+  )
   check('segmentAt is half-open — the end belongs to the next segment', segmentAt(base, 6000) === undefined)
   check('segmentAt finds the start', segmentAt(base, 2000)?.id === 'a')
 }

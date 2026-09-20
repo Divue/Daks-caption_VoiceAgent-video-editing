@@ -9,6 +9,16 @@
 import { MAX_PRESET_SEGMENTS } from '@captions/shared'
 import type { PresetSegment } from '@captions/shared'
 
+/**
+ * The shortest segment worth having, matching `MIN_ITEM_MS` in lib/layers.ts and for the same
+ * reason: anything shorter is a sliver you cannot see, click or remove.
+ *
+ * Found in a real browser, not reasoned about — dragging a segment's START edge past its END
+ * clamped it to `endMs - 1`, leaving a 1 ms segment that had silently replaced a real one and
+ * could not be got rid of.
+ */
+export const MIN_SEGMENT_MS = 100
+
 /** The segment containing this time, or undefined — the project's own preset applies there. */
 export function segmentAt(
   segments: readonly PresetSegment[],
@@ -43,7 +53,7 @@ export function normaliseSegments(
       startMs: Math.round(Math.min(Math.max(0, segment.startMs), durationMs)),
       endMs: Math.round(Math.min(Math.max(0, segment.endMs), durationMs)),
     }))
-    .filter((segment) => segment.endMs > segment.startMs)
+    .filter((segment) => segment.endMs - segment.startMs >= MIN_SEGMENT_MS)
     .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs)
 
   const out: PresetSegment[] = []
@@ -56,7 +66,8 @@ export function normaliseSegments(
     // An overlap survives only as a bug upstream; the later segment yields rather than winning,
     // so the list can never reach the reducer in a shape it would drop.
     const start = Math.max(segment.startMs, previous.endMs)
-    if (segment.endMs <= start) continue
+    // A remnant left by a carve is dropped, not kept as a sliver — same rule as above.
+    if (segment.endMs - start < MIN_SEGMENT_MS) continue
     const next = { ...segment, startMs: start }
     if (previous.endMs === next.startMs && sameLook(previous, next)) {
       out[out.length - 1] = { ...previous, endMs: next.endMs }
@@ -113,6 +124,40 @@ export function removeSegment(
     segments.filter((segment) => segment.id !== id),
     durationMs,
   )
+}
+
+/**
+ * Drag the segment bodily to `startMs`, keeping its length and staying inside the video.
+ * Mirrors `moveItemTo` in lib/layers.ts.
+ */
+export function moveSegmentTo(
+  segment: PresetSegment,
+  startMs: number,
+  durationMs: number,
+): PresetSegment {
+  const length = segment.endMs - segment.startMs
+  const start = Math.round(Math.min(Math.max(0, startMs), Math.max(0, durationMs - length)))
+  return { ...segment, startMs: start, endMs: start + length }
+}
+
+/** Drag the LEFT edge. Never past `MIN_SEGMENT_MS` from the right one. */
+export function resizeSegmentStart(segment: PresetSegment, startMs: number): PresetSegment {
+  return {
+    ...segment,
+    startMs: Math.round(Math.min(Math.max(0, startMs), segment.endMs - MIN_SEGMENT_MS)),
+  }
+}
+
+/** Drag the RIGHT edge. Never past `MIN_SEGMENT_MS` from the left one, nor past the video. */
+export function resizeSegmentEnd(
+  segment: PresetSegment,
+  endMs: number,
+  durationMs: number,
+): PresetSegment {
+  return {
+    ...segment,
+    endMs: Math.round(Math.min(Math.max(endMs, segment.startMs + MIN_SEGMENT_MS), durationMs)),
+  }
 }
 
 /** Ids only have to be unique within the list; nothing parses them. */

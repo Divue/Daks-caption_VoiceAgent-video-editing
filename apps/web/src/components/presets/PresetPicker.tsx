@@ -1,6 +1,8 @@
 import { cn } from '@/lib/utils'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { usePresetSegments } from '@/hooks/usePresetSegments'
+import { formatTimestamp } from '@/lib/format'
 import { useProject } from '@/state/project-context'
 import { useWordPatch } from '@/state/word-patch-context'
 import { PRESETS } from '@captions/shared'
@@ -23,16 +25,35 @@ function sampleWord(id: string, text: string, emphasis: boolean): Word {
 
 const SAMPLE_WORDS = [sampleWord('a', 'suno', false), sampleWord('b', 'bhai', true)]
 
+/**
+ * WHAT A CLICK CHANGES depends on the playhead, and nothing else.
+ *
+ * With the playhead inside a preset segment, a card changes THAT segment. Outside every segment
+ * it changes the project's own preset — the base look, which is what it always did.
+ *
+ * There is no separate "selected range" state to get out of step with what is on screen: the
+ * timeline's preset lane seeks into a segment when you touch it, so selecting one and moving the
+ * playhead into it are the same gesture. It is also the rule the style panel already follows
+ * (`preset-override-context.tsx`), so the two panels can never be editing different things. The
+ * header below says which of the two a click will hit, because a picker that silently means two
+ * different things is the failure mode this arrangement is otherwise open to.
+ */
 export function PresetPicker() {
   const { project } = useProject()
   // Preset and settings writes share the editor's ONE queue and version counter. They used to go
   // out on their own `patchProject` call, which is a second writer against the same counter — and
   // now that the agent can change the preset mid-turn, that race is reachable for real.
   const { patchProjectFields, error } = useWordPatch()
+  const { activeSegment, setSegment } = usePresetSegments()
+  const selectedId = activeSegment?.presetId ?? project.presetId
 
   function handleSelect(presetId: PresetId) {
-    if (presetId === project.presetId) return
-    void patchProjectFields({ presetId })
+    if (presetId === selectedId) return
+    // Changing a segment's preset keeps its own tweaks only if they still mean anything. They do
+    // not: an override is stamped against the preset it was made for (audit 15), which is why
+    // switching preset drops the session half everywhere else too.
+    if (activeSegment) setSegment({ ...activeSegment, presetId, presetOverride: undefined })
+    else void patchProjectFields({ presetId })
   }
 
   return (
@@ -71,8 +92,22 @@ export function PresetPicker() {
           />
         </div>
       </div>
+      <p className="text-xs text-muted-foreground">
+        {activeSegment ? (
+          <>
+            Changing the segment at{' '}
+            <span className="tabular-nums text-foreground/80">
+              {formatTimestamp(activeSegment.startMs)}–{formatTimestamp(activeSegment.endMs)}
+            </span>
+            . Move the playhead out of it to change the whole video.
+          </>
+        ) : (
+          'Changing the whole video. Draw a segment on the timeline’s Preset lane to restyle one stretch.'
+        )}
+      </p>
+
       {Object.values(PRESETS).map((preset) => {
-        const selected = preset.id === project.presetId
+        const selected = preset.id === selectedId
         return (
           <button
             key={preset.id}

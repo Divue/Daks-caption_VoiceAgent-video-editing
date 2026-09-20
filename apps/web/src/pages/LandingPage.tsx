@@ -127,8 +127,10 @@ export default function LandingPage() {
   }, [introDone]);
   const { navigate } = useRoute();
   const heroRef = useRef<HTMLElement>(null);
-  // 0 while the hero's top is at the top of the viewport, 1 once it has scrolled 60% of a screen.
-  useScrollVar(heroRef, "--hero-p", 0, -0.6, motionSafe);
+  // 0 while the hero's top is at the top of the viewport, 1 once it has scrolled 1.2 screens —
+  // wide on purpose, so the exit reads as a scroll-length gesture rather than snapping after a
+  // single wheel tick.
+  useScrollVar(heroRef, "--hero-p", 0, -1.2, motionSafe);
 
   const reveal = (delay: number): { className: string; style?: CSSProperties } =>
     motionSafe ? { className: "animate-rise", style: { animationDelay: `${delay}ms` } } : { className: "" };

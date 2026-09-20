@@ -3,6 +3,7 @@ import { PRESETS, Word } from '@captions/shared'
 import type { Emotion, PresetId, Project } from '@captions/shared'
 import realReel from '@captions/shared/fixtures/real_reel-project.json'
 import { CaptionWords, SectionHeading, useElementWidth, useLoopClock } from './caption-demo'
+import { RevealItem } from './dark/RevealItem'
 import { useMotionSafe } from './dark/useMotionSafe'
 
 /*
@@ -101,7 +102,7 @@ export function ToneSection() {
 
         <div ref={clockRef} className="mt-16 grid items-center gap-10 lg:grid-cols-[minmax(0,380px)_1fr] lg:gap-16">
           {/* Frame */}
-          <div className="mx-auto w-full max-w-[340px] lg:mx-0">
+          <RevealItem motionSafe={motionSafe} size="lg" className="mx-auto w-full max-w-[340px] lg:mx-0">
             <div
               ref={frameRef}
               className="relative aspect-[9/16] w-full overflow-hidden rounded-2xl border border-line-subtle shadow-soft"
@@ -127,10 +128,10 @@ export function ToneSection() {
                 <Waveform words={clip} timeMs={timeMs} />
               </div>
             </div>
-          </div>
+          </RevealItem>
 
           {/* Controls */}
-          <div className="flex flex-col gap-8">
+          <RevealItem motionSafe={motionSafe} size="lg" style={{ animationDelay: '90ms' }} className="flex flex-col gap-8">
             <div role="tablist" aria-label="Moment" className="grid grid-cols-3 gap-2">
               {MOMENTS.map((m, i) => (
                 <button
@@ -199,7 +200,7 @@ export function ToneSection() {
                 ))}
               </div>
             </div>
-          </div>
+          </RevealItem>
         </div>
       </div>
     </section>

@@ -23,7 +23,15 @@ from app.agent.planner import _active_preset_block  # noqa: E402
 from app.agent.tests._fixtures import fixtures_dir  # noqa: E402
 from app.agent.tools import default_registry  # noqa: E402
 from app.agent.tools.errors import ToolExecutionError  # noqa: E402
-from app.agent.tools.preset_segments import normalise, segment_at, set_segment  # noqa: E402
+from app.agent.tools.preset_segments import (  # noqa: E402
+    MIN_SEGMENT_MS,
+    move_segment_to,
+    normalise,
+    resize_segment_end,
+    resize_segment_start,
+    segment_at,
+    set_segment,
+)
 from app.agent.tools.project_tools import apply_preset  # noqa: E402
 from app.agent.tools.schemas import ApplyPresetArgs  # noqa: E402
 from app.agent.validation import PatchError, apply_patch  # noqa: E402
@@ -66,6 +74,12 @@ def main() -> int:
     # --- normalise: the same cases as check-preset-segments.ts ----------------------------------
     check("sorts by start", [s.id for s in normalise([seg("b", 4000, 5000), seg("a", 1000, 2000)], DURATION)] == ["a", "b"])
     check("drops a zero-length segment", normalise([seg("a", 1000, 1000)], DURATION) == [])
+    check(f"drops a sliver shorter than {MIN_SEGMENT_MS}ms",
+          normalise([seg("a", 1000, 1000 + MIN_SEGMENT_MS - 1)], DURATION) == [])
+    check("keeps one exactly at the minimum",
+          len(normalise([seg("a", 1000, 1000 + MIN_SEGMENT_MS)], DURATION)) == 1)
+    check("a carve that would leave a sliver drops it instead",
+          spans(set_segment([seg("a", 1000, 5000)], seg("n", 1050, 5000, "nazm"), DURATION)) == "1050-5000")
     check("clamps a segment past durationMs", normalise([seg("a", 9000, 99_000)], DURATION)[0].endMs == DURATION)
     check("drops a segment entirely past durationMs", normalise([seg("a", 20_000, 30_000)], DURATION) == [])
 
@@ -90,6 +104,18 @@ def main() -> int:
     check("covering one entirely removes it", len(set_segment(base, seg("n", 0, 9000, "nazm"), DURATION)) == 1)
     check("resizing a segment by its own id replaces it",
           spans(set_segment(base, seg("a", 2000, 9000), DURATION)) == "2000-9000")
+    # The browser regression, mirrored: a left-edge drag past the right one used to leave a 1 ms
+    # segment that had replaced a real one and could not be clicked or removed.
+    check("the left edge cannot be dragged past the right one",
+          resize_segment_start(seg("a", 2000, 6000), 99_000).startMs == 6000 - MIN_SEGMENT_MS)
+    check("the right edge cannot be dragged past the left one",
+          resize_segment_end(seg("a", 2000, 6000), 0, DURATION).endMs == 2000 + MIN_SEGMENT_MS)
+    check("the right edge cannot be dragged past the video",
+          resize_segment_end(seg("a", 2000, 6000), 99_000, DURATION).endMs == DURATION)
+    check("the left edge cannot go negative", resize_segment_start(seg("a", 2000, 6000), -500).startMs == 0)
+    moved = move_segment_to(seg("a", 2000, 6000), 99_000, DURATION)
+    check("moving keeps the length and stays inside the video",
+          moved.endMs == DURATION and moved.endMs - moved.startMs == 4000)
     check("segment_at is half-open", segment_at(base, 6000) is None and segment_at(base, 2000).id == "a")
 
     # --- apply_preset ---------------------------------------------------------------------------

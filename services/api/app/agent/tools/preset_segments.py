@@ -13,6 +13,12 @@ import uuid
 
 from app.schema import MAX_PRESET_SEGMENTS, PresetSegment
 
+#: The shortest segment worth having, mirroring MIN_SEGMENT_MS in
+#: apps/web/src/lib/preset-segments.ts (itself matching MIN_ITEM_MS in lib/layers.ts): anything
+#: shorter is a sliver nobody can see, click or remove. Found in a real browser, not reasoned
+#: about — a start-edge drag past the end left a 1 ms segment that had replaced a real one.
+MIN_SEGMENT_MS = 100
+
 
 def segment_at(segments: list[PresetSegment], time_ms: int) -> PresetSegment | None:
     """The segment containing this time, or None — the project's own preset applies there."""
@@ -38,7 +44,7 @@ def normalise(segments: list[PresetSegment], duration_ms: int) -> list[PresetSeg
     for segment in segments:
         start = min(max(0, segment.startMs), duration_ms)
         end = min(max(0, segment.endMs), duration_ms)
-        if end > start:
+        if end - start >= MIN_SEGMENT_MS:
             clamped.append(segment.model_copy(update={"startMs": start, "endMs": end}))
     clamped.sort(key=lambda s: (s.startMs, s.endMs))
 
@@ -51,7 +57,8 @@ def normalise(segments: list[PresetSegment], duration_ms: int) -> list[PresetSeg
         # An overlap can only arrive as a bug upstream; the later segment yields rather than
         # winning, so the list can never reach the store in a shape it would refuse.
         start = max(segment.startMs, previous.endMs)
-        if segment.endMs <= start:
+        # A remnant left by a carve is dropped, not kept as a sliver — same rule as above.
+        if segment.endMs - start < MIN_SEGMENT_MS:
             continue
         nxt = segment.model_copy(update={"startMs": start})
         if previous.endMs == nxt.startMs and _same_look(previous, nxt):
@@ -89,6 +96,27 @@ def set_segment(
             else segment.model_copy(update={"startMs": new.endMs})
         )
     return normalise([*carved, new], duration_ms)
+
+
+def move_segment_to(segment: PresetSegment, start_ms: int, duration_ms: int) -> PresetSegment:
+    """Move the segment bodily, keeping its length. Mirrors moveSegmentTo in preset-segments.ts."""
+    length = segment.endMs - segment.startMs
+    start = round(min(max(0, start_ms), max(0, duration_ms - length)))
+    return segment.model_copy(update={"startMs": start, "endMs": start + length})
+
+
+def resize_segment_start(segment: PresetSegment, start_ms: int) -> PresetSegment:
+    """Drag the LEFT edge. Never past MIN_SEGMENT_MS from the right one."""
+    return segment.model_copy(
+        update={"startMs": round(min(max(0, start_ms), segment.endMs - MIN_SEGMENT_MS))}
+    )
+
+
+def resize_segment_end(segment: PresetSegment, end_ms: int, duration_ms: int) -> PresetSegment:
+    """Drag the RIGHT edge. Never past MIN_SEGMENT_MS from the left one, nor past the video."""
+    return segment.model_copy(
+        update={"endMs": round(min(max(end_ms, segment.startMs + MIN_SEGMENT_MS), duration_ms))}
+    )
 
 
 def new_segment_id() -> str:

@@ -21,6 +21,7 @@ from ..contracts import (
     AddOverlayAction,
     SetLayersAction,
     SetPresetAction,
+    SetPresetSegmentsAction,
     SetPresetOverrideAction,
     SetSettingsAction,
     UpdateWordAction,
@@ -222,11 +223,33 @@ class EmphasisePeaksResult(WordPatchesResult):
 
 # --- apply_preset -----------------------------------------------------------
 class ApplyPresetArgs(BaseModel):
+    """The preset, and optionally the STRETCH of the video to apply it to.
+
+    With no range this is the whole video — the project's base look, which is what a bare
+    "make it Chamak" means. With a range it becomes a preset SEGMENT: that stretch is drawn in
+    that preset and the rest of the video is left exactly as it is.
+
+    Both ends or neither: half a range has no meaning a user would recognise, and guessing the
+    other end from the playhead would make "from 4 seconds" silently mean something different
+    depending on where the video happened to be paused.
+    """
+
     presetId: PresetId
+    startMs: Annotated[
+        int | None,
+        Field(default=None, ge=0, description="Start of the stretch to restyle, in ms. Omit for the whole video."),
+    ]
+    endMs: Annotated[
+        int | None,
+        Field(default=None, ge=0, description="End of the stretch to restyle, in ms. Omit for the whole video."),
+    ]
 
 
 class ApplyPresetResult(BaseModel):
-    patch: SetPresetAction
+    #: SET_PRESET for the whole video, SET_PRESET_SEGMENTS for a range.
+    patch: SetPresetAction | SetPresetSegmentsAction
+    #: The word ids the range covers — empty is an error, never a silent no-op.
+    wordIds: list[str] = Field(default_factory=list)
 
 
 # --- set_settings -------------------------------------------------------------

@@ -14,7 +14,7 @@ from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, Field, SerializeAsAny, field_serializer, field_validator, model_serializer
 
-from app.schema import LayerItem, Overlay, PresetId, PresetOverride, Signals, StylePatch, Project
+from app.schema import LayerItem, Overlay, PresetId, PresetOverride, PresetSegment, Signals, StylePatch, Project
 
 # The sentinel a patch carries for "remove this key", for fields whose real
 # type has no spare value to mean it (`single: bool | None`). `emoji` uses
@@ -231,6 +231,21 @@ class SetLayersAction(BaseModel):
     layers: list[LayerItem]
 
 
+class SetPresetSegmentsAction(BaseModel):
+    """Mirrors apps/web's `{ type: 'SET_PRESET_SEGMENTS', presetSegments }` action: the stretches
+    of video drawn with a preset other than the project's, as the whole list they should now be.
+
+    Whole-list for the same reason as SetLayersAction above, and a stronger one: applying a preset
+    to a range CARVES the segments it lands on — trimming, splitting or removing any number of
+    them — so "Chamak from 4s to 7s" has no per-item expression at all. The list is small
+    (≤ MAX_PRESET_SEGMENTS) and must be sorted and disjoint, which the Project model enforces when
+    the patch is applied. `[]` removes them.
+    """
+
+    type: Literal["SET_PRESET_SEGMENTS"] = "SET_PRESET_SEGMENTS"
+    presetSegments: list[PresetSegment]
+
+
 AgentPatch = Union[
     UpdateWordAction,
     SetPresetAction,
@@ -238,6 +253,7 @@ AgentPatch = Union[
     SetPresetOverrideAction,
     AddOverlayAction,
     SetLayersAction,
+    SetPresetSegmentsAction,
 ]
 DiscriminatedAgentPatch = Annotated[AgentPatch, Field(discriminator="type")]
 

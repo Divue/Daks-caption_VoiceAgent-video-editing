@@ -22,9 +22,11 @@ from __future__ import annotations
 
 import uuid
 
-from app.schema import Overlay, Project
+from app.schema import Overlay, PresetSegment, Project
 
 from ..preset_catalog import describe_for_tool
+
+from . import preset_segments
 
 from ..contracts import (
     AddOverlayAction,
@@ -32,6 +34,7 @@ from ..contracts import (
     AgentStylePatch,
     SetPresetAction,
     SetPresetOverrideAction,
+    SetPresetSegmentsAction,
     SetSettingsAction,
     SettingsPatch,
     UpdateWordAction,
@@ -56,18 +59,65 @@ from .schemas import (
 
 
 def apply_preset(args: ApplyPresetArgs, project: Project) -> ApplyPresetResult:
-    """Set the project's active preset. `args.presetId` is already a closed
-    PresetId enum (rejected at ApplyPresetArgs construction if unknown), so
-    the only way this can fail here is if some other part of the resulting
-    document were somehow left invalid — kept as a real check, not
-    decorative, via the same apply_patch validation boundary every other
-    mutation tool uses."""
-    patch = SetPresetAction(presetId=args.presetId)
+    """Set the caption look — for the whole video, or for one stretch of it.
+
+    With no range this sets `project.presetId`: the base look, which is what a bare "make it
+    Chamak" means. With a range it writes a preset SEGMENT instead, carving the segments it lands
+    on (`preset_segments.set_segment` — the mirror of apps/web/src/lib/preset-segments.ts) and
+    leaving `presetId` alone, so the rest of the video keeps the look it had.
+
+    `args.presetId` is already a closed PresetId enum (rejected at ApplyPresetArgs construction if
+    unknown), so the only way the whole-video form can fail here is if some other part of the
+    resulting document were somehow left invalid — kept as a real check, not decorative, via the
+    same apply_patch validation boundary every other mutation tool uses.
+
+    A range covering NO WORDS is an error, not a write. The segment would be perfectly valid and
+    would change nothing visible, and the turn would report a successful edit for a look the user
+    will never see — the honest-failure rule in CLAUDE.md. The same goes for a range that is
+    backwards or entirely past the end of the video.
+    """
+    if (args.startMs is None) != (args.endMs is None):
+        raise ToolExecutionError(
+            "give both startMs and endMs, or neither: half a range has no meaning"
+        )
+
+    if args.startMs is None:
+        patch: SetPresetAction | SetPresetSegmentsAction = SetPresetAction(presetId=args.presetId)
+        word_ids = [word.id for word in project.words]
+    else:
+        start, end = args.startMs, args.endMs
+        if end <= start:
+            raise ToolExecutionError(f"endMs ({end}) must be after startMs ({start})")
+        if start >= project.durationMs:
+            raise ToolExecutionError(
+                f"startMs ({start}) is past the end of the video ({project.durationMs} ms)"
+            )
+        # A word belongs to the segment containing its START — the same rule the renderer uses
+        # (packages/shared/src/project.ts, PresetSegment), so this list is exactly the words that
+        # will change on screen.
+        word_ids = [word.id for word in project.words if start <= word.startMs < end]
+        if not word_ids:
+            raise ToolExecutionError(
+                f"no words fall between {start} ms and {end} ms, so this would change nothing on "
+                "screen — ask which part of the video they mean"
+            )
+        segment = PresetSegment(
+            id=preset_segments.new_segment_id(),
+            startMs=start,
+            endMs=end,
+            presetId=args.presetId,
+        )
+        patch = SetPresetSegmentsAction(
+            presetSegments=preset_segments.set_segment(
+                list(project.presetSegments or []), segment, project.durationMs
+            )
+        )
+
     try:
         apply_patch(project, patch)
     except PatchError as exc:
         raise ToolExecutionError(str(exc)) from exc
-    return ApplyPresetResult(patch=patch)
+    return ApplyPresetResult(patch=patch, wordIds=word_ids)
 
 
 def set_settings(args: SetSettingsArgs, project: Project) -> SetSettingsResult:
@@ -230,9 +280,13 @@ default_registry.register(
     ToolSpec(
         name="apply_preset",
         description=(
-            "Set the project's active preset — the whole caption look. Match the user's vibe "
-            "words ('trendy', 'subtle', 'loud', 'classy') to a preset using the <presets> "
-            "catalogue in your instructions, which describes what each one looks like."
+            "Set the caption look. Match the user's vibe words ('trendy', 'subtle', 'loud', "
+            "'classy') to a preset using the <presets> catalogue in your instructions, which "
+            "describes what each one looks like. With no startMs/endMs this changes the WHOLE "
+            "video. Give both to restyle only one stretch of it ('make the intro loud', 'switch "
+            "to something calmer after the hook') — the rest keeps the look it has. Times are in "
+            "ms; use get_timeline or the transcript to find them. A range covering no words is "
+            "refused rather than silently doing nothing."
             + describe_for_tool()
         ),
         input_model=ApplyPresetArgs,

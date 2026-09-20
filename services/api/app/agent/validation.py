@@ -18,6 +18,7 @@ from app.schema import Project
 from .contracts import (
     AddOverlayAction,
     SetLayersAction,
+    SetPresetSegmentsAction,
     AgentPatch,
     SetPresetAction,
     SetPresetOverrideAction,
@@ -101,6 +102,17 @@ def apply_patch(project: Project, patch: AgentPatch) -> Project:
             data["layers"] = [item.model_dump(mode="json", exclude_none=True) for item in patch.layers]
         else:
             data.pop("layers", None)
+
+    elif isinstance(patch, SetPresetSegmentsAction):
+        # Whole-list replace, matching store/projects.patch_project and the reducer. The
+        # sorted/disjoint rule is not re-checked here: re-validating the whole document below is
+        # what enforces it, so an overlapping list raises PatchError rather than being written.
+        if patch.presetSegments:
+            data["presetSegments"] = [
+                segment.model_dump(mode="json", exclude_none=True) for segment in patch.presetSegments
+            ]
+        else:
+            data.pop("presetSegments", None)
 
     elif isinstance(patch, AddOverlayAction):
         data["overlays"].append(patch.overlay.model_dump(mode="json"))

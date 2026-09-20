@@ -276,6 +276,7 @@ export function useWordPatchState(): PatchState & {
         settings?: Partial<Project['settings']>
         presetOverride?: Partial<PresetOverride> | null
         layers?: LayerItem[]
+        presetSegments?: PresetSegment[]
       } = {}
       let unpersistable = 0
 
@@ -307,6 +308,10 @@ export function useWordPatchState(): PatchState & {
             break
           case 'SET_LAYERS':
             projectPatch = { ...projectPatch, layers: after.layers ?? [] }
+            break
+          // Whole-list, like SET_LAYERS: the tool already returned the finished list, carved.
+          case 'SET_PRESET_SEGMENTS':
+            projectPatch = { ...projectPatch, presetSegments: after.presetSegments ?? [] }
             break
           case 'ADD_OVERLAY':
             // No endpoint exists for overlays, so this cannot be saved. Counted and reported

@@ -9,10 +9,29 @@ or angry, and draws them that way. Then you fix whatever you don't like by talki
 
 Built for the AWS First Commit hackathon, Ship It track.
 
-**Try it:** [the editor](https://4ofryng45bbr7en765off7otja0yuamo.lambda-url.ap-south-1.on.aws)
-· [API health](https://pra22j2hgp.ap-south-1.awsapprunner.com/health) · region `ap-south-1`.
-There is no login yet, so please be kind to it. Chrome or Edge; the microphone needs HTTPS, which
-the address above has.
+## Try it live
+
+**[Open the demo project](https://4ofryng45bbr7en765off7otja0yuamo.lambda-url.ap-south-1.on.aws/editor?id=6f2ea8bfd891)**
+is a 23-second reel that is already captioned. Nothing to install, nothing to upload, no login.
+
+Once it is open, a few things worth doing:
+
+1. Press play and watch the captions. The shouted and stretched words are drawn differently on purpose.
+2. Click a word in the transcript on the left and change its style. Ctrl+Z undoes it.
+3. Type in the bar at the bottom, *"make the captions bigger"*, or click the mic and say it.
+4. Press **Export**. It takes about three minutes, then you can download the MP4 with the captions burned in.
+
+Want to use your own video? [Start a new project](https://4ofryng45bbr7en765off7otja0yuamo.lambda-url.ap-south-1.on.aws/editor)
+and drop in a reel of up to 90 seconds and 200 MB. A short reel is captioned in under a minute.
+
+Use Chrome or Edge; the microphone needs HTTPS, which these addresses have. The same editor is also
+on a [second address](https://master.dnb761en5gcll.amplifyapp.com), and the
+[API health check](https://pra22j2hgp.ap-south-1.awsapprunner.com/health) should say `{"ok":true}`.
+Everything runs in `ap-south-1` (Mumbai).
+
+A few caveats. There is no login yet, so please be kind to it. The live site runs the code from the
+last deploy, so two newer features (a different preset for a stretch of the video, and hand-editing
+a word's text and timing) reach it on the next one.
 
 ## What it does
 

@@ -204,7 +204,7 @@ Rollback of a bad editor: re-package the previous `dist` and apply.
 
 ## Next Steps
 1. Owner: decide whether to commit/push `divue/new-deploy` (nothing is pushed). Tell the lead about `infra/new-deploy`, the new stack and the restrictions found.
-2. Use either editor address (Lambda or Amplify); both call the new API. Update `shubh_read_first.md` (on `master`), which still describes the old stack.
+2. Use either editor address (Lambda or Amplify); both call the new API. (`shubh_read_first.md`, the old handover guide, described the retired stack and was removed; `DEPLOYMENT.md` replaces it.)
 3. Soak test: several exports in a row and one ≥60 s clip, to exercise the ALB timeout fix and Fargate memory.
 4. Open an AWS Support case for CloudFront verification and the App Runner service cap if either is wanted later.
 5. Before leaving this up: auth for the API / `livekit-token`, a budget alert, and rotate `captions-dev` and the borrowed keys (unchanged from the old audit).
@@ -241,4 +241,4 @@ before running (two explicit questions: destroy yes/no, and what to do with Ampl
 - **ALB 502 fix now exercised:** during the second export, CloudWatch shows **86 requests through the render ALB and no ELB 502/5xx** (the first run had one 502). One run, not a soak test.
 
 ## Still open
-Not load-tested; no auth on the API; borrowed Bedrock/Transcribe keys; local Terraform state; `shubh_read_first.md` on `master` still describes the old stack.
+Not load-tested; no auth on the API; borrowed Bedrock/Transcribe keys; local Terraform state; the old handover guide `shubh_read_first.md` was removed (replaced by `DEPLOYMENT.md`).

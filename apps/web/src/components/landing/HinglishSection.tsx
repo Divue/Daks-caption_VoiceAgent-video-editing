@@ -84,13 +84,15 @@ export function HinglishSection() {
         <MarqueeRow words={ROWS[0]} reverse={false} motionSafe={motionSafe} offset={0} />
         <MarqueeRow words={ROWS[1]} reverse motionSafe={motionSafe} offset={3} />
       </div>
-      <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-widest text-ink-tertiary">
-        Real words from our Hinglish test reels · each in a different preset
-      </p>
+      <RevealItem motionSafe={motionSafe} className="mt-6">
+        <p className="text-center font-mono text-[11px] uppercase tracking-widest text-ink-tertiary">
+          Real words from our Hinglish test reels · each in a different preset
+        </p>
+      </RevealItem>
 
       <div className="mx-auto mt-16 grid max-w-[1200px] gap-4 px-4 sm:grid-cols-3 sm:px-8">
         {POINTS.map((point, index) => (
-          <RevealItem key={point.n} motionSafe={motionSafe} style={{ animationDelay: `${index * 90}ms` }}>
+          <RevealItem key={point.n} motionSafe={motionSafe} size="lg" style={{ animationDelay: `${Math.min(index, 5) * 90}ms` }}>
             <div className="group h-full rounded-xl border border-line-subtle bg-surface/40 p-6 transition-colors duration-300 hover:border-line-default hover:bg-surface/70">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[11px] text-ink-tertiary transition-colors duration-200 group-hover:text-signal">{point.n}</span>

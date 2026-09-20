@@ -843,10 +843,31 @@ export function VoiceSphere({ intro = false, onIntroDone }: { intro?: boolean; o
 
       rafId = requestAnimationFrame(frame);
     }
-    rafId = requestAnimationFrame(frame);
+
+    function startLoop() {
+      if (rafId) return;
+      lastTime = performance.now();
+      rafId = requestAnimationFrame(frame);
+    }
+    function stopLoop() {
+      if (!rafId) return;
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+    startLoop();
+
+    // The loop was drawing a full WebGL frame every tick even once the sphere had scrolled well
+    // out of view, competing with the browser's own scroll compositing and making the hero→next-
+    // section scroll feel laggy. Stop it once the sphere is more than a viewport away, resume just
+    // before it would come back — a 100% rootMargin buffer so it never visibly pops back to life.
+    const visibilityObserver = new IntersectionObserver(([entry]) => (entry.isIntersecting ? startLoop() : stopLoop()), {
+      rootMargin: "100% 0px",
+    });
+    visibilityObserver.observe(parent);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      stopLoop();
+      visibilityObserver.disconnect();
       resizeObserver.disconnect();
       if (!prefersCoarsePointer) {
         window.removeEventListener("pointermove", handlePointerMove);

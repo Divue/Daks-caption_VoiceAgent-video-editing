@@ -1,0 +1,34 @@
+<template>
+  <div data-hf-id="hf-9n7k" id="s6" data-composition-id="s6" data-width="1920" data-height="1080" data-duration="3.59">
+    <div data-hf-id="hf-lm34" class="inner">
+      <div data-hf-id="hf-k84t" id="s6-l1" class="display" data-layout-allow-overlap="">Stop typing captions.</div>
+      <div data-hf-id="hf-xdiu" id="s6-l2" class="display coral" data-layout-allow-overlap="">Start saying them.</div>
+    </div>
+    <div data-hf-id="hf-847c" id="s6-mark" data-layout-allow-overlap="">
+      <div data-hf-id="hf-jsiw" id="s6-word">Expressive Captions</div>
+      <div data-hf-id="hf-36l4" id="s6-stripe"></div>
+      <div data-hf-id="hf-senk" id="s6-foot" class="eyebrow">Hinglish · voice-first · built on AWS</div>
+    </div>
+  </div>
+  <script>
+    /* S6 outro — scene-local 0–3.59 (global 17.91–21.5).
+       Closing line verbatim from ClosingSection.tsx:29, with the same
+       split-apart motion the real section uses. The stripe is the project's
+       sunset gradient (index.css:545) — the only place the editor's warm
+       identity appears, kept for the wordmark. */
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+      // beat-locked: global 17.91s (strongCue 1.00)
+      tl.fromTo("#s6-l1", { opacity: 0, y: 34 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, 0)
+        .fromTo("#s6-l2", { opacity: 0, y: 34 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, 0.11)
+        // global 20.02 (beat) — the lines part for the wordmark
+        .to("#s6-l1", { y: -228, opacity: 0.16, duration: 0.55, ease: "power3.inOut" }, 2.11)
+        .to("#s6-l2", { y: 228, opacity: 0.16, duration: 0.55, ease: "power3.inOut" }, 2.11)
+        .fromTo("#s6-mark", { opacity: 0, scale: 0.94 }, { opacity: 1, scale: 1, duration: 0.42, ease: "back.out(1.8)" }, 2.27)
+        .fromTo("#s6-stripe", { width: 0 }, { width: 520, duration: 0.55, ease: "power3.out" }, 2.43)
+        .fromTo("#s6-foot", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 2.69);
+      tl.seek(0);
+      window.__timelines["s6"] = tl;
+    })();
+  </script>
+</template>

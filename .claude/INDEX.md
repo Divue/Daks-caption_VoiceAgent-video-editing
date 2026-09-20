@@ -57,6 +57,7 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | — | `talk-and-edit/phase-09-all-captions-is-the-base-face.md` | "All captions" stamped every word and buried the preset's emphasis/tone colours; now it edits `presetOverride.base`. Also: agent override edits were never saved; per-word style writes went one request per word | Before touching the style panel's scope, `resolvePreset`, or anything that writes a style to every word. Read if a colour "disappears" or a change is lost on reload. |
 | — | `layers/phase-01-media-layers.md` | Media layers: two tracks of images/clips over the video — schema, upload/serve, editor (move/scale/rotate/trim/split), export, 7 agent tools. Also: undo now SAVES (it never reached the server), and tools in one agent turn now see each other's changes | Anything touching `layers`, `lib/layers.ts`, `layer_tools.py`, the timeline lanes, undo/redo, or the planner's tool loop. Pair with `LAYERS.md`. |
 | — | `audits/ai-agent/phase-20-video-aware-editing.md` | The agent can now SEE the video: stickers placed on a face, captions fitted to a hand, word ranges, and a size that ramps across words. Also a real bug — `analyze_frame(target="face")` returned the PERSON box (P1 + P4 folders, flagged) | Before touching `vision_tools.py`, `scene_tools.py`, the preset catalogue, or anything that places a `LayerItem` from a detection. Read it if you need to know what Rekognition can and cannot detect here, or why a fitted caption size is an estimate. |
+| — | `word-editing/phase-01-text-and-timing.md` | **Hand editing of word TEXT and TIMING** in the inspector (P3) | Before touching `Word.text`/`startMs`/`endMs`, `lib/word-edit.ts`, or anything that assumes `Project.words` is in playback order. Holds the **word-id decision**, the **ripple-not-clamp** regression, (ids are opaque and permanent; the ARRAY is what must stay sorted — nothing in the repo parses an id for its index) and the phase-2 plan for add/delete/split/merge, which is NOT built. Also diagnoses (does not fix) the `prosody.py` repair pass being self-blocking on a RUN of degenerate ASR spans — the cause of 10 ms words. |
 | — | `export/phase-01-containerised-render.md` | Export could not work on Linux and could not be deployed; the render server is now a container. Also: App Runner is closed to new customers (P1 + P2 folders, flagged) | Anything under `remotion/`, `routers/render.py`, or the compose `render` service. Pair with `DEPLOYING-EXPORT.md` at the repo root. |
 
 Documents 09 and 10 both originate from a single commit (`628a3e6`) that
@@ -173,6 +174,14 @@ Things Claude must preserve when working in `apps/web`:
   it back. All-captions changes go to `presetOverride.base` (size: `baseFontSize`) — the inspector's
   "All captions" scope and the agent's `set_preset_override` both do this. Per-word styles are for
   words the user named (phase 9; the size version of this bug was fixed first, in phase 3/4).
+- Word ids are OPAQUE and PERMANENT — never renumbered. Nothing in the repo derives an index
+  from an id; what everything depends on is `Project.words` being in PLAYBACK ORDER
+  (`deriveBlocks`, `findBlockIndexAt`'s BINARY SEARCH, the agent's `select_word_range` and
+  `get_timeline` all read the array, not the digits). A hand timing edit therefore RIPPLES
+  (`retimeWord` in `apps/web/src/lib/word-edit.ts`): the word goes where it is put and the
+  words it runs into are pushed along, so the order can never break. Do NOT reintroduce a
+  clamp into the neighbours' gap — that shipped first and froze the field solid on real
+  transcripts, where neighbours touch. `shift_timing` (P4) still does neither.
 - Orange has a budget: the playhead, the primary action, and the current
   selection. Everything else uses the warm neutral scale (audit 16 §3.3).
 - Emphasis promoted by the rhythm rule is drawn OUTLINED, never filled — filled

@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>Expressive Captions — launch</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/audio-data.js"></script>
+    <style>
+      /* ---- Localized faces. Inter / Montserrat / JetBrains Mono are renderer-bundled. ---- */
+      @font-face {
+        font-family: "General Sans";
+        src: url("assets/fonts/general-sans-600.woff2") format("woff2");
+        font-weight: 600;
+        font-style: normal;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "General Sans";
+        src: url("assets/fonts/general-sans-700.woff2") format("woff2");
+        font-weight: 700;
+        font-style: normal;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "Anton";
+        src: url("assets/fonts/anton-400.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "Instrument Serif";
+        src: url("assets/fonts/instrument-serif-italic-400.woff2") format("woff2");
+        font-weight: 400;
+        font-style: italic;
+        font-display: block;
+      }
+
+      /* ---- Palette: apps/web/src/index.css @theme (the landing system) ---- */
+      :root {
+        --canvas: #05060a;
+        --line: #33333a;
+        --line-subtle: #242429;
+        --ink: #f5f5f7;
+        --ink-2: #a3a3ad;
+        --ink-3: #8c8c98; /* raised from the app's #6b6b75 to clear WCAG AA on this canvas */
+        --signal: #ff6b4a;
+        --voice: #8b98f0;
+        /* caption preset colours — packages/shared/src/presets.ts */
+        --cream: #fff6e9;
+        --rang-emph: #e2452a;
+        --rang-angry: #ff5c3a;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--canvas);
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--canvas);
+        font-family: Inter, sans-serif;
+        color: var(--ink);
+      }
+
+      /* ---------- standing background (untimed: continuous across every scene) ---------- */
+      #bg {
+        position: absolute;
+        inset: 0;
+      }
+      .grid {
+        position: absolute;
+        inset: -10%;
+        -webkit-mask-image: radial-gradient(70% 65% at 50% 46%, transparent 24%, black 62%);
+        mask-image: radial-gradient(70% 65% at 50% 46%, transparent 24%, black 62%);
+      }
+      .grid-major {
+        background-image: linear-gradient(to right, rgba(245, 245, 247, 0.1) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(245, 245, 247, 0.1) 1px, transparent 1px);
+        background-size: 220px 220px;
+      }
+      .grid-minor {
+        background-image: linear-gradient(to right, rgba(245, 245, 247, 0.06) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(245, 245, 247, 0.06) 1px, transparent 1px);
+        background-size: 44px 44px;
+      }
+      /* the one audio-reactive element: a coral bloom behind the caption stage */
+      #glow {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1500px;
+        height: 1000px;
+        margin: -500px 0 0 -750px;
+        background: radial-gradient(
+          closest-side,
+          rgba(255, 107, 74, 0.2),
+          rgba(124, 109, 214, 0.09) 55%,
+          transparent 78%
+        );
+        opacity: 0.55;
+      }
+      #vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(75% 70% at 50% 48%, transparent 38%, rgba(0, 0, 0, 0.72));
+      }
+
+      /* ---------- scene scaffolding (shared by every sub-composition) ---------- */
+      .scene {
+        position: absolute;
+        inset: 0;
+      }
+      .inner {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .eyebrow {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 19px;
+        font-weight: 400;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+      .display {
+        font-family: "General Sans", Inter, sans-serif;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.06;
+      }
+      .coral {
+        color: var(--signal);
+      }
+
+      /* ---------- caption word faces (mirroring the real presets) ---------- */
+      .cap-line {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        flex-wrap: wrap;
+        row-gap: 10px;
+        column-gap: 34px;
+      }
+      .w {
+        display: inline-block;
+      }
+      /* Rangmanch body */
+      .w-body {
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-weight: 400;
+        font-size: 82px;
+        color: var(--cream);
+      }
+      /* Rangmanch emphasis: Anton, UPPERCASE, vermilion */
+      .w-emph {
+        font-family: "Anton", sans-serif;
+        font-weight: 400;
+        text-transform: uppercase;
+        font-size: 170px;
+        color: var(--rang-emph);
+        letter-spacing: 0.005em;
+      }
+      /* default emotion layer: uppercase + weight 900 + colour (+ shake, driven in JS) */
+      .w-angry {
+        font-family: Montserrat, sans-serif;
+        font-weight: 900;
+        text-transform: uppercase;
+        font-size: 92px;
+        color: var(--rang-angry);
+        letter-spacing: -0.01em;
+      }
+      .w-flat {
+        font-family: Inter, sans-serif;
+        font-weight: 400;
+        font-size: 82px;
+        color: var(--ink);
+      }
+      .emoji {
+        font-size: 64px;
+        line-height: 1;
+      }
+
+      /* ---------- S1 ---------- */
+      #s1-stack {
+        position: relative;
+        width: 1640px;
+        height: 300px;
+      }
+      #s1-flat,
+      #s1-rich {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #s1-label {
+        margin-bottom: 74px;
+      }
+
+      /* ---------- S2 ---------- */
+      #s2-badge {
+        position: absolute;
+        top: 132px;
+        right: 148px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px 22px;
+        border: 1px solid rgba(255, 92, 58, 0.45);
+        border-radius: 999px;
+        background: rgba(255, 92, 58, 0.09);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 21px;
+        color: #ffb3a1;
+      }
+      #s2-badge .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--rang-angry);
+      }
+
+      /* ---------- S3 ---------- */
+      #s3-wrap {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        align-content: center;
+        gap: 0 92px;
+        padding: 0 148px;
+      }
+      #s3-head {
+        grid-column: 1 / -1;
+        font-size: 82px;
+        margin-bottom: 72px;
+      }
+      #s3-left {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+      }
+      #s3-word {
+        font-family: "Instrument Serif", serif;
+        font-style: italic;
+        font-size: 158px;
+        color: var(--cream);
+        padding-bottom: 18px;
+        border-bottom: 5px solid var(--signal);
+      }
+      #s3-word-sub {
+        margin-top: 26px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 20px;
+        color: var(--ink-3);
+        letter-spacing: 0.1em;
+      }
+      #s3-rows {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 22px;
+      }
+      .row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        padding: 20px 30px;
+        border: 1px solid var(--line-subtle);
+        border-radius: 14px;
+        background: rgba(17, 17, 20, 0.62);
+        font-family: "JetBrains Mono", monospace;
+      }
+      .row .k {
+        font-size: 30px;
+        color: var(--ink-2);
+      }
+      .row .v {
+        font-size: 40px;
+        color: var(--signal);
+      }
+      #s3-verdict {
+        margin-top: 10px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 31px;
+        color: var(--signal);
+        text-align: right;
+      }
+
+      /* ---------- S4 ---------- */
+      #s4-wrap {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-columns: 430px 1fr;
+        align-items: center;
+        gap: 0 92px;
+        padding: 96px 148px;
+      }
+      #s4-well {
+        justify-self: center;
+        width: 420px;
+        height: 746px;
+        border-radius: 22px;
+        background: #0c0d0f;
+        box-shadow: 0 34px 90px rgba(0, 0, 0, 0.6);
+        outline: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding-bottom: 104px;
+        position: relative;
+        overflow: hidden;
+      }
+      #s4-well::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(170deg, #17181d 0%, #0b0c10 58%, #101117 100%);
+      }
+      #s4-stage-line {
+        position: relative;
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        flex-wrap: wrap;
+        row-gap: 4px;
+        column-gap: 14px;
+        padding: 0 22px;
+      }
+      #s4-stage-line .w-body {
+        font-size: 34px;
+      }
+      #s4-stage-line .w-angry {
+        font-size: 39px;
+      }
+      #s4-bekaar {
+        position: relative;
+      }
+      #s4-fire {
+        position: absolute;
+        font-size: 44px;
+        line-height: 1;
+        top: -52px;
+        left: 50%;
+        margin-left: -22px;
+      }
+      #s4-col {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 52px;
+        min-width: 0;
+      }
+      #s4-head {
+        font-size: 76px;
+      }
+      #s4-chips {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .chip {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 13px 22px;
+        border-radius: 12px;
+        border: 1px solid var(--line-subtle);
+        background: rgba(17, 17, 20, 0.86);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 24px;
+        color: var(--ink-2);
+      }
+      .chip .tool {
+        color: var(--voice);
+      }
+      .chip-ok {
+        border-color: rgba(255, 107, 74, 0.4);
+        color: var(--signal);
+      }
+      #s4-input {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        padding: 20px 26px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(17, 17, 20, 0.92);
+      }
+      #s4-mic {
+        position: relative;
+        width: 54px;
+        height: 54px;
+        flex: 0 0 54px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #ff9a7f, #ff6b4a 60%, #e5502f);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #s4-mic .stop {
+        width: 17px;
+        height: 17px;
+        border-radius: 3px;
+        background: #1a0d08;
+      }
+      #s4-ping {
+        position: absolute;
+        inset: -6px;
+        border-radius: 50%;
+        border: 2px solid var(--signal);
+        opacity: 0;
+      }
+      #s4-typed {
+        font-family: Inter, sans-serif;
+        font-size: 30px;
+        color: var(--ink);
+        white-space: pre;
+      }
+      #s4-caret {
+        display: inline-block;
+        width: 2px;
+        height: 32px;
+        background: var(--signal);
+        vertical-align: -5px;
+      }
+
+      /* ---------- S5 ---------- */
+      #s5-presetname {
+        margin-top: 92px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 25px;
+        letter-spacing: 0.24em;
+        color: var(--ink-2);
+      }
+      #s5-note {
+        position: absolute;
+        bottom: 122px;
+        left: 0;
+        right: 0;
+        text-align: center;
+      }
+      #s5-line {
+        min-height: 210px;
+        align-items: center;
+      }
+
+      /* ---------- S6 ---------- */
+      #s6-l1,
+      #s6-l2 {
+        font-size: 112px;
+      }
+      #s6-mark {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        margin-top: -92px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        opacity: 0;
+      }
+      #s6-word {
+        font-family: "General Sans", Inter, sans-serif;
+        font-weight: 700;
+        font-size: 104px;
+        letter-spacing: -0.035em;
+      }
+      #s6-stripe {
+        width: 0;
+        height: 7px;
+        margin-top: 26px;
+        border-radius: 4px;
+        background: linear-gradient(
+          90deg,
+          #fa520f 0%,
+          #ff8105 34%,
+          #ffb83e 62%,
+          #ffd900 82%,
+          #fff8e0 100%
+        );
+      }
+      #s6-foot {
+        margin-top: 30px;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-wuwa" id="root" data-composition-id="main" data-start="0" data-duration="21.5" data-width="1920" data-height="1080">
+      <div data-hf-id="hf-2xc0" id="bg">
+        <div data-hf-id="hf-23pw" class="grid grid-major"></div>
+        <div data-hf-id="hf-maxs" class="grid grid-minor"></div>
+        <div data-hf-id="hf-27c6" id="glow"></div>
+        <div data-hf-id="hf-h7i3" id="vignette"></div>
+      </div>
+
+      <div data-hf-id="hf-mrl2" id="scene-1" class="scene clip" data-composition-src="compositions/s1.html" data-composition-id="s1" data-start="0" data-duration="3.5" data-track-index="0"></div>
+      <div data-hf-id="hf-6le8" id="scene-2" class="scene clip" data-composition-src="compositions/s2.html" data-composition-id="s2" data-start="3.5" data-duration="3.5" data-track-index="1"></div>
+      <div data-hf-id="hf-zd54" id="scene-3" class="scene clip" data-composition-src="compositions/s3.html" data-composition-id="s3" data-start="7" data-duration="4.5" data-track-index="2"></div>
+      <div data-hf-id="hf-5yj9" id="scene-4" class="scene clip" data-composition-src="compositions/s4.html" data-composition-id="s4" data-start="11.5" data-duration="3.5" data-track-index="3"></div>
+      <div data-hf-id="hf-fiju" id="scene-5" class="scene clip" data-composition-src="compositions/s5.html" data-composition-id="s5" data-start="15" data-duration="2.91" data-track-index="4"></div>
+      <div data-hf-id="hf-rbkz" id="scene-6" class="scene clip" data-composition-src="compositions/s6.html" data-composition-id="s6" data-start="17.91" data-duration="3.59" data-track-index="5"></div>
+
+      <audio data-hf-id="hf-t10n" id="bgm" src="assets/music/happy-beats-business-moves-vol-11-by-ende-dot-app.mp3" data-start="0" data-duration="21.5" data-track-index="10" data-automation="{&quot;version&quot;:1,&quot;lanes&quot;:[{&quot;target&quot;:&quot;volume&quot;,&quot;points&quot;:[{&quot;t&quot;:0,&quot;v&quot;:0},{&quot;t&quot;:0.45,&quot;v&quot;:0.5},{&quot;t&quot;:7.1,&quot;v&quot;:0.5},{&quot;t&quot;:7.5,&quot;v&quot;:0.32},{&quot;t&quot;:10.6,&quot;v&quot;:0.32},{&quot;t&quot;:11.05,&quot;v&quot;:0.5},{&quot;t&quot;:19.85,&quot;v&quot;:0.5},{&quot;t&quot;:20.1,&quot;v&quot;:0.34},{&quot;t&quot;:20.9,&quot;v&quot;:0.34},{&quot;t&quot;:21.5,&quot;v&quot;:0}]}]}"></audio>
+
+      <!-- SFX. Sparse and motion-matched: chosen after the animation existed, all
+           low/medium high-frequency risk per the Kenney analysis. Nothing fires
+           while a line of copy is being read for the first time, and Scene 3's
+           readout is left in near-silence on purpose. -->
+      <audio data-hf-id="hf-t3db" id="sfx-slam" src="assets/sfx/impactSoft_heavy_002.ogg" data-start="1.6" data-duration="0.575" data-track-index="11" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-4nho" id="sfx-angry" src="assets/sfx/impactSoft_medium_001.ogg" data-start="5.8" data-duration="0.186" data-track-index="12" data-volume="0.42"></audio>
+      <audio data-hf-id="hf-qiza" id="sfx-key-0" src="assets/sfx/keypress-003.wav" data-start="11.74" data-duration="0.25" data-track-index="20" data-volume="0.16"></audio>
+      <audio data-hf-id="hf-oevp" id="sfx-key-1" src="assets/sfx/keypress-007.wav" data-start="11.808" data-duration="0.25" data-track-index="21" data-volume="0.16"></audio>
+      <audio data-hf-id="hf-ahfb" id="sfx-key-2" src="assets/sfx/keypress-011.wav" data-start="11.876" data-duration="0.25" data-track-index="22" data-volume="0.16"></audio>
+      <audio data-hf-id="hf-3qko" id="sfx-key-3" src="assets/sfx/keypress-003.wav" data-start="11.944" data-duration="0.25" data-track-index="23" data-volume="0.16"></audio>
+      <audio data-hf-id="hf-v99b" id="sfx-key-4" src="assets/sfx/keypress-007.wav" data-start="12.012" data-duration="0.25" data-track-index="24" data-volume="0.16"></audio>
+      <audio data-hf-id="hf-9ofr" id="sfx-key-5" src="assets/sfx/keypress-011.wav" data-start="12.08" data-duration="0.25" data-track-index="25" data-volume="0.16"></audio>
+      <audio data-hf-id="hf-rtdv" id="sfx-key-6" src="assets/sfx/keypress-003.wav" data-start="12.148" data-duration="0.25" data-track-index="26" data-volume="0.16"></audio>
+      <audio data-hf-id="hf-83td" id="sfx-chip1" src="assets/sfx/click2.ogg" data-start="12.3" data-duration="0.058" data-track-index="13" data-volume="0.3"></audio>
+      <audio data-hf-id="hf-dshs" id="sfx-chip2" src="assets/sfx/impactSoft_medium_004.ogg" data-start="12.65" data-duration="0.15" data-track-index="14" data-volume="0.4"></audio>
+      <audio data-hf-id="hf-nnc3" id="sfx-chip3" src="assets/sfx/bong_001.ogg" data-start="13.1" data-duration="0.125" data-track-index="15" data-volume="0.32"></audio>
+      <audio data-hf-id="hf-788h" id="sfx-swap1" src="assets/sfx/click2.ogg" data-start="15.81" data-duration="0.058" data-track-index="16" data-volume="0.26"></audio>
+      <audio data-hf-id="hf-nhbp" id="sfx-swap2" src="assets/sfx/click2.ogg" data-start="16.86" data-duration="0.058" data-track-index="17" data-volume="0.26"></audio>
+      <audio data-hf-id="hf-sgkl" id="sfx-mark" src="assets/sfx/impactBell_heavy_000.ogg" data-start="20.18" data-duration="1.3" data-track-index="18" data-volume="0.4"></audio>
+    </div>
+
+    <script>
+      /* The root timeline owns only the standing background. Each scene's motion
+         lives in its own sub-composition timeline and the runtime auto-nests them.
+
+         The single audio-reactive treatment: the coral bloom behind the caption
+         stage breathes with the track's bass and overall level. Data is
+         pre-extracted to assets/audio-data.js (30fps, same as the render), so a
+         frame is a pure function of its index — no Web Audio, no runtime analysis.
+         Deliberately not: waveform bars, equalizers, particles, strobing. */
+      (function () {
+        var FPS = 30;
+        var TOTAL = Math.round(21.5 * FPS);
+        var RMS = window.AUDIO_RMS || [];
+        var BASS = window.AUDIO_BASS || [];
+        var glow = document.getElementById("glow");
+
+        function drawFrame(f) {
+          var bass = BASS[f] || 0;
+          var rms = RMS[f] || 0;
+          glow.style.opacity = (0.4 + bass * 0.3).toFixed(3);
+          glow.style.transform = "scale(" + (0.97 + rms * 0.06).toFixed(4) + ")";
+        }
+
+        var tl = gsap.timeline({ paused: true });
+        for (var f = 0; f < TOTAL; f++) {
+          tl.call((function (n) { return function () { drawFrame(n); }; })(f), [], f / FPS);
+        }
+        tl.seek(0);
+        window.__timelines["main"] = tl;
+      })();
+    </script>
+  </body>
+</html>

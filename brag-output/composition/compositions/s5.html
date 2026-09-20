@@ -1,0 +1,77 @@
+<template>
+  <div data-hf-id="hf-ywn9" id="s5" data-composition-id="s5" data-width="1920" data-height="1080" data-duration="2.91">
+    <div data-hf-id="hf-lm34" class="inner">
+      <div data-hf-id="hf-4nos" class="cap-line" id="s5-line">
+        <span data-hf-id="hf-yfyw" class="w w-angry s5-w" id="s5-itna">itna</span>
+        <span data-hf-id="hf-sc90" class="w w-angry s5-w" id="s5-bekaar">bekaar</span>
+        <span data-hf-id="hf-s2nk" class="w w-angry s5-w" id="s5-tha">tha</span>
+      </div>
+      <div data-hf-id="hf-is3v" id="s5-presetname">RANGMANCH</div>
+    </div>
+    <div data-hf-id="hf-c68m" id="s5-note" class="eyebrow">7 presets · the tone layer rides on all of them</div>
+  </div>
+  <script>
+    /* S5 "The tone layer rides every preset" — scene-local 0–2.91 (global 15.0–17.91).
+       Three of the seven real presets (packages/shared/src/presets.ts), with their
+       exact angry-layer colours and shake amplitudes:
+         Rangmanch #FF5C3A shake 3 · Chamak #FF6B3D shake 4 · Dhamaka #FF2E6B shake 5
+
+       The claim of this scene is that the tone layer is not baked into one style,
+       so the shake is driven by ONE continuous scene clock across all three swaps —
+       it never resets, pauses or restarts. Only the amplitude changes. */
+    (function () {
+      var FPS = 30, DUR = 2.91;
+      var words = ["s5-itna", "s5-bekaar", "s5-tha"].map(function (id) { return document.getElementById(id); });
+      var nameEl = document.getElementById("s5-presetname");
+
+      var PRESETS = [
+        { at: 0.0,  name: "RANGMANCH", shake: 3, color: "#FF5C3A", letterSpacing: "-0.01em",  textShadow: "none" },
+        { at: 0.81, name: "CHAMAK",    shake: 4, color: "#FF6B3D", letterSpacing: "0em",      textShadow: "0 0 60px rgba(255,174,26,0.75)" },
+        { at: 1.86, name: "DHAMAKA",   shake: 5, color: "#FF2E6B", letterSpacing: "-0.035em", textShadow: "0 0 80px rgba(94,17,48,0.95), 0 0 34px rgba(255,46,107,0.55)" }
+      ];
+
+      function applyPreset(p) {
+        nameEl.textContent = p.name;
+        for (var i = 0; i < words.length; i++) {
+          words[i].style.color = p.color;
+          words[i].style.letterSpacing = p.letterSpacing;
+          words[i].style.textShadow = p.textShadow;
+        }
+      }
+      function ampAt(t) {
+        var a = PRESETS[0].shake;
+        for (var i = 0; i < PRESETS.length; i++) if (t >= PRESETS[i].at) a = PRESETS[i].shake;
+        return a;
+      }
+      function shake(tMs, amp) {
+        return { x: Math.sin(tMs / 18) * amp, y: Math.cos(tMs / 13) * amp * 0.6 };
+      }
+      function drawFrame(f) {
+        var t = f / FPS;
+        var s = shake(t * 1000, ampAt(t)); // one clock, three amplitudes
+        for (var i = 0; i < words.length; i++) {
+          words[i].style.transform = "translate(" + s.x.toFixed(3) + "px," + s.y.toFixed(3) + "px)";
+        }
+      }
+
+      var tl = gsap.timeline({ paused: true });
+      for (var f = 0; f < Math.round(DUR * FPS); f++) {
+        tl.call((function (n) { return function () { drawFrame(n); }; })(f), [], f / FPS);
+      }
+      tl.set("#s5-line", { scale: 1 }, 0)
+        .call(function () { applyPreset(PRESETS[0]); }, [], 0)
+        .fromTo("#s5-line", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.26, ease: "power3.out", immediateRender: false }, 0)
+        .fromTo("#s5-presetname", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 0.06)
+        .fromTo("#s5-note", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" }, 0.1)
+        // beat-grid: global 15.81 / 16.86 — re-renders of a line already read, so
+        // beat-rate swapping here does not outrun reading.
+        .call(function () { applyPreset(PRESETS[1]); }, [], 0.81)
+        .fromTo("#s5-line", { scale: 0.975 }, { scale: 1, duration: 0.2, ease: "power2.out", immediateRender: false }, 0.81)
+        .call(function () { applyPreset(PRESETS[2]); }, [], 1.86)
+        .fromTo("#s5-line", { scale: 0.975 }, { scale: 1, duration: 0.2, ease: "power2.out", immediateRender: false }, 1.86)
+        .to(["#s5-line", "#s5-presetname", "#s5-note"], { opacity: 0, duration: 0.18, ease: "power1.in" }, 2.7);
+      tl.seek(0);
+      window.__timelines["s5"] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,46 @@
+<template>
+  <div data-hf-id="hf-nesk" id="s3" data-composition-id="s3" data-width="1920" data-height="1080" data-duration="4.5">
+    <div data-hf-id="hf-a77g" id="s3-wrap">
+      <div data-hf-id="hf-yk6d" id="s3-head" class="display">
+        <div data-hf-id="hf-kvox" id="s3-h1">Not an LLM wrapper.</div>
+        <div data-hf-id="hf-n7ab" id="s3-h2" class="coral">We measure your voice.</div>
+      </div>
+      <div data-hf-id="hf-mmw3" id="s3-left">
+        <div data-hf-id="hf-27b4" id="s3-word">Hello</div>
+        <div data-hf-id="hf-me1p" id="s3-word-sub">one word · demo-project.json</div>
+      </div>
+      <div data-hf-id="hf-ehef" id="s3-rows">
+        <div data-hf-id="hf-3z49" class="row s3-row"><span data-hf-id="hf-b1t3" class="k">Loudness</span><span data-hf-id="hf-d3z4" class="v">+1.20σ</span></div>
+        <div data-hf-id="hf-ozgd" class="row s3-row"><span data-hf-id="hf-i9ne" class="k">Pitch</span><span data-hf-id="hf-it32" class="v">+1.80σ</span></div>
+        <div data-hf-id="hf-q6dg" class="row s3-row"><span data-hf-id="hf-igpn" class="k">Held</span><span data-hf-id="hf-bmhi" class="v">+646ms</span></div>
+        <div data-hf-id="hf-3h4f" id="s3-verdict">→ emphasis · excited · stretch ×2.60</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    /* S3 "Not an LLM wrapper" — scene-local 0–4.5 (global 7.0–11.5).
+       Headline verbatim from apps/web/src/components/landing/SignalsSection.tsx:50.
+       The three numbers are the real `signals` block for the word `Hello` in
+       packages/shared/fixtures/demo-project.json: loudnessZ 1.2, pitchZ 1.8,
+       extraMs 646, durationRatio/stretch 2.6.
+
+       The rows land on every OTHER beat (global 7.91 / 8.96 / 10.01). At
+       114.84 BPM consecutive beats are ~0.52s apart, which outruns reading for
+       numeric text; every-other-beat gives each row its ~0.8s settled floor and
+       leaves all three on screen together under the verdict. */
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo("#s3-h1", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.42, ease: "power3.out" }, 0.1)
+        .fromTo("#s3-h2", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.42, ease: "power3.out" }, 0.24)
+        .fromTo("#s3-left", { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.42, ease: "power3.out" }, 0.45)
+        // beat-grid (every other beat): global 7.91 / 8.96 / 10.01
+        .fromTo(".s3-row:nth-child(1)", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out" }, 0.91)
+        .fromTo(".s3-row:nth-child(2)", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out" }, 1.96)
+        .fromTo(".s3-row:nth-child(3)", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out" }, 3.01)
+        .fromTo("#s3-verdict", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: "power2.out" }, 3.54)
+        .to("#s3-wrap", { opacity: 0, duration: 0.22, ease: "power1.in" }, 4.28);
+      tl.seek(0);
+      window.__timelines["s3"] = tl;
+    })();
+  </script>
+</template>

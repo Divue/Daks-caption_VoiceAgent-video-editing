@@ -1224,7 +1224,7 @@ in every test.
   router to the real planner and voice functions"
 - **Working tree state (before adding this file):** clean — `git status --short`
   produced no output.
-- **This documentation file (`ai-agent-report.md`) is new** — it did not exist in the
+- **This documentation file (`ai-agent.md`) is new** — it did not exist in the
   repository before this change; it introduces no code changes to any existing file.
 - **Push status:** at the time of writing, `origin/aman/ai-agent` does not exist on the
   remote (only `origin/aman/editor-ui`, `origin/divue/editor-ui`, and `origin/master`
@@ -1299,7 +1299,7 @@ For any future Claude Code session working on this repository:
 - Treat root `CLAUDE.md` as **binding project context** — its ownership table, scope
   exclusions (no auth, no Step Functions, no object tracking, no general video editing),
   and "agent never edits pixels" rule are not suggestions.
-- Treat this document (`ai-agent-report.md`) as the **AI-agent implementation
+- Treat this document (`ai-agent.md`) as the **AI-agent implementation
   reference** — it describes the code as it exists, verified against source, not a
   design proposal.
 - **Inspect the actual source file before changing anything** — this document is a

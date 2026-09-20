@@ -78,7 +78,7 @@ for t in test_contracts test_tool_registry test_context_tools test_mutation_tool
   docker compose exec -T api python -m app.agent.tests.$t | tail -1
 done
 
-# The API's pytest suite — expect 128 passed
+# The API's pytest suite — expect everything to pass
 docker compose exec api python -m pytest tests/ -q -p no:warnings
 
 # The editor — expect "All checks passed." three times, then a clean build
@@ -135,9 +135,9 @@ rather than rediscovering it.
 | **Agent history (P4's build log)** | `.claude/audits/ai-agent/phase-01` → `phase-08`. Read `phase-05-vision.md`'s correction banner first — its original conclusion is out of date. |
 | **The editor UI** | audits `00`, `09`, `15`, `16` (the design rules: orange has a budget, no fake features), `07` (undo), `13` (why every write goes through one queue) |
 | **Pipeline / API** | audits `11` (speech-to-text + prosody), `12` (persistence and the write contract), and `services/api/README.md` (every endpoint) |
-| **Media layers** (images/clips over the video) | `LAYERS.md` — the model, the workflow, the agent's tools — then `.claude/audits/layers/phase-01-media-layers.md`. The arithmetic lives only in `apps/web/src/lib/layers.ts` and `services/api/app/agent/tools/layer_tools.py`; change both together. |
-| **Export / rendering** | `.claude/audits/export/phase-01-containerised-render.md`, then `remotion/README.md`. `DEPLOYING-EXPORT.md` for the licence and the AWS options. |
-| **Deploying** | `DEPLOYING-EXPORT.md` first (App Runner is closed to new customers — that changes the API's target too), then section 4 below, `services/api/Dockerfile`, `services/voice-agent/README.md` |
+| **Media layers** (images/clips over the video) | [`media-layers.md`](media-layers.md) — the model, the workflow, the agent's tools — then `.claude/audits/layers/phase-01-media-layers.md`. The arithmetic lives only in `apps/web/src/lib/layers.ts` and `services/api/app/agent/tools/layer_tools.py`; change both together. |
+| **Export / rendering** | `.claude/audits/export/phase-01-containerised-render.md`, then `remotion/README.md`. [`export-deployment.md`](export-deployment.md) for the licence and the AWS options. |
+| **Deploying** | [`export-deployment.md`](export-deployment.md) first (App Runner is closed to new customers — that changes the API's target too), then section 4 below, `services/api/Dockerfile`, `services/voice-agent/README.md` |
 
 **Don't trust these as current:**
 - `.claude/next-session-prompt.md` — a consumed prompt. Pasting it rebuilds shipped work.
@@ -147,28 +147,31 @@ rather than rediscovering it.
 
 ---
 
-## 4. Deploying — what exists and what doesn't
+## 4. Deploying — what exists
 
-Nothing is deployed from this repo yet. The intended targets (`CLAUDE.md`) and their real state:
+It is deployed, on AWS in `ap-south-1`. The stack is defined in [`infra/aws/`](../infra/aws); how and why is in
+[`deployment.md`](deployment.md), and which service does what is in [`aws-services.md`](aws-services.md).
 
-| Part | Target | State |
-|---|---|---|
-| API | ~~App Runner~~ → **undecided** | `services/api/Dockerfile` is production-ready. **AWS closed App Runner to new customers**, so the target written in `CLAUDE.md` may not be available to us — AWS points at ECS Express Mode. Lead decision; see `DEPLOYING-EXPORT.md` §2. |
-| Editor | Amplify | `npm run build` works. **No `amplify.yml`.** |
-| Voice worker | an always-on host | **Undecided (P1).** App Runner is not a fit — it's a long-running process that joins rooms, not an HTTP server. |
-| LiveKit | LiveKit Cloud, or self-hosted | Locally it's `livekit-server --dev`. **Production needs real credentials.** |
-| Export | Remotion Lambda, or the container | **Works locally.** `remotion/Dockerfile` is the deployable artifact; nothing is deployed. Licence costs us $0 today. See `DEPLOYING-EXPORT.md`. |
+| Part | Where it runs |
+|---|---|
+| API | App Runner, with a VPC connector to reach the private renderer |
+| Editor | A Lambda Function URL serving the built `apps/web` (an Amplify site also serves it) |
+| Voice worker | ECS Fargate, in a private subnet |
+| Export | The Remotion render server on Fargate, behind an internal load balancer |
+| LiveKit | LiveKit Cloud in the deployed stack. On a laptop, compose runs `livekit-server --dev` instead. |
 
-**Fix these before anything is reachable from the internet:**
+**Still open before you would call it safe on the public internet:**
 1. `POST /agent/livekit-token` has **no auth** — anyone who can reach the API can mint a room token.
-2. `LIVEKIT_API_KEY=devkey` / `LIVEKIT_API_SECRET=secret` are **public** placeholders. Replace them.
-3. `/demo-media/*` is mounted unconditionally. It fails closed in the production image (the clips
-   aren't copied into it), but remove it or gate it by environment anyway.
-4. Build the editor with **`VITE_USE_FIXTURE=false`**. With `true`, `/editor?demo=1` points at
-   `/demo-media`, which doesn't exist in production, so the demo shows a blank video.
-5. Add the Amplify domain to `CORS_ORIGINS`.
-6. `FALLBACK_AWS_*` is a temporary shim. Remove it once the account has its own Bedrock/Transcribe.
-7. `livekit-api` now ships in the production API image — P1 needs to sign that off.
+2. `LIVEKIT_API_KEY=devkey` / `LIVEKIT_API_SECRET=secret` are **public** placeholders. They are right for a laptop and wrong
+   anywhere reachable; the deployed stack uses LiveKit Cloud keys. Do not run `terraform apply` with the dev values loaded
+   (see [`deployment.md`](deployment.md#14-operating-it)).
+3. `/demo-media/*` is mounted unconditionally. It fails closed in the production image (the clips are not copied into it), but
+   remove it or gate it by environment anyway.
+4. Build the editor with **`VITE_USE_FIXTURE=false`**. With `true`, `/editor?demo=1` points at `/demo-media`, which does not
+   exist in production, so the demo shows a blank video.
+5. A new editor address must be added to the API's allowed origins (`extra_cors_origins` in the Terraform).
+6. `FALLBACK_AWS_*` is a temporary shim: the owning account cannot use Bedrock or batch Transcribe yet. Remove it once it can.
+7. `livekit-api` ships in the production API image — P1 needs to sign that off.
 
 ---
 

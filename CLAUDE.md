@@ -37,7 +37,7 @@ If a task needs a change outside your folder or to the schema: STOP and tell the
   **Exception, decided by the repo owner on 2026-09-19:** media LAYERS are in scope — up to two
   tracks of the user's own images and clips over the main video, with move/scale/rotate, trim, split
   and delete, in the editor and through the agent. The MAIN video is still never cut, trimmed or
-  re-timed, and there are still no transitions, effects or music. See `LAYERS.md`.
+  re-timed, and there are still no transitions, effects or music. See `docs/media-layers.md`.
 
 ## Stack
 - Frontend: Vite + React + TypeScript + Tailwind + shadcn/ui, hosted on Amplify

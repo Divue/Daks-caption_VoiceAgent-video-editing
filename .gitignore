@@ -15,7 +15,6 @@ __pycache__/
 !packages/shared/fixtures/*.mp4
 
 # terraform: state holds secrets (FALLBACK_AWS_* env vars); the lock file IS committed
-infra/terraform/.terraform/
 *.tfstate
 *.tfstate.*
 *.tfvars

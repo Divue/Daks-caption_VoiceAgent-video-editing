@@ -1,5 +1,9 @@
 # New deploy (v2 stack) — Phase 03 Audit
 
+> **Folder renamed (2026-09-20, after this audit was written):** `infra/new-deploy/` is now `infra/aws/`, and the old
+> `infra/terraform/` (the destroyed stack) was removed from the working tree; it remains in git history (`2a81d81`). Paths
+> below keep the names they had when this was written. The Terraform code itself is unchanged by the rename.
+
 Branch `divue/new-deploy` (off `master` at `0611fa5`, Shubh's latest). Owner: Divue. Written 2026-09-20.
 
 ## Status

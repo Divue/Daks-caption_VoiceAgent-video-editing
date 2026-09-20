@@ -151,12 +151,12 @@ For each part: **what it is → why we chose it → why not the alternatives →
   - *ECS/Fargate behind an ALB:* fully valid and the likely long-term home (see §8), but needs more moving parts
     (ALB, target groups, HTTPS certificate + domain). Not worth it for an MVP.
   - *EKS (Kubernetes):* far too much machinery for four small services.
-- **Caveats an architect will raise:** AWS's own docs (quoted in `DEPLOYING-EXPORT.md`) say App Runner is **closed to new
+- **Caveats an architect will raise:** AWS's own docs (quoted in [`export-deployment.md`](export-deployment.md)) say App Runner is **closed to new
   customers**; our account could already create it, so it works today, but the migration path is ECS on Fargate /
   ECS Express Mode. Also this account is **limited to two App Runner services per region** (see §5.2), which is why the editor is not a third one.
 
 ### 5.2 The editor — AWS Lambda Function URL
-- **What:** the React website, built into ~10 static files, served by a tiny Python Lambda (`infra/new-deploy/editor_site/handler.py`)
+- **What:** the React website, built into ~10 static files, served by a tiny Python Lambda (`infra/aws/editor_site/handler.py`)
   reachable at a public HTTPS **Function URL**.
 - **Why (this one needs a real explanation — it is not the textbook answer):** the textbook answer is **S3 + CloudFront**.
   On this AWS account **CloudFront is refused** ("Your account must be verified before you can add new CloudFront
@@ -176,7 +176,7 @@ For each part: **what it is → why we chose it → why not the alternatives →
   Fonts include Devanagari and emoji (without them Hindi captions would export as empty boxes).
 - **Why a container on Fargate:** Chrome needs 1–2 GB of memory and up to minutes of CPU; that does not fit in the API
   container or in a normal Lambda. Fargate runs a container of any size without servers.
-- **Why not Remotion Lambda** (Remotion's own recommendation, and Shubh's `DEPLOYING-EXPORT.md` recommends it): it would
+- **Why not Remotion Lambda** (Remotion's own recommendation, and Shubh's [`export-deployment.md`](export-deployment.md) recommends it): it would
   render in parallel and be much faster, but it needs IAM users/roles/policies created in the account and ~2–4 hours to rewire
   the API. With a 10-hour window we chose the option that works with what is already in the repo. It is the right
   **upgrade** (§8).
@@ -249,7 +249,7 @@ Security-group chain: **API connector → ALB (port 80) → render task (port 31
 
 ## 7. How we deploy it
 
-**Terraform** turns text files into AWS resources. Ours live in `infra/new-deploy/`:
+**Terraform** turns text files into AWS resources. Ours live in `infra/aws/`:
 
 | File | Creates |
 |---|---|
@@ -317,7 +317,7 @@ $6 per day)**; the account has about $99 of credit.
 | App Runner, Lambda, DynamoDB, S3 | small | Pay for use |
 | Bedrock, Transcribe | per use | Billed to the **borrowed** account |
 
-**Turn it all off:** `terraform destroy` in `infra/new-deploy` (leaves your bucket and table alone).
+**Turn it all off:** `terraform destroy` in `infra/aws` (leaves your bucket and table alone).
 
 ## 10. Questions an architect will ask
 
@@ -362,20 +362,20 @@ is re-packaged from a previous build and re-applied.
 
 1. **No authentication.** Anyone with the API URL can create projects and spend AI money on the borrowed account. `POST /agent/livekit-token` is open. (MVP rule in `CLAUDE.md`; fix: Cognito or a signed-token check.)
 2. **Borrowed AI credentials** (Bedrock/Transcribe run on a teammate's account). Temporary.
-3. **Render server:** one at a time, in-memory state, and the hardening listed in `DEPLOYING-EXPORT.md` (queue cap, allow-list of video URLs, size bounds, pruning failed renders) is **not done**. Its only protection is network isolation.
+3. **Render server:** one at a time, in-memory state, and the hardening listed in [`export-deployment.md`](export-deployment.md) (queue cap, allow-list of video URLs, size bounds, pruning failed renders) is **not done**. Its only protection is network isolation.
 4. **Single NAT gateway / single region;** no alarms; no budget alert.
 5. **No CloudFront** (blocked by AWS account verification) — the editor is served by a small Lambda instead.
 6. **Local Terraform state** on one laptop; secrets are plain environment variables.
 7. **Not load-tested.** All capacity statements are configuration or single measurements.
 8. **Not tested:** a human's real microphone and accents, Safari/Firefox/mobile, clips near 90 s, several exports back-to-back.
 9. **The media bucket's "Block Public Access" is off** (objects are private; access is by presigned links). Turning it on is recommended.
-10. **Remotion licence:** free for individuals/up to 3 employees (`DEPLOYING-EXPORT.md`); revisit if incorporated as 4+.
+10. **Remotion licence:** free for individuals/up to 3 employees ([`export-deployment.md`](export-deployment.md)); revisit if incorporated as 4+.
 
 ## 12. History: the old stack was retired
 
 There used to be **two** independent AWS deployments. The **first** (`infra/terraform`) was built before Export existed: an
 App Runner API, a Fargate voice worker and the Amplify website, all in the default network. It had **no working Export** (the API
-answered 501; there was no render server). The **second** (`infra/new-deploy`, this page) was built from current `master` with a
+answered 501; there was no render server). The **second** (`infra/aws`, this page) was built from current `master` with a
 private render server.
 
 Because reviewers dislike unnecessary deployments, the first was **destroyed on 2026-09-20** (`terraform destroy`, 18 resources:
@@ -386,7 +386,7 @@ old API, old voice worker, their image repositories and IAM roles). What that me
 | App Runner services | 2 (old API + new API) | **1** (the new API) — one slot free again |
 | Amplify website (`master.dnb761en5gcll.amplifyapp.com`) | Pointed at the old API | **Repointed to the new API**, so it is a second working address for the same editor |
 | Your data (S3 bucket, DynamoDB table, projects) | Shared by both | **Untouched** — every project is still listed and loads |
-| `infra/terraform/` (old Terraform code) | Live | **Kept in git for history only.** Its state is empty; do not run it again |
+| `infra/terraform/` (old Terraform code) | Live | **Removed from the working tree.** Its state was empty; the code is still in git history (commit `2a81d81`) |
 
 The Amplify site was hard to reach on client routes (`/editor` returned 301 then 404). We added one rewrite rule to the Amplify app
 (kept the pre-existing `404 → index.html` rule as well) so `/editor?id=…` works there.
@@ -396,9 +396,9 @@ The Amplify site was hard to reach on client routes (`/editor` returned 301 then
 **Deliverables**
 - [x] Deployed, working link (§ top of this page)
 - [x] Source code: GitHub repository (`master` has the application, including Export)
-- [ ] **Still to push:** `infra/new-deploy/` (the Terraform for this deployment), this file and the audit are on branch `divue/new-deploy`, which is **not on GitHub yet**. Push it (or merge it) before judging so reviewers can read the infrastructure code.
+- [x] Infrastructure code: `infra/aws/` (the Terraform for this deployment; it was called `infra/new-deploy` until the rename)
 - [x] Deployment documentation: this file; audit with measured evidence: `.claude/audits/deploy/phase-03-new-deploy.md`
-- [x] Architecture and rules: `CLAUDE.md`; local setup: `ONBOARDING.md`; export notes: `DEPLOYING-EXPORT.md`
+- [x] Architecture and rules: `CLAUDE.md`; local setup: [`getting-started.md`](getting-started.md); export notes: [`export-deployment.md`](export-deployment.md)
 
 **Two-minute demo**
 1. Open the **instant demo project** link. You see a vertical reel with animated captions and a title layer.
@@ -426,7 +426,7 @@ aws logs tail /ecs/captions-v2-render  --region ap-south-1 --since 10m    # expe
 
 # Update only the editor: rebuild apps/web with the API URL, package, apply
 cd apps/web && VITE_API_URL=https://pra22j2hgp.ap-south-1.awsapprunner.com VITE_USE_FIXTURE=false npm run build
-cd ../../infra/new-deploy && python3 package_editor.py && terraform apply
+cd ../../infra/aws && python3 package_editor.py && terraform apply
 
 # Roll out a new API image: build, push as :v2, then
 terraform apply -var api_image_tag=v2
@@ -436,3 +436,13 @@ terraform destroy
 ```
 Terraform needs the borrowed keys and LiveKit keys exported into the shell first (`TF_VAR_*`); the exact commands, the from-scratch
 order, and the list of problems we hit and fixed are in `.claude/audits/deploy/phase-03-new-deploy.md`.
+
+**Two things that can bite when you run Terraform from a laptop**
+
+1. **The state is local.** It is `infra/aws/terraform.tfstate`: git-ignored, no remote backend, holding secrets, and the only
+   record of what Terraform manages. Lose it and Terraform no longer knows the live stack. Keep a copy somewhere safe, and keep
+   it with the folder if you ever move or rename it (`git mv` will not carry ignored files).
+2. **The LiveKit values must be the real LiveKit Cloud ones.** The runbook loads them from the repo-root `.env`. If your `.env`
+   holds the local dev values (`devkey` / `secret`, which is right for `docker compose` on a laptop), exporting those and running
+   `terraform apply` would replace the deployed voice worker's credentials with the public placeholders and break live voice.
+   Run `terraform plan` first and read what it wants to change.

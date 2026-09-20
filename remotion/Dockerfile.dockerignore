@@ -1,0 +1,17 @@
+# Read by `docker build -f remotion/Dockerfile .` from the repo root (remotion/.dockerignore is not:
+# only a root .dockerignore or <Dockerfile>.dockerignore is). Keeps secrets and bulk out of the context.
+.git
+.env
+.env.*
+**/node_modules
+**/dist
+**/out
+**/.venv
+**/__pycache__
+infra
+services
+.claude
+*.mp4
+*.mov
+*.wav
+*.tfstate*

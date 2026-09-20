@@ -11,7 +11,8 @@
     "check:captions": "jiti scripts/check-caption-style.ts",
     "check:agent": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\"}\" jiti scripts/check-agent-apply.ts",
     "check:layers": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\"}\" jiti scripts/check-layers.ts",
-    "check:word-edit": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\"}\" jiti scripts/check-word-edit.ts"
+    "check:word-edit": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\"}\" jiti scripts/check-word-edit.ts",
+    "check:segments": "JITI_ALIAS=\"{\\\"@\\\":\\\"$PWD/src\\\"}\" jiti scripts/check-preset-segments.ts"
   },
   "dependencies": {
     "@captions/shared": "*",

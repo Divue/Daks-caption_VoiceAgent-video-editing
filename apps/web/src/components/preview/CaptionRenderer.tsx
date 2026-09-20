@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { CaptionBlock, Preset, Project, Word } from '@captions/shared'
 import { DEFAULT_STACK_OFFSETS } from '@captions/shared'
-import { findBlockIndexAt } from '@/hooks/useCaptionBlocks'
+import { findBlockIndexAt } from '@/lib/caption-timeline'
 import {
   glowWrapperCss,
   renderedText,

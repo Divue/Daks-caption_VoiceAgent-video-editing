@@ -5,7 +5,7 @@
 //   { detail: [ {...} ] }         FastAPI 422 request validation
 //   { detail: "Not Found" }       unknown route
 // A thrown TypeError (server down, CORS, DNS) becomes code 'network'.
-import type { Emotion, LayerItem, PresetId, PresetOverride, Project, Style, Word } from '@captions/shared'
+import type { Emotion, LayerItem, PresetId, PresetOverride, PresetSegment, Project, Style, Word } from '@captions/shared'
 
 // The repo-root .env supplies this via vite.config.ts `envDir`. The fallback keeps a
 // missed envDir degrading to "works on the dev machine" rather than fetching undefined/projects.
@@ -339,6 +339,8 @@ export function patchProject(
     presetOverride?: Partial<PresetOverride> | null
     /** Whole-list replace. `[]` clears them. */
     layers?: LayerItem[]
+    /** Whole-list replace, like `layers`. `[]` clears them. */
+    presetSegments?: PresetSegment[]
   },
   version: number | undefined,
   signal?: AbortSignal,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Project } from '@captions/shared'
-import type { LayerItem, PresetId, PresetOverride, Word } from '@captions/shared'
+import type { LayerItem, PresetId, PresetOverride, PresetSegment, Word } from '@captions/shared'
 import { getProject, isApiError, patchProject, patchWord, patchWordsBulk } from '@/lib/api'
 import type { ApiError, BulkWordPatch, WordPatch } from '@/lib/api'
 import { overrideDelta } from '@/lib/override-delta'
@@ -24,6 +24,8 @@ export interface ProjectFieldPatch {
   presetOverride?: Partial<PresetOverride> | null
   /** The media layers as the whole list they should now be. `[]` clears them. */
   layers?: LayerItem[]
+  /** The preset segments as the whole list they should now be. `[]` clears them. */
+  presetSegments?: PresetSegment[]
 }
 
 /** What actually happened to one agent turn, so the activity log can be honest about it. */
@@ -416,6 +418,8 @@ export function useWordPatchState(): PatchState & {
       if (patch.presetOverride !== undefined)
         dispatch({ type: 'SET_PRESET_OVERRIDE', override: patch.presetOverride })
       if (patch.layers !== undefined) dispatch({ type: 'SET_LAYERS', layers: patch.layers })
+      if (patch.presetSegments !== undefined)
+        dispatch({ type: 'SET_PRESET_SEGMENTS', presetSegments: patch.presetSegments })
       setError(null)
       if (!projectId) return Promise.resolve(null)
 

@@ -1,21 +1,20 @@
 import { useMemo } from 'react'
-import { MIN_BLOCK_MS, PRESETS, deriveBlocks } from '@captions/shared'
-import type { CaptionBlock, Word } from '@captions/shared'
+import { MIN_BLOCK_MS } from '@captions/shared'
+import { buildCaptionTimeline } from '@/lib/caption-timeline'
+import type { CaptionTimeline } from '@/lib/caption-timeline'
 import { useProject } from '@/state/project-context'
 
-export interface CaptionBlocks {
-  blocks: CaptionBlock[]
-  /** Blocks carry word ids, not words, so every consumer needs this lookup. */
-  wordById: Map<string, Word>
-  wordsOf: (block: CaptionBlock) => Word[]
-}
+export type CaptionBlocks = CaptionTimeline
 
 /**
- * Words → caption blocks, memoised on the inputs that can change the answer.
+ * Words → caption blocks, emphasis and the preset each block is drawn with, memoised on the
+ * project.
  *
- * `deriveBlocks` comes from @captions/shared, not from a local copy: P2's Remotion
- * composition imports the identical function, and a copy that drifts is exactly the
- * failure that module exists to prevent (plan §3.1).
+ * The work itself is `buildCaptionTimeline` (lib/caption-timeline.ts), not a local copy: P2's
+ * Remotion composition imports the identical function, and a copy that drifts is exactly the
+ * failure that seam exists to prevent (plan §3.1). It is also where `presetSegments` is turned
+ * into per-segment grouping and emphasis — read its header for why that is not a `deriveBlocks`
+ * rule.
  *
  * `mergeShort` is a VIEW preference — local UI state, threaded in as an argument. It is
  * deliberately not in Project.settings, which would be a schema change, and not in
@@ -24,35 +23,15 @@ export interface CaptionBlocks {
 export function useCaptionBlocks(mergeShort: boolean): CaptionBlocks {
   const { project } = useProject()
 
-  return useMemo(() => {
-    const wordById = new Map(project.words.map((word) => [word.id, word]))
-    // `wordsPerLine` is a PRESET field, but a stored override beats it: "fewer words per
-    // line" is one of the most common short-form caption requests and it has to survive a
-    // reload, so it lives on the Project (see PresetOverride in packages/shared).
-    const blocks = deriveBlocks(project.words, {
-      maxWords: project.presetOverride?.wordsPerLine ?? PRESETS[project.presetId].wordsPerLine,
-      mergeShorterThanMs: mergeShort ? MIN_BLOCK_MS : 0,
-    })
-    const wordsOf = (block: CaptionBlock) =>
-      block.wordIds.map((id) => wordById.get(id)).filter((word): word is Word => word !== undefined)
-    return { blocks, wordById, wordsOf }
-  }, [project.words, project.presetId, project.presetOverride?.wordsPerLine, mergeShort])
+  return useMemo(
+    () => buildCaptionTimeline(project, { mergeShorterThanMs: mergeShort ? MIN_BLOCK_MS : 0 }),
+    [project, mergeShort],
+  )
 }
 
 /**
- * Index of the block containing `timeMs`, or -1 in a gap between blocks.
- * Binary search: words are sorted by startMs with no negative gaps and no zero-width
- * entries (verified across all four pipeline projects), so blocks inherit that order.
+ * Re-exported from lib/caption-timeline.ts, which is where it moved to when the Remotion
+ * composition and the check scripts needed it: both import it, and neither can pull in a module
+ * that reaches React. Kept here because every existing caller imports it from this path.
  */
-export function findBlockIndexAt(blocks: CaptionBlock[], timeMs: number): number {
-  let low = 0
-  let high = blocks.length - 1
-  while (low <= high) {
-    const mid = (low + high) >> 1
-    const block = blocks[mid]
-    if (timeMs < block.startMs) high = mid - 1
-    else if (timeMs >= block.endMs) low = mid + 1
-    else return mid
-  }
-  return -1
-}
+export { findBlockIndexAt } from '@/lib/caption-timeline'

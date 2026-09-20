@@ -11,10 +11,11 @@ Date: 2026-09-20. Branch: `master`. Seven commits, `a323a2b`..`2059a1c`.
 ## Status
 
 Implemented across all five owned areas and verified: 41 TypeScript checks, 48 Python
-checks (11 pytest + 37 agent-suite), and 11 UI checks driven against the real editor in
-a real browser. The preview and the export resolve identically, asserted frame by frame
-rather than assumed. NOT verified: an actual MP4 render (needs a live API and a project),
-and a live Bedrock turn choosing the new range arguments.
+checks (11 pytest + 37 agent-suite), 11 UI checks driven against the real editor in a real
+browser, and 6 checks against **real rendered export frames**. The preview and the export
+resolve identically (asserted frame by frame) AND the export's pixels were rendered and
+compared by hash. NOT verified: a full MP4 encode (`renderMedia`; only single frames were
+rendered) and a live Bedrock turn choosing the new range arguments.
 
 ## Objective
 
@@ -132,6 +133,7 @@ own, but without the list the model cannot tell a second look exists.
 | `services/api/app/agent/tools/preset_segments.py` | Python mirror of `lib/preset-segments.ts`. |
 | `services/api/app/agent/tests/test_preset_segments.py` | 37 checks, the same numeric cases as the TS suite. |
 | `services/api/tests/test_preset_segments.py` | 11 pytest cases for the schema and the PATCH route. |
+| `remotion/scripts/check-export-segments.mjs` | 6 checks against REAL RENDERED FRAMES: does a segment change the exported pixels. |
 | `.claude/audits/preset-segments/phase-01-preset-segments.md` | This document. |
 
 ## Files Modified
@@ -154,6 +156,7 @@ own, but without the list the model cannot tell a second look exists.
 | `services/api/app/agent/tools/schemas.py`, `project_tools.py` | ADDITIVE: range args on `apply_preset`. |
 | `services/api/app/agent/planner.py` | STRUCTURAL: `_active_preset_block` takes the project and lists segments. |
 | `apps/web/package.json` | ADDITIVE: `check:segments`. |
+| `remotion/package.json` | ADDITIVE: `check:export-segments`. |
 
 ## Files Intentionally Untouched
 
@@ -278,6 +281,7 @@ Every command was run; these are real counts.
 | `npx oxlint` | no new findings (one pre-existing `only-export-components` warning in `preset-override-context.tsx`) |
 | `npm run build` | clean |
 | `npm run check -w @captions/remotion` | all pass (CSS classes + fonts link) |
+| `npm run check:export-segments -w @captions/remotion` | **6/6 pass** — real rendered frames |
 | `docker compose run --rm api pytest` | **141 passed**, including 11 new |
 | `python -m app.agent.tests.test_preset_segments` | **37/37 pass** |
 | the other 9 agent test modules | all pass, unchanged |
@@ -293,6 +297,23 @@ that **every drawn frame resolves identically in preview and export** (272 frame
 at 33 ms across a project with two segments and an override); that the fixture really
 contains a block whose last word overhangs its segment, so that check is not vacuous; and
 that the schema refuses what the arithmetic never produces.
+
+### What the rendered frames prove
+
+`check:segments` can only show that the two sides RESOLVE the same preset; it never renders
+anything. `check-export-segments.mjs` renders real stills through the real bundle, the real
+Chromium and the real `CaptionRenderer`, over the same background clip every time so a hash
+difference can only be the captions:
+
+- a segment covering the whole video is **byte-identical** to setting the base preset
+  (`5f0563a4d2d73c00` both ways), and that is not trivially true because the base preset
+  renders differently (`07129cb5b474f337`);
+- **inside** a half segment the export uses the segment's preset, **outside** it the
+  project's own, and those two frames genuinely differ;
+- the render is deterministic — the same project and frame produce the same bytes.
+
+Eyeballed as well as hashed: the frame inside the segment draws "ITNA / BEKAAR 😒" in
+MrBeast's two-words-a-line yellow-and-red, which is not what Rangmanch draws.
 
 ### The bug the browser found
 
@@ -319,15 +340,20 @@ clicking the MrBeast card retargets **the segment**; the × removes it. A screen
 a segment in place shows the caption count going **25 -> 30**, which is the per-segment
 grouping happening for real (MrBeast packs 2 words a line against Rangmanch's 3).
 
+**Rendered for real:** eight stills at 1080x1920 through `@remotion/renderer`
+(`selectComposition` + `renderStill`) against a bundle built by the project's own
+`bundleComposition`. No API and no stored project were needed — the shared fixture is the
+project and a bake-off clip is served over http for `OffthreadVideo`.
+
 **Not verified against a live external service:** nothing here calls one.
 
 ## Unverified / Untestable
 
-- **An actual MP4 render.** `remotion/scripts/still.mjs` needs a live API and a stored
-  project (`GET /projects/{id}`), and the API is not deployed. The export's *resolution*
-  is asserted frame by frame against the preview's in `check:segments`, and
-  `CaptionVideo.tsx` typechecks clean — but no pixels were rendered. This is the single
-  biggest gap.
+- **A full MP4 encode.** Single frames were rendered (`renderStill`), not a video
+  (`renderMedia`), and no audio or encode path was exercised. That path is untouched by
+  this change — the feature lives entirely in the caption layer, which is what was
+  rendered — but nobody produced an .mp4 end to end. `remotion/scripts/still.mjs` and the
+  render server still need a live API and a stored project, and the API is not deployed.
 - **`remotion/src/` has no `tsconfig.json`.** It was typechecked with a temporary config
   that was then deleted; `CaptionVideo.tsx` came back clean. That run also surfaced four
   **pre-existing** errors in `Root.tsx` (an untyped `fps` prop), left untouched as out of
@@ -346,7 +372,7 @@ grouping happening for real (MrBeast packs 2 words a line against Rangmanch's 3)
 | --- | --- |
 | Schema (TS + Python) | connected, in one commit, **awaiting lead sign-off** |
 | Editor: lane, picker, style panel, preview | connected, verified in a browser |
-| Export (`CaptionVideo`) | connected in code; **no render performed** |
+| Export (`CaptionVideo`) | connected and **verified in rendered pixels**; no full MP4 encode |
 | API route + store | connected, 141 tests green; **not deployed** (unchanged from audit 12) |
 | Agent tool + planner context | connected, tests green; **no live model turn** |
 
@@ -354,8 +380,8 @@ grouping happening for real (MrBeast packs 2 words a line against Rangmanch's 3)
 
 - **lead** — must agree the schema change (`project.ts` + `schema.py`, commit `a323a2b`)
   before any of this merges. Everything else depends on it.
-- **P2** — should render one MP4 of a project with two segments and compare it against
-  the preview. The resolution is asserted; the pixels are not.
+- **P2** — nothing blocking. Frames are verified; a full `renderMedia` pass through the
+  container would close the last of it.
 - **P4** — should run the graded prompt catalogue with a range prompt ("make the first
   five seconds loud") to see whether the model reaches for the new arguments.
 - **P1** — nothing blocking. The route works against moto; deployment is the same
@@ -404,9 +430,14 @@ Everything else follows the brief. No schema field beyond `presetSegments` was n
 
 ## Git / Change Scope
 
-Branch `master`, seven commits `a323a2b`..`2059a1c`, split by owned folder (see
-**Ownership** for the one deliberate crossover). 28 files, +1932/-149 excluding this
-audit. Nothing pushed, no PR opened.
+Branch `master`, seven commits `a323a2b`..`2059a1c` plus the docs commit `6b5346b`, split
+by owned folder (see **Ownership** for the one deliberate crossover). 28 files,
++1932/-149 excluding this audit. Nothing pushed, no PR opened.
+
+**Uncommitted at the time of writing, at the repo owner's request** (they are committing
+it themselves): `remotion/scripts/check-export-segments.mjs`, the
+`check:export-segments` line in `remotion/package.json`, and this audit's render section.
+That is P2's share and belongs in one commit of its own.
 
 `git status` shows one unrelated modified file:
 `.claude/audits/word-editing/phase-01-text-and-timing.md`, which was **already dirty at
@@ -417,8 +448,8 @@ not in the tree or in any commit.
 ## Next Steps
 
 1. **lead** — review and agree `a323a2b` (schema, both languages). Blocks everything else.
-2. **P2** — render one MP4 with two segments and diff frames against the preview; close
-   the biggest verification gap in this audit.
+2. **P2** — run one full `renderMedia` (not just stills) of a project with two segments
+   through the container, to exercise the encode path as well as the caption layer.
 3. **P2 / P3** — give `remotion/src` a real `tsconfig.json` and fix the four pre-existing
    `Root.tsx` type errors, so the export is typechecked in CI rather than ad hoc.
 4. **P4** — run the graded prompt catalogue with range prompts against live Bedrock.

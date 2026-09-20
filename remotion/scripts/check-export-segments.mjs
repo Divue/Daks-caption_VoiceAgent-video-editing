@@ -1,18 +1,32 @@
-// Does a preset SEGMENT actually change the exported pixels, and do the segment and the base
-// preset produce the SAME pixels? Renders real stills through the real Remotion pipeline.
+// Does a preset SEGMENT actually change the EXPORTED PIXELS?
 //
-// Run from repo root: node <this> — needs no API and no stored project; the fixture is the
-// project and a local clip is served over http so OffthreadVideo has something to fetch.
+// `apps/web`'s check:segments proves the preview and the export RESOLVE the same preset for
+// every frame. It cannot prove the export draws it, because it never renders anything. This
+// does: real stills, through the real bundle, the real Chromium and the real CaptionRenderer,
+// compared by hash.
+//
+// It needs no API and no stored project — the shared fixture IS the project, and a local clip
+// from the STT bake-off is served over http so OffthreadVideo has something to fetch. That
+// clip is the same in every render, so the background cancels out and a hash difference can
+// only be the captions.
+//
+// Slow (a bundle plus 8 Chromium stills), so it is a dev tool like still.mjs, not part of
+// `npm run check`. Run: `npm run check:export-segments -w @captions/remotion`
 import { createServer } from 'node:http'
-import { createReadStream, statSync, readFileSync, writeFileSync } from 'node:fs'
+import { createReadStream, mkdirSync, readFileSync, statSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import path from 'node:path'
 import { ensureBrowser, renderStill, selectComposition } from '@remotion/renderer'
 import { ROOT as REMOTION_ROOT, bundleComposition } from '../server/bundle.mjs'
 
 const ROOT = path.resolve(REMOTION_ROOT, '..')
-const OUT = process.argv[2]
+const OUT = process.argv[2] ?? path.join(REMOTION_ROOT, 'out', 'segment-stills')
+mkdirSync(OUT, { recursive: true })
 const CLIP = path.join(ROOT, 'services/api/scripts/stt_bakeoff/clips/Normal.mp4')
+if (!statSync(CLIP, { throwIfNoEntry: false })) {
+  console.error(`missing the background clip: ${CLIP}`)
+  process.exit(1)
+}
 
 // The background clip, so the caption layer is drawn over the same pixels in every render.
 const server = createServer((req, res) => {

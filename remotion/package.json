@@ -7,7 +7,8 @@
   "scripts": {
     "render-server": "node server/index.mjs",
     "check": "node scripts/check.mjs",
-    "still": "node scripts/still.mjs"
+    "still": "node scripts/still.mjs",
+    "check:export-segments": "node scripts/check-export-segments.mjs"
   },
   "dependencies": {
     "@captions/shared": "*",

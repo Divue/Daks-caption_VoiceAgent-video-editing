@@ -26,25 +26,22 @@ export function useElementWidth<T extends HTMLElement>(): { ref: RefObject<T | n
 const TICK_MS = 50
 
 /**
- * A looping playhead over [startMs, endMs] plus a hold on the finished line. Ticks only while
- * `ref` is on screen. Reduced motion: parked on the finished line.
+ * A looping playhead over [startMs, endMs] plus a hold on the finished line. Reuses the
+ * scroll-reveal system's own `useInView` for visibility (~25% shown starts it, matching the
+ * "trigger slightly early" reveal timing; only a full exit — ratio back to 0 — resets it, so
+ * scroll jitter right at the edge can't restart it mid-jitter). Every fresh entry restarts the
+ * loop from `startMs`, not a resume of wherever it was paused, so the user always sees the whole
+ * sequence from the beginning. The interval itself only exists while in view, so nothing ticks
+ * for a section nobody can see. Reduced motion: parked on the finished line, never ticking.
  */
 export function useLoopClock(startMs: number, endMs: number, holdMs: number, motionSafe: boolean) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
+  const { ref, isInView } = useInView<HTMLDivElement>(0.25)
   const [elapsed, setElapsed] = useState(0)
   const loopMs = endMs - startMs + holdMs
 
   useEffect(() => {
-    const element = ref.current
-    if (!element || !motionSafe) return
-    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.1 })
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [motionSafe])
-
-  useEffect(() => {
-    if (!visible) return
+    if (!motionSafe || !isInView) return
+    setElapsed(0)
     // Advance by real elapsed time, not by tick count: throttled timers (background tab, a busy
     // main thread) then skip ahead instead of slowing the whole demo down.
     let last = performance.now()
@@ -55,7 +52,7 @@ export function useLoopClock(startMs: number, endMs: number, holdMs: number, mot
       setElapsed((value) => (value + step) % loopMs)
     }, TICK_MS)
     return () => window.clearInterval(id)
-  }, [visible, loopMs])
+  }, [motionSafe, isInView, loopMs])
 
   // Math.min: a shorter new line can't overshoot while the old elapsed wraps on the next tick.
   return { ref, timeMs: motionSafe ? startMs + Math.min(elapsed, loopMs) : endMs }

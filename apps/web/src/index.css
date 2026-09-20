@@ -529,6 +529,16 @@
     radial-gradient(58% 56% at 50% 66%, rgba(124, 109, 214, 0.13) 0%, rgba(124, 109, 214, 0.05) 50%, transparent 78%);
 }
 
+/* In-page anchor navigation (the landing navbar's dropdown entries and the footer links) glides
+   instead of jumping. The landing sections carry their own scroll-mt-* so the sticky navbar never
+   covers the heading it just scrolled to — the offset lives with the target, not as a magic number
+   in a scroll handler. Guarded, so a reduced-motion visitor gets an instant jump. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse-ring,
   .animate-glow-drift,

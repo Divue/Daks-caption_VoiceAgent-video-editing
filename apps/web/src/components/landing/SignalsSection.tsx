@@ -17,6 +17,26 @@ const START = WORDS[0].startMs
 const END = WORDS[WORDS.length - 1].endMs
 const SPAN = END - START
 
+// Moved here verbatim from HinglishSection ("Made for Hinglish"): same copy, same numbering, same
+// card styling. They read as the pipeline's three guarantees, which is this section's subject.
+const POINTS = [
+  {
+    n: '01',
+    title: 'Hindi audio in',
+    body: 'We transcribe with a Hindi speech model, because English models hear Hinglish as noise. In our first test, English (India) returned zero words on a real reel.',
+  },
+  {
+    n: '02',
+    title: 'Roman script out',
+    body: 'Every word is written back in the Roman script creators actually type, like yaar, bhai and saaaal. Not Devanagari, and not a translation.',
+  },
+  {
+    n: '03',
+    title: 'Timed to the word',
+    body: 'Each word keeps its own start and end, to the millisecond, so captions land on the beat of how you speak.',
+  },
+]
+
 const z = (value: number | undefined) => value ?? 0
 const sigma = (value: number) => `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(2)}σ`
 
@@ -46,7 +66,7 @@ export function SignalsSection() {
   const playhead = Math.min(100, Math.max(0, ((timeMs - START) / SPAN) * 100))
 
   return (
-    <section className="relative overflow-hidden border-t border-line-subtle py-24 sm:py-32">
+    <section id="under-the-hood" className="relative scroll-mt-20 overflow-hidden border-t border-line-subtle py-24 sm:py-32">
       <div className="mx-auto max-w-[1200px] px-4 sm:px-8">
         <SectionHeading eyebrow="Under the hood" lines={['Not an LLM wrapper.', 'We measure your voice.']} motionSafe={motionSafe}>
           For every word we measure loudness, pitch, how long it took and how long it was held, against the
@@ -160,6 +180,23 @@ export function SignalsSection() {
             </ul>
           </div>
         </RevealItem>
+
+        {/* A row of three under the score, not a stack: the score card is already tall and wide,
+            and stacking these below it made the section read top-heavy at 1280px. */}
+        <div className="mt-16 grid gap-4 sm:grid-cols-3">
+          {POINTS.map((point, index) => (
+            <RevealItem key={point.n} motionSafe={motionSafe} size="lg" style={{ animationDelay: `${Math.min(index, 5) * 90}ms` }}>
+              <div className="group h-full rounded-xl border border-line-subtle bg-surface/40 p-6 transition-colors duration-300 hover:border-line-default hover:bg-surface/70">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[11px] text-ink-tertiary transition-colors duration-200 group-hover:text-signal">{point.n}</span>
+                  <span className="h-px w-4 bg-line-subtle transition-all duration-200 group-hover:w-6 group-hover:bg-signal/50" />
+                </div>
+                <p className="mt-4 text-body-lg font-semibold text-ink-primary">{point.title}</p>
+                <p className="mt-2 text-body-sm leading-relaxed text-ink-secondary">{point.body}</p>
+              </div>
+            </RevealItem>
+          ))}
+        </div>
       </div>
     </section>
   )

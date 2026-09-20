@@ -3,11 +3,11 @@ export interface NavLink {
   href: string
 }
 
-/** The four landing-page section anchors — single source of truth shared by
- * LandingNavbar.tsx and the dark/ footer, so the two link lists can't drift. */
+/** The dark/ footer's four section anchors. Every href here is a section id that exists on the
+ * landing page; LandingNavbar carries its own list because its items also group into dropdowns. */
 export const NAV_LINKS: NavLink[] = [
-  { label: 'Features', href: '#features' },
-  { label: 'How It Works', href: '#how-it-works' },
-  { label: 'Voice Editing', href: '#voice-editing' },
-  { label: 'For Creators', href: '#for-creators' },
+  { label: 'Tone aware captions', href: '#showcase' },
+  { label: 'Made for Hinglish', href: '#made-for-hinglish' },
+  { label: 'Hear the difference', href: '#hear-the-difference' },
+  { label: 'How it works', href: '#how-it-works' },
 ]

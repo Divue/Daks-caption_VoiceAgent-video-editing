@@ -309,7 +309,8 @@ def patch_words(project_id: str, patches: list[tuple[str, dict]], expected_versi
 
 
 def patch_project(project_id: str, patch: dict, expected_version: int | None):
-    """presetId, settings, presetOverride (the latter two merge key-by-key) and/or layers.
+    """presetId, settings, presetOverride (the latter two merge key-by-key), layers and/or
+    presetSegments.
 
     `presetOverride` follows the style rule (`_merge_style`): a key with an explicit null is
     REMOVED, and an override emptied of every key is dropped entirely rather than stored as `{}`.
@@ -337,6 +338,17 @@ def patch_project(project_id: str, patch: dict, expected_version: int | None):
                 doc["layers"] = value
             else:
                 doc.pop("layers", None)
+        if "presetSegments" in patch:
+            # Whole-list replace for the same reason as `layers`: creating a segment CARVES the
+            # ones it lands on (trimming, splitting or removing them), so there is no per-item
+            # expression of "apply Chamak from 4s to 7s" at all. The list is small
+            # (≤MAX_PRESET_SEGMENTS) and the sorted/disjoint rule is enforced by the Project model
+            # as the document is validated, so an overlapping list is a 422 rather than a write.
+            value = patch["presetSegments"]
+            if value:
+                doc["presetSegments"] = value
+            else:
+                doc.pop("presetSegments", None)
         return lambda project: project
     return _edit(project_id, expected_version, change)
 

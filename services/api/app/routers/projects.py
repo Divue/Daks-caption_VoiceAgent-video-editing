@@ -160,6 +160,10 @@ class ProjectPatch(BaseModel):
     # The overlay media, as the whole list it should now be (store/projects.patch_project).
     # Items are validated as part of the resulting Project, so a bad one is a 422, not a write.
     layers: Optional[list[dict]] = None
+    # The preset segments, as the whole list they should now be — same shape and same reason as
+    # `layers` above. Validated as part of the resulting Project (which is also where the
+    # sorted/disjoint rule is enforced), so a bad list is a 422 and not a write.
+    presetSegments: Optional[list[dict]] = None
     version: Optional[int] = None
 
 

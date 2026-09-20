@@ -58,6 +58,7 @@ a task touching the word inspector only needs `05-word-inspector.md` plus
 | — | `layers/phase-01-media-layers.md` | Media layers: two tracks of images/clips over the video — schema, upload/serve, editor (move/scale/rotate/trim/split), export, 7 agent tools. Also: undo now SAVES (it never reached the server), and tools in one agent turn now see each other's changes | Anything touching `layers`, `lib/layers.ts`, `layer_tools.py`, the timeline lanes, undo/redo, or the planner's tool loop. Pair with `LAYERS.md`. |
 | — | `audits/ai-agent/phase-20-video-aware-editing.md` | The agent can now SEE the video: stickers placed on a face, captions fitted to a hand, word ranges, and a size that ramps across words. Also a real bug — `analyze_frame(target="face")` returned the PERSON box (P1 + P4 folders, flagged) | Before touching `vision_tools.py`, `scene_tools.py`, the preset catalogue, or anything that places a `LayerItem` from a detection. Read it if you need to know what Rekognition can and cannot detect here, or why a fitted caption size is an estimate. |
 | — | `word-editing/phase-01-text-and-timing.md` | **Hand editing of word TEXT and TIMING** in the inspector (P3) | Before touching `Word.text`/`startMs`/`endMs`, `lib/word-edit.ts`, or anything that assumes `Project.words` is in playback order. Holds the **word-id decision**, the **ripple-not-clamp** regression, (ids are opaque and permanent; the ARRAY is what must stay sorted — nothing in the repo parses an id for its index) and the phase-2 plan for add/delete/split/merge, which is NOT built. Also diagnoses (does not fix) the `prosody.py` repair pass being self-blocking on a RUN of degenerate ASR spans — the cause of 10 ms words. |
+| — | `preset-segments/phase-01-preset-segments.md` | **A preset per STRETCH of the video** (`Project.presetSegments`) — schema, the one shared resolve both renderers use, the timeline's Preset lane, the API field and the agent's range argument (lead + P1 + P2 + P3 + P4) | Before touching `deriveBlocks`, `resolveEmphasis`, `resolvePreset`, `PresetPicker`, `PresetOverrideProvider` or `CaptionVideo.tsx`. Holds the **two decisions**: grouping is derived PER SEGMENT rather than as a fifth `deriveBlocks` break rule, and `emphasisEveryBlocks` counts per segment. Also the reason the preview draws with the BLOCK's preset and not the playhead's — they differ where a word overhangs a boundary, and the export follows the block. |
 | — | `export/phase-01-containerised-render.md` | Export could not work on Linux and could not be deployed; the render server is now a container. Also: App Runner is closed to new customers (P1 + P2 folders, flagged) | Anything under `remotion/`, `routers/render.py`, or the compose `render` service. Pair with `DEPLOYING-EXPORT.md` at the repo root. |
 
 Documents 09 and 10 both originate from a single commit (`628a3e6`) that
@@ -189,6 +190,20 @@ Things Claude must preserve when working in `apps/web`:
 - Schema v2: `Style.uppercase` is gone (use `textCase`), and the preset id
   `kathmandu` is gone (it is `rangmanch`). `store/projects.py` migrates stored
   v1 rows on read; do not reintroduce either name.
+- There is no longer ONE active preset. `Project.presetSegments` gives a stretch of the video
+  its own preset (and its own optional `presetOverride`, which REPLACES the project's rather
+  than stacking on it). Everything that turns words into drawing decisions goes through
+  `apps/web/src/lib/caption-timeline.ts` — `buildCaptionTimeline` — which BOTH the editor
+  (`useCaptionBlocks`) and the export (`remotion/src/CaptionVideo.tsx`) call. Grouping and
+  emphasis are derived PER SEGMENT there; `blocks.ts` and `emphasis.ts` needed no rule added
+  and must not grow one. What DRAWS uses the preset of the block on screen
+  (`presetOfBlock`); what EDITS uses the segment at the playhead. Those differ at the tail of
+  a block whose last word overhangs a boundary, and following the playhead there would make
+  the preview differ from the MP4. See `preset-segments/phase-01-preset-segments.md`.
+- Preset segments are written as the WHOLE LIST, like `layers`, through `patchProjectFields`
+  — one save, one Ctrl+Z. All the arithmetic lives in `apps/web/src/lib/preset-segments.ts`,
+  mirrored in `services/api/app/agent/tools/preset_segments.py`; both suites test the same
+  numbers. Never inline a clamp in a component: that is how the 1 ms-segment bug shipped.
 - Build and test against `packages/shared/fixtures/demo-project.json` first
   (per root `CLAUDE.md`).
 - Caption elongation is carried by `Word.stretch` (a number), never by repeating

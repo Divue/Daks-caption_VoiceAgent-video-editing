@@ -97,20 +97,19 @@ left with nothing but the widget.
 - `MIN_WORD_MS = 40` — one frame at 25 fps. A zero-length word is legal in the schema (both
   bounds are `int().min(0)`, with no cross-field rule) and renders as a caption visible for
   no frames, which reads as a renderer bug.
-- `timingBounds(words, wordId, durationMs)` — the window this word may occupy without
-  changing its place in the running order: previous word's `endMs` → next word's `startMs`,
-  falling back to `0` and `durationMs` at the ends. **Widened to always contain the word's
-  own current span**, so a project that already holds an overlap does not present a frozen
-  field with no way out; an edit to a dirty project can only make it cleaner.
-- `clampTiming(words, wordId, durationMs, proposed)` — squeezes the proposed edit into that
-  window. The edge the user moved gets its way and the other yields, which is what makes a
-  drag feel obeyed. Returns integers, as every time in the schema is `z.number().int()`.
+- `retimeWord(words, wordId, durationMs, proposed)` — the whole timing edit. The edited word
+  goes where it is put (the edge the user moved gets its way; the other yields, so a drag feels
+  obeyed); every word it now overlaps is pushed along keeping its own duration; the push stops
+  at the first word that already has room. Returns every word whose times changed, the edited
+  one first, as integers — every time in the schema is `z.number().int()`. Returns `null`
+  instead of truncating when the ripple cannot fit before 0 or `durationMs`.
+  **`timingBounds`/`clampTiming` existed in revision 1 and are gone; see §"Revision 2".**
 - `cleanWordText(raw)` — trims and collapses whitespace; returns `{ok:false, reason}` for
   empty, and `{ok:true, text, note}` when a typed space was collapsed.
 
-**Clamping rather than validating is the whole design.** Every listed timing edge case —
+**Rippling rather than validating is the whole design.** Every listed timing edge case —
 `endMs < startMs`, zero-length, past `durationMs`, dragged past a neighbour, overlapping —
-becomes the same single guard instead of five separate rules, and the order invariant can
+falls out of the same routine instead of five separate rules, and the order invariant can
 never be broken in the first place, so there is nothing to re-sort and nothing to detect.
 
 ### 2. `apps/web/src/components/inspector/CaptionStylePanel.tsx` (modified)
@@ -285,7 +284,7 @@ If any of that turns out to need a schema change, it stops and goes to the lead.
 - **Keyboard nav from the field to the next word** (Tab/Enter walking the transcript). Needs
   a selection-order API `useSelection` does not have. Add it with phase 2.
 - **A drag handle on the timeline's caption ribbon.** `CaptionRibbon` only selects and seeks.
-  `clampTiming` is the only piece a drag would need and it already exists.
+  `retimeWord` is the only piece a drag would need and it already exists.
 
 ## Files Created
 - `apps/web/src/lib/word-edit.ts` — pure text/timing edit arithmetic.
@@ -322,27 +321,39 @@ RUN as a unit — redistributing the span from the last good word's end to the n
 word's start, which is the arithmetic `align.py:_fill_gaps` already performs for unmatched
 words one file over. **Not attempted here: `services/api` is not P3's folder.**
 
-**Unit / structural — `npm run check:word-edit`, 37/37 pass.** Covers `timingBounds` (5),
-`clampTiming` over every listed edge case (8), the order invariant including a
-stress pass that pushes every edge of every word to four extremes and re-asserts sortedness,
-non-overlap, minimum span and schema validity (6), `cleanWordText` (9), and the write path
-including agent/hand equivalence (6).
+**Unit / structural — `npm run check:word-edit`, 40/40 pass.** Counted from the run, by
+section: the revision-1 regression reproduced on the real crushed run from `6c437eb52961`
+(12), `retimeWord` over every listed edge case (7), the order invariant including a stress
+pass that pushes every edge of every word to four extremes and re-asserts sortedness,
+non-overlap, minimum span, in-video bounds and schema validity (6), `cleanWordText` (9), and
+the write path including agent/hand equivalence (6).
 
 `findBlockIndexAt` is **not** imported by the check script — its module reaches
 `@/state/project-context`, a `.tsx` file jiti will not parse. Its *precondition* is asserted
 instead, which is the thing a timing edit can actually break: blocks in ascending,
 non-overlapping start order. The script also demonstrates the failure, asserting that WITHOUT
-the clamp an out-of-order word violates it.
+the ripple an out-of-order word violates it.
 
-**Browser — 27/27 pass, in real headless Chrome (153.0.8010.36) against the running editor.**
-Driven over CDP from a throwaway script (`ws` was already installed; no dependency added).
-Loaded `/editor?demo=1`, which restored a real 51-word reel project, and asserted: the panel
-opens on selection; four keystrokes change nothing; Enter commits once; one Ctrl+Z restores
-the whole word; empty is refused with the reason on screen and nothing written; a typed space
-collapses and the note is shown; Enter mid-composition writes nothing while Enter after
-`compositionend` commits Devanagari; End pushed to 9999s and Start pushed to −9999s both clamp
-to the printed window; End dragged before Start never inverts; no console errors and the
-reducer never rejected a candidate project. **This is what caught the two bugs above.**
+**Browser (fixture) — 23/23 pass, re-run against revision 2 in real headless Chrome
+(153.0.8010.36).** Driven over CDP from a throwaway script (`ws` was already installed; no
+dependency added). Asserted: the panel opens on selection; four keystrokes change nothing;
+Enter commits once; one Ctrl+Z restores the whole word; empty is refused with the reason on
+screen and nothing written; a typed space collapses and the note is shown; Enter
+mid-composition writes nothing while Enter after `compositionend` commits Devanagari; End
+moves half a second **even with the next word touching** (the revision-1 regression); Start
+moves earlier and pushes what is before it; an impossible edit is refused and the panel says
+"No room"; the rows stay in ascending time order; no console errors and the reducer never
+rejected a candidate project. The revision-1 run of this suite (27 assertions, clamp
+semantics) is superseded — it is what caught the two bugs listed in §"Two bugs", but its
+timing assertions no longer describe the code.
+
+**Browser (REAL project, REAL API) — 7/7 pass.** Against `localhost:5173` and the running API
+on `localhost:8010`, on project `6c437eb52961`: selected the crushed 10 ms word `nine`,
+confirmed the panel showed `19.65`/`19.66`, stretched End to `20.40` (**the edit that was
+frozen in revision 1**), confirmed the neighbouring words moved, then **re-fetched the
+document over HTTP** and confirmed the change reached the server and that the stored words
+were still in playback order. The project was restored to its exact original timings
+afterwards and the restore verified by re-fetch.
 
 **Also run, all passing:** `npm run build` (`tsc -b` + vite, clean), `npx oxlint` (exit 0;
 21 warnings, all pre-existing, none in the changed files), and the three sibling scripts
@@ -389,11 +400,22 @@ replaced rather than duplicated — otherwise there would have been two text inp
 field with different commit rules.
 
 ## Git / Change Scope
-Branch `master`, not committed, not pushed. `git diff --stat`: 2 files changed,
-259 insertions, 10 deletions; plus 2 new files and this audit. Every path is under
-`apps/web/` except this document. One unrelated pre-existing untracked directory,
-`brag-output/`, was present at session start and left untouched. No `.env` was created,
-read into the diff or committed.
+Branch `master`. **Committed by the repo owner as `6f998b5` ("yuhh final agent stuff")**
+while revision 2 was being verified; corrections to this document landed after it and are
+the only thing outstanding. Not pushed at time of writing.
+
+The implementation is 4 files: `apps/web/src/lib/word-edit.ts` (129 lines, new),
+`apps/web/scripts/check-word-edit.ts` (200, new),
+`apps/web/src/components/inspector/CaptionStylePanel.tsx` (+311/-11) and
+`apps/web/package.json` (+2/-1). Every path is under `apps/web/` except this audit and the
+`.claude/INDEX.md` row.
+
+**Flagged, not ours:** `6f998b5` also swept in `brag-output/` — 200+ KB of generated
+`.jpg`/`.html`/`.md` artefacts from an unrelated tool. It was untracked and pre-existing at
+the start of this work and was deliberately left alone here; it is now in the repo's history.
+Worth a `git rm -r --cached brag-output/` plus a `.gitignore` entry if that was not intended.
+
+No `.env` was created, read into the diff, or committed.
 
 ## Next Steps
 1. **P1 (highest value)**: fix the `prosody.py` repair to act on a RUN of degenerate words,

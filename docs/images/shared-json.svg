@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 720" width="1000" height="720" role="img" aria-label="The shared Project JSON sits at the centre. The editor, the API routers, the DynamoDB store and the agent both read and write it; the pipeline job runner writes it; the Remotion export reads it">
+  <defs>
+    <marker id="rd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5194fb"/>
+    </marker>
+    <marker id="wr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#ff9800"/>
+    </marker>
+    <pattern id="grid3" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#0d182f" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1000" height="720" fill="#040810"/>
+  <rect width="1000" height="720" fill="url(#grid3)" opacity="0.55"/>
+  <text x="40" y="46" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="15" letter-spacing="4.5" fill="#7c8ba5">ONE SHARED PROJECT JSON</text>
+  <text x="40" y="70" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="14" fill="#61708c">102 files import the schema: 59 TypeScript through the shared package, 43 Python through its mirror.</text>
+
+  <g font-family="ui-monospace,Menlo,Consolas,monospace" font-size="11.5" letter-spacing="1.6">
+    <line x1="700" y1="60" x2="730" y2="60" stroke="#5194fb" stroke-width="1.6" marker-end="url(#rd)"/>
+    <text x="738" y="64" fill="#5194fb">READS</text>
+    <line x1="820" y1="60" x2="850" y2="60" stroke="#ff9800" stroke-width="1.6" marker-end="url(#wr)"/>
+    <text x="858" y="64" fill="#ff9800">WRITES</text>
+  </g>
+
+  <rect x="350" y="296" width="300" height="128" rx="16" fill="#0b1321" stroke="#1adfbb" stroke-width="1.8"/>
+  <text x="500" y="332" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="13" letter-spacing="2.8" fill="#1adfbb">PROJECT JSON</text>
+  <text x="500" y="358" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14.5" fill="#fdfcff">words, timings, emphasis,</text>
+  <text x="500" y="378" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14.5" fill="#fdfcff">stretch, emotion, presets, layers</text>
+  <text x="500" y="404" text-anchor="middle" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="11" letter-spacing="1.4" fill="#7c8ba5">project.ts mirrored by schema.py</text>
+
+  <rect x="40" y="130" width="270" height="86" rx="12" fill="#0b1321" stroke="#a179ff" stroke-width="1"/>
+  <text x="60" y="158" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" letter-spacing="2.2" fill="#a179ff">EDITOR</text>
+  <text x="60" y="180" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">state, hooks, inspector,</text>
+  <text x="60" y="199" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">timeline, transcript</text>
+  <path d="M310 168 C 356 168, 356 300, 388 312" fill="none" stroke="#5194fb" stroke-width="1.5" marker-end="url(#rd)"/>
+  <path d="M316 186 C 366 186, 366 312, 392 330" fill="none" stroke="#ff9800" stroke-width="1.5" marker-end="url(#wr)"/>
+
+  <rect x="40" y="302" width="270" height="86" rx="12" fill="#0b1321" stroke="#ff9800" stroke-width="1"/>
+  <text x="60" y="330" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" letter-spacing="2.2" fill="#ff9800">AGENT</text>
+  <text x="60" y="352" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">planner, tools,</text>
+  <text x="60" y="371" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">validation</text>
+  <line x1="310" y1="336" x2="346" y2="345" stroke="#5194fb" stroke-width="1.5" marker-end="url(#rd)"/>
+  <line x1="310" y1="362" x2="346" y2="370" stroke="#ff9800" stroke-width="1.5" marker-end="url(#wr)"/>
+
+  <rect x="40" y="474" width="270" height="86" rx="12" fill="#0b1321" stroke="#e2da51" stroke-width="1"/>
+  <text x="60" y="502" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" letter-spacing="2.2" fill="#e2da51">PIPELINE JOB RUNNER</text>
+  <text x="60" y="524" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">writes the first version</text>
+  <text x="60" y="543" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">of a new project</text>
+  <path d="M310 506 C 358 506, 362 410, 392 392" fill="none" stroke="#ff9800" stroke-width="1.5" marker-end="url(#wr)"/>
+
+  <rect x="690" y="130" width="270" height="86" rx="12" fill="#0b1321" stroke="#5194fb" stroke-width="1"/>
+  <text x="710" y="158" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" letter-spacing="2.2" fill="#5194fb">API ROUTERS</text>
+  <text x="710" y="180" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">projects, media</text>
+  <text x="710" y="199" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">REST over JSON</text>
+  <path d="M690 168 C 644 168, 644 300, 612 312" fill="none" stroke="#5194fb" stroke-width="1.5" marker-end="url(#rd)"/>
+  <path d="M684 186 C 634 186, 634 312, 608 330" fill="none" stroke="#ff9800" stroke-width="1.5" marker-end="url(#wr)"/>
+
+  <rect x="690" y="302" width="270" height="86" rx="12" fill="#0b1321" stroke="#ff7078" stroke-width="1"/>
+  <text x="710" y="330" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" letter-spacing="2.2" fill="#ff7078">STORE</text>
+  <text x="710" y="352" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">DynamoDB persistence,</text>
+  <text x="710" y="371" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">version checks</text>
+  <line x1="690" y1="336" x2="654" y2="345" stroke="#5194fb" stroke-width="1.5" marker-end="url(#rd)"/>
+  <line x1="690" y1="362" x2="654" y2="370" stroke="#ff9800" stroke-width="1.5" marker-end="url(#wr)"/>
+
+  <rect x="690" y="474" width="270" height="86" rx="12" fill="#0b1321" stroke="#1adfbb" stroke-width="1"/>
+  <text x="710" y="502" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="12" letter-spacing="2.2" fill="#1adfbb">REMOTION EXPORT</text>
+  <text x="710" y="524" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">draws the same JSON</text>
+  <text x="710" y="543" font-family="system-ui,sans-serif" font-size="14" fill="#fdfcff">the editor previews</text>
+  <path d="M690 506 C 642 506, 638 410, 608 392" fill="none" stroke="#5194fb" stroke-width="1.5" marker-end="url(#rd)"/>
+
+  <text x="500" y="640" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#7c8ba5">The agent never edits pixels. It returns patches to this document, and each one is</text>
+  <text x="500" y="662" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#7c8ba5">validated against the schema before the editor applies it.</text>
+  <text x="500" y="690" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" fill="#7c8ba5">Preview equals export, because both are this JSON through the same React code.</text>
+</svg>

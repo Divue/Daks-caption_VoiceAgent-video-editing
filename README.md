@@ -28,6 +28,9 @@ footage. [Watch on YouTube](https://youtu.be/D836OKdoY2g).*
 ## Try it
 
 **[Open the editor](https://4ofryng45bbr7en765off7otja0yuamo.lambda-url.ap-south-1.on.aws)**
+** BACKEND SERVICES ARE DOWN DUE TO COST ISSUE, YOU CAN SEE IT IN THE TERRAFORM FILES**
+
+
 
 There is no login yet, so please be kind to it. Chrome or Edge; the microphone needs HTTPS, which
 the address above has. Region `ap-south-1`.

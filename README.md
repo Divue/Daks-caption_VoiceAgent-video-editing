@@ -27,7 +27,7 @@ footage. [Watch on YouTube](https://youtu.be/D836OKdoY2g).*
 
 ## Try it
 
-**[Open the editor](https://4ofryng45bbr7en765off7otja0yuamo.lambda-url.ap-south-1.on.aws)**
+**[Open the editor](https://main.d3io364e3ypwrk.amplifyapp.com/)**
 ** BACKEND SERVICES ARE DOWN DUE TO COST ISSUE, YOU CAN SEE IT IN THE TERRAFORM FILES**
 
 
